@@ -1,0 +1,156 @@
+#include <doctest/doctest.h>
+
+#include <cstring>
+
+#include "bindings/graphics_subops.hpp"
+#include "bindings/text_subops.hpp"
+#include "support.hpp"
+#include "text/encoding.hpp"
+#include "text/layout.hpp"
+#include "vm/vm.hpp"
+
+using namespace obgi;
+
+TEST_CASE("cp932 decoding") {
+    CHECK(cp932_to_utf32("ABC") == U"ABC");
+    CHECK(cp932_to_utf32("\x82\xA0\x82\xA2") == U"あい");           // あい
+    CHECK(cp932_to_utf32("\x83\x41") == U"ア");                         // ア
+    CHECK(cp932_to_utf32("\x81\x40") == U"　");                         // ideographic space
+    CHECK(cp932_to_utf32("\xB1\xB2") == U"ｱｲ");                   // half-width katakana
+    CHECK(cp932_to_utf32("\x88\x9F") == U"亜");                         // 亜
+    CHECK(cp932_to_utf32("\x82") == U"�");                             // truncated pair
+    CHECK(cp932_to_utf32("\x81\x7F") == U"�");                         // invalid trail
+    CHECK(utf8_to_utf32("a\xE3\x81\x82\xF0\x9F\x98\x80") == U"aあ\U0001F600");
+    CHECK(utf8_to_utf32("\xE3\x81") == U"��");                    // truncated sequence
+}
+
+namespace {
+
+std::shared_ptr<Font> open_font(FontLibrary& lib, int size) {
+    auto f = lib.open("MS Gothic", size);
+    if (!f) {
+        MESSAGE("no Japanese font installed: ", f.error().message);
+        return nullptr;
+    }
+    return *f;
+}
+
+} // namespace
+
+TEST_CASE("text layout with a system font") {
+    auto lib = FontLibrary::create();
+    REQUIRE(lib.has_value());
+    auto font = open_font(**lib, 24);
+    if (!font) return;
+    CHECK(font->line_height() >= 24);
+
+    auto plain = render_text(*font, U"あいう", {}, 0);
+    REQUIRE(plain.has_value());
+    CHECK(plain->lines == 1);
+    CHECK(plain->width >= 3 * 20);
+    std::size_t ink = 0;
+    for (std::uint32_t px : plain->pixels) ink += (px >> 24) != 0;
+    CHECK(ink > 100);
+
+    TextStyle red;
+    red.color = 0xFF0000;
+    auto tinted = render_text(*font, U"あ", red, 0);
+    REQUIRE(tinted.has_value());
+    bool saw_full = false;
+    for (std::uint32_t px : tinted->pixels)
+        if ((px >> 24) == 255) {
+            CHECK((px & 0xFFFFFF) == 0xFF0000u); // BGRA with colour 0xRRGGBB red
+            saw_full = true;
+        }
+    CHECK(saw_full);
+
+    auto two = render_text(*font, U"あ\nい", {}, 0);
+    REQUIRE(two.has_value());
+    CHECK(two->lines == 2);
+    CHECK(two->height >= 2u * font->line_height());
+
+    auto wrapped = render_text(*font, U"あいうえお", {}, 50);
+    REQUIRE(wrapped.has_value());
+    CHECK(wrapped->lines >= 2);
+    CHECK(wrapped->width <= 50);
+}
+
+namespace {
+
+struct Asm {
+    std::vector<std::uint8_t> b;
+    Asm& raw(std::initializer_list<int> bytes) {
+        for (int x : bytes) b.push_back(static_cast<std::uint8_t>(x));
+        return *this;
+    }
+    Asm& i32(vm::Word v) { return raw({0x02, int(v & 255), int((v >> 8) & 255), int((v >> 16) & 255), int(v >> 24)}); }
+    Asm& sub(int op, int sub) { return raw({op, sub}); }
+    Asm& ret() { return raw({0x17}); }
+};
+
+class OneProgram final : public vm::ProgramProvider {
+  public:
+    std::vector<std::uint8_t> program;
+    Result<std::vector<std::uint8_t>> load(std::string_view, std::string_view) override { return program; }
+};
+
+} // namespace
+
+TEST_CASE("92:9C draws text into an image slot") {
+    auto fonts = FontLibrary::create();
+    REQUIRE(fonts.has_value());
+    if (!open_font(**fonts, 24)) return;
+
+    RendererOptions ro;
+    ro.headless = true;
+    auto renderer = Renderer::create(ro);
+    if (!renderer) return;
+    auto display = Display::create(**renderer);
+    REQUIRE(display.has_value());
+    TextHost host{display->get(), fonts->get()};
+    vm::SubopRegistry registry;
+    vm::register_core_subops(registry);
+    register_text_subops(registry, host);
+    // the graphics ops are needed to create the target slot
+    ArcResourceFinder finder(obgi_test::game_dir());
+    ArcImageSource images(finder);
+    GraphicsHost gh{display->get(), &images};
+    register_graphics_subops(registry, gh);
+
+    OneProgram provider;
+    vm::Vm vm(provider, registry);
+    const char* name = "MS Gothic";
+    REQUIRE(vm.global.write(0x100, std::strlen(name) + 1, reinterpret_cast<const std::uint8_t*>(name)));
+    const char text[] = "\x82\xA0\x82\xA2\x82\xA4"; // あいう
+    REQUIRE(vm.global.write(0x200, sizeof text, reinterpret_cast<const std::uint8_t*>(text)));
+    const vm::Word result_addr = 0x300;
+
+    Asm a;
+    a.i32(result_addr);
+    a.i32(5).i32(200).i32(60).i32(1).sub(0x90, 0x11); // slot 5: 200x60 BGRX
+    a.i32(5).i32(0).sub(0x90, 0x13);
+    // slot x y text color ruby_on ruby_dict ruby_param font size p2 p3 vertical kinsoku gap mode a b ecolor ealpha reserved
+    a.i32(5).i32(10).i32(8).i32(0x200).i32(0xFFFFFF).i32(0).i32(0).i32(0).i32(0x100).i32(24).i32(100).i32(0);
+    a.i32(0).i32(0).i32(0).i32(0).i32(0).i32(0).i32(0).i32(0).i32(0);
+    a.sub(0x92, 0x9C);
+    a.raw({0x09, 0x02}).ret(); // [result_addr] = lines
+    provider.program = {8, 0, 0, 0};
+    for (int i = 0; i < 4; ++i) provider.program.push_back(static_cast<std::uint8_t>(a.b.size() >> (8 * i)));
+    provider.program.insert(provider.program.end(), a.b.begin(), a.b.end());
+
+    vm::ThreadConfig cfg;
+    cfg.stack_size = 0x1000;
+    cfg.program_capacity = 0x10000;
+    REQUIRE(vm.spawn(cfg, "x.arc", "main").has_value());
+    auto st = vm.run_frame(0);
+    REQUIRE_MESSAGE(st.has_value(), std::string(st ? "" : st.error().message));
+
+    std::uint8_t out[4];
+    REQUIRE(vm.global.read(result_addr, 4, out));
+    CHECK(load_u32le(out) == 1);
+    auto px = (*display)->read_slot(5);
+    REQUIRE(px.has_value());
+    std::size_t lit = 0;
+    for (std::uint32_t p : *px) lit += (p & 0xFFFFFF) != 0;
+    CHECK(lit > 100);
+}

@@ -1,0 +1,30 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+#include "blend.glsl"
+
+// Image-slot blit: blends a rectangle of the source slot into the destination slot with the original
+// engine's blend modes (90:18 / 90:1F). Slots are linear arrays of one uint per pixel (packed as
+// blend.glsl documents), whatever their pixel format. The CPU clips the rectangle, so every thread
+// writes one valid destination pixel.
+layout(local_size_x = 8, local_size_y = 8) in;
+layout(std430, set = 0, binding = 0) readonly buffer Src { uint src_px[]; };
+layout(std430, set = 1, binding = 0) buffer Dst { uint dst_px[]; };
+layout(std140, set = 2, binding = 0) uniform Params {
+    uvec4 sizes;  // dst width, dst height, src width, src height
+    ivec4 origin; // dst x, dst y, src x, src y (the fill value when job.w == 1)
+    uvec4 job;    // rect width, rect height, mode | sf << 8 | df << 10 | P << 16, 1 = fill instead of blit
+};
+
+void main() {
+    uvec2 p = gl_GlobalInvocationID.xy;
+    if (p.x >= job.x || p.y >= job.y) return;
+    uint di = uint(origin.y + int(p.y)) * sizes.x + uint(origin.x + int(p.x));
+    if (job.w == 1u) {
+        dst_px[di] = uint(origin.z);
+        return;
+    }
+    uint mode = job.z & 255u, sf = (job.z >> 8) & 3u, df = (job.z >> 10) & 3u;
+    int P = int(job.z >> 16);
+    uint si = uint(origin.w + int(p.y)) * sizes.z + uint(origin.z + int(p.x));
+    dst_px[di] = blend_pixel(mode, sf, df, P, src_px[si], dst_px[di]);
+}

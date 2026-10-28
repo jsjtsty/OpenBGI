@@ -1,0 +1,5 @@
+// Node.js: node analysis/scripts/survey_sgcnf.js <sysgrp.arc>
+// DSC decode using extract_dsc.js; infer 16-byte bitmap-like header, check byte length.
+const fs=require('fs'),{decode}=require('./extract_dsc');const arc=fs.readFileSync(process.argv[2]);if(arc.subarray(0,12).toString('ascii')!=='BURIKO ARC20')throw Error('bad archive');let n=arc.readUInt32LE(12),base=16+n*128,out=['name\tstored\tdecoded\twidth\theight\tbpp\tremaining_header\tlength_matches'];let ok=0,bad=0;
+for(let i=0;i<n;i++){let p=16+i*128,name=arc.subarray(p,p+96).toString('ascii').split('\0')[0];if(!name.startsWith('SGCnf'))continue;let off=arc.readUInt32LE(p+96),len=arc.readUInt32LE(p+100),data=decode(arc.subarray(base+off,base+off+len));let width=data.readUInt16LE(0),height=data.readUInt16LE(2),bpp=data.readUInt16LE(4),valid=16+width*height*bpp/8===data.length;valid?ok++:bad++;out.push([name,len,data.length,width,height,bpp,data.subarray(6,16).toString('hex'),valid].join('\t'));}
+fs.writeFileSync('analysis/out/sgcnf_manifest.tsv',out.join('\n')+'\n');console.log('match',ok,'other',bad)

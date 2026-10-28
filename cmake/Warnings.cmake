@@ -1,0 +1,13 @@
+function(obgi_target_defaults target)
+  if(MSVC)
+    target_compile_options(${target} PRIVATE /W4 /permissive- /utf-8 /Zc:__cplusplus)
+    target_compile_definitions(${target} PRIVATE _CRT_SECURE_NO_WARNINGS)
+  else()
+    # bit-exact float32 kernels (BM IDCT) must not be fused into FMAs
+    target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -ffp-contract=off)
+    if(OPENBGI_SANITIZE)
+      target_compile_options(${target} PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer)
+      target_link_options(${target} PRIVATE -fsanitize=address,undefined)
+    endif()
+  endif()
+endfunction()

@@ -1,0 +1,10 @@
+@echo off
+rem Generated from cmake/ffmpeg_build.bat.in: runs the FFmpeg build inside MSYS2 with the Visual Studio toolchain.
+call "@OBGI_FF_VCVARS@" >nul
+if errorlevel 1 exit /b 1
+set "PATH=@OBGI_FF_NASM_DIR@;%PATH%"
+set MSYS2_PATH_TYPE=inherit
+set CHERE_INVOKING=1
+set MSYSTEM=MSYS
+"@OBGI_FF_MSYS_BASH@" -l "@CMAKE_BINARY_DIR@/ffmpeg_build.sh"
+exit /b %errorlevel%

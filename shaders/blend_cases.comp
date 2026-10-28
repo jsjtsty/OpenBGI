@@ -1,0 +1,19 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+#include "blend.glsl"
+
+// Test/offline harness: evaluates blend_pixel() for a list of independent cases.
+// case = (mode | sf << 8 | df << 10 | P << 16, src, dst, unused)
+layout(local_size_x = 64) in;
+layout(std430, set = 0, binding = 0) readonly buffer Cases { uvec4 cases[]; };
+layout(std430, set = 1, binding = 0) writeonly buffer Results { uint results[]; };
+layout(std140, set = 2, binding = 0) uniform Params { uint count; };
+
+void main() {
+    uint i = gl_GlobalInvocationID.x;
+    if (i >= count) return;
+    uvec4 c = cases[i];
+    uint mode = c.x & 255u, sf = (c.x >> 8) & 3u, df = (c.x >> 10) & 3u;
+    int P = int(c.x >> 16);
+    results[i] = blend_pixel(mode, sf, df, P, c.y, c.z);
+}

@@ -1,0 +1,368 @@
+#include <cstdlib>
+#include <cstdio>
+#include "render/display.hpp"
+
+#include <SDL3/SDL.h>
+
+#include <algorithm>
+#include <cstring>
+#include <string>
+
+namespace obgi {
+
+namespace {
+
+Error sdl_error(const char* what) { return Error{Errc::Io, std::string(what) + ": " + SDL_GetError()}; }
+
+struct BlitParams {
+    std::uint32_t sizes[4]; // dst w, dst h, src w, src h
+    std::int32_t origin[4]; // dst x, dst y, src x / fill value, src y
+    std::uint32_t job[4];   // rect w, rect h, mode | sf << 8 | df << 10 | P << 16, fill flag
+};
+struct PresentParams {
+    std::uint32_t info[4]; // width, height, format
+};
+
+struct GpuSlot {
+    SlotInfo info;
+    SDL_GPUBuffer* buffer = nullptr;
+};
+
+} // namespace
+
+bool blend_mode_supported(std::uint32_t mode) {
+    // The modes whose kernels are ported into shaders/blend.glsl (see analysis/混合公式.md).
+    return mode <= 9 || (mode >= 0x20 && mode <= 0x27) || mode == 0xC0 || mode == 0x80;
+}
+
+struct Display::Impl {
+    Renderer* renderer = nullptr;
+    SDL_GPUDevice* device = nullptr;
+    SDL_GPUComputePipeline* blit_pipeline = nullptr;
+    SDL_GPUComputePipeline* present_pipeline = nullptr;
+    SDL_GPUBuffer* dummy = nullptr; // bound as the unused read-only buffer of fills
+    std::map<std::uint32_t, GpuSlot> slots;
+    GpuSlot screen;
+    std::unique_ptr<Texture> screen_tex;
+    SDL_GPUCommandBuffer* cmd = nullptr;
+
+    ~Impl() {
+        if (cmd) SDL_CancelGPUCommandBuffer(cmd);
+        for (auto& [id, s] : slots) SDL_ReleaseGPUBuffer(device, s.buffer);
+        if (screen.buffer) SDL_ReleaseGPUBuffer(device, screen.buffer);
+        if (dummy) SDL_ReleaseGPUBuffer(device, dummy);
+        if (blit_pipeline) SDL_ReleaseGPUComputePipeline(device, blit_pipeline);
+        if (present_pipeline) SDL_ReleaseGPUComputePipeline(device, present_pipeline);
+        screen_tex.reset();
+    }
+
+    Result<SDL_GPUCommandBuffer*> ensure_cmd() {
+        if (!cmd) {
+            cmd = SDL_AcquireGPUCommandBuffer(device);
+            if (!cmd) return std::unexpected(sdl_error("acquire command buffer"));
+        }
+        return cmd;
+    }
+
+    // Submits what has been recorded; with wait, blocks until the GPU is done with it.
+    Result<void> flush(bool wait) {
+        if (!cmd) return {};
+        SDL_GPUCommandBuffer* c = std::exchange(cmd, nullptr);
+        if (!wait) {
+            if (!SDL_SubmitGPUCommandBuffer(c)) return std::unexpected(sdl_error("submit"));
+            return {};
+        }
+        SDL_GPUFence* f = SDL_SubmitGPUCommandBufferAndAcquireFence(c);
+        if (!f) return std::unexpected(sdl_error("submit"));
+        SDL_WaitForGPUFences(device, true, &f, 1);
+        SDL_ReleaseGPUFence(device, f);
+        return {};
+    }
+
+    Result<SDL_GPUBuffer*> make_buffer(std::uint32_t pixels) {
+        SDL_GPUBufferCreateInfo bi{};
+        bi.usage = SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ | SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE;
+        bi.size = std::max<std::uint32_t>(pixels, 1) * 4;
+        SDL_GPUBuffer* b = SDL_CreateGPUBuffer(device, &bi);
+        if (!b) return std::unexpected(sdl_error("slot buffer"));
+        return b;
+    }
+
+    Result<void> upload(SDL_GPUBuffer* dst, std::span<const std::uint32_t> data) {
+        auto c = ensure_cmd();
+        if (!c) return std::unexpected(c.error());
+        SDL_GPUTransferBufferCreateInfo ti{};
+        ti.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+        ti.size = static_cast<Uint32>(data.size_bytes());
+        SDL_GPUTransferBuffer* up = SDL_CreateGPUTransferBuffer(device, &ti);
+        if (!up) return std::unexpected(sdl_error("upload buffer"));
+        std::memcpy(SDL_MapGPUTransferBuffer(device, up, false), data.data(), data.size_bytes());
+        SDL_UnmapGPUTransferBuffer(device, up);
+        SDL_GPUCopyPass* copy = SDL_BeginGPUCopyPass(*c);
+        SDL_GPUTransferBufferLocation loc{up, 0};
+        SDL_GPUBufferRegion region{dst, 0, static_cast<Uint32>(data.size_bytes())};
+        SDL_UploadToGPUBuffer(copy, &loc, &region, false);
+        SDL_EndGPUCopyPass(copy);
+        SDL_ReleaseGPUTransferBuffer(device, up);
+        return {};
+    }
+
+    Result<void> dispatch_blit(SDL_GPUBuffer* src, SDL_GPUBuffer* dst, const BlitParams& p) {
+        auto c = ensure_cmd();
+        if (!c) return std::unexpected(c.error());
+        SDL_GPUStorageBufferReadWriteBinding rw{dst, false};
+        SDL_GPUComputePass* pass = SDL_BeginGPUComputePass(*c, nullptr, 0, &rw, 1);
+        SDL_BindGPUComputePipeline(pass, blit_pipeline);
+        SDL_BindGPUComputeStorageBuffers(pass, 0, &src, 1);
+        SDL_PushGPUComputeUniformData(*c, 0, &p, sizeof p);
+        SDL_DispatchGPUCompute(pass, (p.job[0] + 7) / 8, (p.job[1] + 7) / 8, 1);
+        SDL_EndGPUComputePass(pass);
+        return {};
+    }
+
+    Result<void> fill(GpuSlot& s, std::uint32_t value) {
+        BlitParams p{};
+        p.sizes[0] = s.info.width;
+        p.sizes[1] = s.info.height;
+        p.origin[2] = static_cast<std::int32_t>(value);
+        p.job[0] = s.info.width;
+        p.job[1] = s.info.height;
+        p.job[3] = 1;
+        return dispatch_blit(dummy, s.buffer, p);
+    }
+
+    Result<void> do_blit(GpuSlot& dst, std::int32_t dx, std::int32_t dy, GpuSlot& src, std::int32_t sx, std::int32_t sy,
+                         std::int64_t w, std::int64_t h, std::uint32_t mode, std::uint32_t alpha) {
+        // clip to the source, then to the destination
+        if (sx < 0) { dx -= sx; w += sx; sx = 0; }
+        if (sy < 0) { dy -= sy; h += sy; sy = 0; }
+        w = std::min<std::int64_t>(w, std::int64_t{src.info.width} - sx);
+        h = std::min<std::int64_t>(h, std::int64_t{src.info.height} - sy);
+        if (dx < 0) { sx -= dx; w += dx; dx = 0; }
+        if (dy < 0) { sy -= dy; h += dy; dy = 0; }
+        w = std::min<std::int64_t>(w, std::int64_t{dst.info.width} - dx);
+        h = std::min<std::int64_t>(h, std::int64_t{dst.info.height} - dy);
+        if (w <= 0 || h <= 0) return {};
+
+        BlitParams p{};
+        p.sizes[0] = dst.info.width;
+        p.sizes[1] = dst.info.height;
+        p.sizes[2] = src.info.width;
+        p.sizes[3] = src.info.height;
+        p.origin[0] = dx;
+        p.origin[1] = dy;
+        p.origin[2] = sx;
+        p.origin[3] = sy;
+        p.job[0] = static_cast<std::uint32_t>(w);
+        p.job[1] = static_cast<std::uint32_t>(h);
+        p.job[2] = mode | static_cast<std::uint32_t>(src.info.format) << 8 | static_cast<std::uint32_t>(dst.info.format) << 10 |
+                   std::min<std::uint32_t>(alpha, 0x100) << 16;
+
+        if (src.buffer != dst.buffer) return dispatch_blit(src.buffer, dst.buffer, p);
+
+        // A kernel cannot read and write one buffer: go through a copy of the source slot.
+        auto tmp = make_buffer(src.info.width * src.info.height);
+        if (!tmp) return std::unexpected(tmp.error());
+        auto c = ensure_cmd();
+        if (!c) return std::unexpected(c.error());
+        SDL_GPUCopyPass* copy = SDL_BeginGPUCopyPass(*c);
+        SDL_GPUBufferLocation from{src.buffer, 0}, to{*tmp, 0};
+        SDL_CopyGPUBufferToBuffer(copy, &from, &to, src.info.width * src.info.height * 4, false);
+        SDL_EndGPUCopyPass(copy);
+        auto r = dispatch_blit(*tmp, dst.buffer, p);
+        SDL_ReleaseGPUBuffer(device, *tmp);
+        return r;
+    }
+
+    Result<std::vector<std::uint32_t>> download(GpuSlot& s) {
+        const Uint32 bytes = s.info.width * s.info.height * 4;
+        SDL_GPUTransferBufferCreateInfo ti{};
+        ti.usage = SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD;
+        ti.size = bytes;
+        SDL_GPUTransferBuffer* down = SDL_CreateGPUTransferBuffer(device, &ti);
+        if (!down) return std::unexpected(sdl_error("download buffer"));
+        auto c = ensure_cmd();
+        if (!c) {
+            SDL_ReleaseGPUTransferBuffer(device, down);
+            return std::unexpected(c.error());
+        }
+        SDL_GPUCopyPass* copy = SDL_BeginGPUCopyPass(*c);
+        SDL_GPUBufferRegion from{s.buffer, 0, bytes};
+        SDL_GPUTransferBufferLocation to{down, 0};
+        SDL_DownloadFromGPUBuffer(copy, &from, &to);
+        SDL_EndGPUCopyPass(copy);
+        if (auto f = flush(true); !f) {
+            SDL_ReleaseGPUTransferBuffer(device, down);
+            return std::unexpected(f.error());
+        }
+        const auto* data = static_cast<const std::uint32_t*>(SDL_MapGPUTransferBuffer(device, down, false));
+        std::vector<std::uint32_t> out(data, data + bytes / 4);
+        SDL_UnmapGPUTransferBuffer(device, down);
+        SDL_ReleaseGPUTransferBuffer(device, down);
+        return out;
+    }
+};
+
+Display::~Display() = default;
+
+Result<std::unique_ptr<Display>> Display::create(Renderer& renderer, std::uint32_t width, std::uint32_t height) {
+    std::unique_ptr<Display> d(new Display);
+    d->impl_ = std::make_unique<Impl>();
+    Impl& m = *d->impl_;
+    m.renderer = &renderer;
+    m.device = renderer.native_device();
+
+    const SDL_GPUShaderFormat supported = SDL_GetGPUShaderFormats(m.device);
+    auto make_pipeline = [&](const char* name, Uint32 ro_buf, Uint32 rw_buf, Uint32 rw_tex,
+                             SDL_GPUComputePipeline*& out) -> Result<void> {
+        auto blob = renderer.shaders().find(name, supported);
+        if (!blob) return fail(Errc::Unsupported, std::string("no ") + name + " shader for the " + renderer.driver_name() + " backend");
+        const std::string entry(blob->entry_point);
+        SDL_GPUComputePipelineCreateInfo info{};
+        info.code = blob->data.data();
+        info.code_size = blob->data.size();
+        info.entrypoint = entry.c_str();
+        info.format = static_cast<SDL_GPUShaderFormat>(blob->format);
+        info.num_readonly_storage_buffers = ro_buf;
+        info.num_readwrite_storage_buffers = rw_buf;
+        info.num_readwrite_storage_textures = rw_tex;
+        info.num_uniform_buffers = 1;
+        info.threadcount_x = 8;
+        info.threadcount_y = 8;
+        info.threadcount_z = 1;
+        out = SDL_CreateGPUComputePipeline(m.device, &info);
+        if (!out) return std::unexpected(sdl_error(name));
+        return {};
+    };
+    if (auto r = make_pipeline("blit_rect", 1, 1, 0, m.blit_pipeline); !r) return std::unexpected(r.error());
+    if (auto r = make_pipeline("slot_present", 1, 0, 1, m.present_pipeline); !r) return std::unexpected(r.error());
+
+    auto dummy = m.make_buffer(1);
+    if (!dummy) return std::unexpected(dummy.error());
+    m.dummy = *dummy;
+
+    m.screen.info = {width, height, SlotFormat::Bgrx};
+    auto sb = m.make_buffer(width * height);
+    if (!sb) return std::unexpected(sb.error());
+    m.screen.buffer = *sb;
+    auto tex = renderer.create_target_texture(width, height);
+    if (!tex) return std::unexpected(tex.error());
+    m.screen_tex = std::move(*tex);
+    return d;
+}
+
+const SlotInfo* Display::slot(std::uint32_t id) const {
+    auto it = impl_->slots.find(id);
+    return it == impl_->slots.end() ? nullptr : &it->second.info;
+}
+
+Result<void> Display::create_slot(std::uint32_t id, std::uint32_t w, std::uint32_t h, SlotFormat format) {
+    Impl& m = *impl_;
+    if (std::getenv("OBGI_SLOTS")) std::fprintf(stderr, "slot %u create %ux%u fmt %u\n", id, w, h, static_cast<unsigned>(format));
+    if (w == 0 || h == 0 || std::uint64_t{w} * h > (1u << 26)) return fail(Errc::Range, "bad image slot size");
+    auto buf = m.make_buffer(w * h);
+    if (!buf) return std::unexpected(buf.error());
+    if (auto it = m.slots.find(id); it != m.slots.end()) SDL_ReleaseGPUBuffer(m.device, it->second.buffer);
+    GpuSlot& s = m.slots[id];
+    s.info = {w, h, format};
+    s.buffer = *buf;
+    return m.fill(s, 0);
+}
+
+Result<void> Display::free_slot(std::uint32_t id) {
+    Impl& m = *impl_;
+    auto it = m.slots.find(id);
+    if (it == m.slots.end()) return fail(Errc::Range, "no such image slot");
+    SDL_ReleaseGPUBuffer(m.device, it->second.buffer);
+    m.slots.erase(it);
+    return {};
+}
+
+Result<void> Display::fill_slot(std::uint32_t id, std::uint32_t packed) {
+    auto it = impl_->slots.find(id);
+    if (it == impl_->slots.end()) return fail(Errc::Range, "no such image slot");
+    return impl_->fill(it->second, packed);
+}
+
+Result<void> Display::upload_slot(std::uint32_t id, std::uint32_t w, std::uint32_t h, SlotFormat format,
+                                  std::span<const std::uint32_t> packed) {
+    if (packed.size() < std::size_t{w} * h) return fail(Errc::Range, "slot pixel data too small");
+    if (auto r = create_slot(id, w, h, format); !r) return r;
+    return impl_->upload(impl_->slots[id].buffer, packed.first(std::size_t{w} * h));
+}
+
+Result<void> Display::blit(std::uint32_t dst, std::int32_t dx, std::int32_t dy, std::uint32_t src, std::int32_t sx,
+                           std::int32_t sy, std::uint32_t w, std::uint32_t h, std::uint32_t mode, std::uint32_t alpha) {
+    Impl& m = *impl_;
+    auto d = m.slots.find(dst);
+    auto s = m.slots.find(src);
+    if (d == m.slots.end() || s == m.slots.end()) return fail(Errc::Range, "no such image slot");
+    if (alpha > 0x100) return fail(Errc::Range, "alpha out of range");
+    if (!blend_mode_supported(mode)) return fail(Errc::Unsupported, "blend mode " + std::to_string(mode) + " is not implemented");
+    return m.do_blit(d->second, dx, dy, s->second, sx, sy, w, h, mode, alpha);
+}
+
+Result<std::vector<std::uint32_t>> Display::read_slot(std::uint32_t id) {
+    auto it = impl_->slots.find(id);
+    if (it == impl_->slots.end()) return fail(Errc::Range, "no such image slot");
+    return impl_->download(it->second);
+}
+
+Sprite* Display::find_sprite(std::uint32_t id) {
+    auto it = sprites_.find(id);
+    return it == sprites_.end() ? nullptr : &it->second;
+}
+
+Result<void> Display::compose() {
+    Impl& m = *impl_;
+    if (auto r = m.fill(m.screen, 0); !r) return r;
+    std::vector<const std::pair<const std::uint32_t, Sprite>*> order;
+    for (const auto& kv : sprites_)
+        if (kv.second.visible) order.push_back(&kv);
+    std::stable_sort(order.begin(), order.end(), [](auto* a, auto* b) { return a->second.priority < b->second.priority; });
+    for (const auto* kv : order) {
+        const Sprite& sp = kv->second;
+        if (std::getenv("OBGI_SPRITES")) std::fprintf(stderr, "sprite %X slot %u at %d,%d blend %u alpha %u prio %u%s""\n", kv->first, sp.slot, sp.x, sp.y, sp.blend, sp.alpha, sp.priority, m.slots.count(sp.slot) ? "" : " (no slot)");
+        auto it = m.slots.find(sp.slot);
+        if (it == m.slots.end()) continue; // a sprite whose image was freed draws nothing
+        if (!blend_mode_supported(sp.blend)) return fail(Errc::Unsupported, "blend mode " + std::to_string(sp.blend) + " is not implemented");
+        if (auto r = m.do_blit(m.screen, sp.x, sp.y, it->second, 0, 0, it->second.info.width, it->second.info.height, sp.blend,
+                               sp.alpha);
+            !r)
+            return r;
+    }
+    return {};
+}
+
+std::uint32_t Display::screen_width() const { return impl_->screen.info.width; }
+std::uint32_t Display::screen_height() const { return impl_->screen.info.height; }
+
+Result<std::vector<std::uint32_t>> Display::read_screen() { return impl_->download(impl_->screen); }
+
+Result<void> Display::present() {
+    Impl& m = *impl_;
+    if (auto r = compose(); !r) return r;
+
+    auto c = m.ensure_cmd();
+    if (!c) return std::unexpected(c.error());
+    SDL_GPUStorageTextureReadWriteBinding tex{m.screen_tex->native(), 0, 0, false};
+    SDL_GPUComputePass* pass = SDL_BeginGPUComputePass(*c, &tex, 1, nullptr, 0);
+    SDL_BindGPUComputePipeline(pass, m.present_pipeline);
+    SDL_GPUBuffer* src = m.screen.buffer;
+    SDL_BindGPUComputeStorageBuffers(pass, 0, &src, 1);
+    PresentParams pp{{m.screen.info.width, m.screen.info.height, static_cast<std::uint32_t>(m.screen.info.format), 0}};
+    SDL_PushGPUComputeUniformData(*c, 0, &pp, sizeof pp);
+    SDL_DispatchGPUCompute(pass, (pp.info[0] + 7) / 8, (pp.info[1] + 7) / 8, 1);
+    SDL_EndGPUComputePass(pass);
+    if (auto f = m.flush(false); !f) return f;
+
+    const float black[4] = {0, 0, 0, 1};
+    if (auto r = m.renderer->begin_frame(black); !r) return r;
+    DrawParams dp;
+    dp.w = static_cast<float>(m.screen.info.width);
+    dp.h = static_cast<float>(m.screen.info.height);
+    m.renderer->draw(*m.screen_tex, dp);
+    return m.renderer->end_frame();
+}
+
+} // namespace obgi

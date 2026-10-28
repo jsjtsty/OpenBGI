@@ -1,0 +1,27 @@
+#version 450
+
+// Converts an image slot into an RGBA8 texture so the renderer can scale it onto the window.
+// format: 0 = RGB555, 1 = BGRX (opaque), 2 = BGRA, 3 = 8-bit gray.
+layout(local_size_x = 8, local_size_y = 8) in;
+layout(std430, set = 0, binding = 0) readonly buffer Slot { uint px[]; };
+layout(set = 1, binding = 0, rgba8) uniform writeonly image2D out_img;
+layout(std140, set = 2, binding = 0) uniform Params {
+    uvec4 info; // width, height, format, unused
+};
+
+void main() {
+    uvec2 p = gl_GlobalInvocationID.xy;
+    if (p.x >= info.x || p.y >= info.y) return;
+    uint v = px[p.y * info.x + p.x];
+    vec4 c;
+    if (info.z == 0u) {
+        vec3 rgb = vec3(float((v >> 10) & 31u), float((v >> 5) & 31u), float(v & 31u)) / 31.0;
+        c = vec4(rgb, 1.0);
+    } else if (info.z == 3u) {
+        float g = float(v & 255u) / 255.0;
+        c = vec4(g, g, g, 1.0);
+    } else {
+        c = vec4(float((v >> 16) & 255u), float((v >> 8) & 255u), float(v & 255u), info.z == 2u ? float(v >> 24) : 255.0) / 255.0;
+    }
+    imageStore(out_img, ivec2(p), c);
+}

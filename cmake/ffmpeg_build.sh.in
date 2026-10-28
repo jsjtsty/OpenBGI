@@ -1,0 +1,24 @@
+#!/bin/sh
+# Generated from cmake/ffmpeg_build.sh.in: configures, builds and installs the trimmed FFmpeg (see cmake/Deps.cmake).
+set -e
+@OBGI_FF_PRELUDE@
+
+# On Windows the CMake paths come in as C:/..., which MSYS must see as /c/...
+P() { if command -v cygpath >/dev/null 2>&1; then cygpath -u "$1"; else printf '%s' "$1"; fi; }
+SRC=$(P "@OBGI_FF_SRC@")
+BUILD=$(P "@OBGI_FF_BUILD@")
+PREFIX=$(P "@OBGI_FF_PREFIX@")
+
+mkdir -p "$BUILD"
+cd "$BUILD"
+
+ARGS="@OBGI_FF_ARGS@"
+ARGS=$(printf '%s' "$ARGS" | sed "s#__PREFIX__#$PREFIX#")
+if [ ! -f ffbuild/config.mak ] || [ "$(cat .obgi_args 2>/dev/null)" != "$ARGS" ]; then
+    echo "Configuring FFmpeg"
+    if [ -f ffbuild/config.mak ]; then make clean >/dev/null 2>&1 || true; fi
+    "$SRC/configure" $ARGS
+    printf '%s' "$ARGS" > .obgi_args
+fi
+make -j@OBGI_FF_JOBS@
+make install

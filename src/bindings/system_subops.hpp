@@ -1,0 +1,127 @@
+#pragma once
+#include <set>
+#include <array>
+#include <deque>
+#include <filesystem>
+#include <functional>
+#include <cstdint>
+#include <map>
+#include <optional>
+#include <string>
+#include <vector>
+
+#include "bindings/arc_resource_finder.hpp"
+#include "formats/gdb.hpp"
+#include "render/display.hpp"
+#include "vm/vm.hpp"
+
+namespace obgi {
+
+// Engine-wide settings the scripts write at start-up (analysis/子opcode语义表.md, 80:xx / 81:xx / 90:xx / 91:xx
+// "set a global" ops). Most of them only record a value for other subsystems to read later.
+struct SystemState {
+    bool launcher = false;                 // 80:FD: started with "Execute as a launcher."
+    std::string game_name = "AmairoChocolate2ML"; // 80:E8
+    std::uint32_t frame_ms = 0;            // 90:02: milliseconds per frame, 1000 / fps (0 = unset)
+    std::uint32_t code_page = 932;         // 81:00: 932 (CP932) or 65001 (UTF-8) for script strings
+    // 90:28: timed moves of a display object, advanced by advance_motions() once per scheduler frame
+    struct Motion {
+        std::uint32_t object = 0;
+        std::int64_t start_ms = 0, duration_ms = 0;
+        std::int32_t from_x = 0, from_y = 0, to_x = 0, to_y = 0;
+    };
+    std::vector<Motion> motions;
+    std::uint32_t last_manager_object = 0;
+    std::uint32_t rand_seed = 0;           // 80:00
+    std::size_t scratch_size = 0;     // 80:70: zeroed buffer of 0x1000 << v bytes; saved in BGI.gdb (first 0x400)
+    GdbData gdb;                           // global data (80:80 loads BGI.gdb, 80:81 saves it, 80:82-85 use it)
+    std::array<std::array<std::uint32_t, 2>, 16> pair_table{}; // 81:60: two numbers per index
+    std::vector<std::string> search_paths; // 80:37: extra resource search paths, newest first
+    // 80:3D hands scripts these paths (CP932 bytes, with a trailing separator). The game directory is read-only for
+    // the engine, so 80:28 / 80:2A map anything under it into `data_dir`, where scripts may create folders.
+    std::string game_path;                 // selector 0
+    std::string alt_path;                  // selector 1; empty = none
+    std::filesystem::path game_dir;
+    std::filesystem::path data_dir;
+    // Ops whose only job is to hand their arguments to a subsystem keep them here, in the order the script pushed them
+    // (window, input, typesetting and display settings); the subsystem reads them when it exists.
+    std::map<std::uint16_t, std::vector<std::uint32_t>> records;
+    std::map<std::uint32_t, std::vector<std::uint32_t>> input_maps; // 80:1B: input mask -> input numbers
+    std::vector<std::uint32_t> window_numbers;                      // 80:62: zero-terminated list kept with `window_id`
+    std::uint32_t window_id = 0;
+    struct ArchiveGroup {
+        std::string name;
+        std::vector<std::uint32_t> numbers;
+    };
+    std::vector<ArchiveGroup> archive_groups;                       // 80:38; the handle scripts get is the index + 1
+    std::uint32_t display_width = 1920, display_height = 1080;      // 81:0E reports a desktop of this size
+    std::string window_title;                                       // 80:66 (CP932)
+    bool transition_running = false;                                // B0:05
+    std::int64_t transition_end_ms = 0;
+    std::uint32_t last_icon_control = 0;
+    std::map<std::uint32_t, int> icon_controls;     // 91:B8 registered control objects -> how many 90:BF reads they have answered
+    std::string replacements;                       // 91:96 text replacement definitions
+    std::map<std::uint16_t, std::uint32_t> values; // plain settings by sub-opcode id (80:68, 80:52, ...)
+    // Named lists of strings (80:84, 80:85, 80:D8..DC). List 0x80000000 is the global key list kept in BGI.gdb
+    // (`gdb.keys`); the others live only for the session.
+    static constexpr std::uint32_t kGlobalSet = 0x80000000u;
+    std::map<std::uint32_t, std::vector<std::string>> string_sets;
+    std::vector<std::string>* string_set(std::uint32_t id, bool create) {
+        if (id == kGlobalSet) return &gdb.keys;
+        auto it = string_sets.find(id);
+        if (it != string_sets.end()) return &it->second;
+        return create ? &string_sets[id] : nullptr;
+    }
+    // 81:D8: a table of word lists: name -> (key, value) pairs, loaded from a script block (analysis/子opcode语义表.md)
+    std::map<std::string, std::vector<std::pair<std::string, std::string>>> dictionary;
+    // 80:D0..D4: symbol tables of named values of one fixed size, in insertion order
+    struct Table {
+        std::uint32_t value_size = 0;
+        std::vector<std::pair<std::string, std::vector<std::uint8_t>>> entries;
+    };
+    std::map<std::uint32_t, Table> tables;
+    std::uint32_t last_table_id = 0;
+    // 90:80..89: script window planes, at most 16, handle 0xB0000000 + slot. Nothing draws them yet; the state a
+    // later display object needs is kept.
+    struct Plane {
+        std::uint32_t width = 0, height = 0; // after the original's rounding (see 90:80)
+        std::uint32_t order = 0;             // 90:82, one of the 6 layer orders
+        std::uint32_t image = 0xFFFFFFFFu;   // 90:86: bitmap id, -1 = none
+        std::uint32_t flag = 0, mode = 0;    // 90:84, 90:87
+        std::int32_t x = 0, y = 0;           // 90:85
+        std::array<std::int32_t, 4> area{};  // 90:88: left, top, right, bottom (inclusive)
+        std::vector<std::uint32_t> extra;    // 90:85 / 90:86 arguments not interpreted yet
+    std::map<std::uint16_t, std::vector<std::uint32_t>> props; // 91:88.. / 92:88.. text settings, by sub-opcode id
+    };
+    std::array<std::optional<Plane>, 16> planes;
+    // B0:80: the script shows a message box (UTF-8 text). The host decides what to do with it; the script goes on.
+    std::function<void(const std::string&)> message_box;
+    // 80:98: registered items (number, two script values, flag 1), newest first in the original list
+    struct Item {
+        std::uint32_t id = 0, a = 0, b = 0, flag = 1;
+    };
+    std::vector<Item> items;
+    std::uint32_t last_item_id = 0;
+    std::deque<std::array<std::uint32_t, 3>> event_queue; // 80:A1 / 80:A0: global FIFO of three-word messages
+    std::array<bool, 8> filter_used{}; // 90:60: the eight filter object slots
+    std::map<std::uint32_t, std::uint32_t> typesetting; // 91:9A: key -> value (analysis/排版引擎.md)
+};
+
+// Registers the setters above and the few system queries (local time, memory size, resource existence).
+void register_system_subops(vm::SubopRegistry& registry, SystemState& state, ArcResourceFinder& resources);
+
+// Window, display-mode, input-map and typesetting settings (window_subops.cpp); they record their arguments in
+// SystemState for the subsystems that will use them.
+void register_window_subops(vm::SubopRegistry& registry, SystemState& state, Display* display = nullptr);
+
+// Symbol tables 80:D0..D4 (table_subops.cpp).
+void register_table_subops(vm::SubopRegistry& registry, SystemState& state);
+
+// Script window planes 90:80..89 (plane_subops.cpp).
+// `display` (may be null) gives each plane an image slot (0x10000 + slot) and a sprite under its handle, so the 90:3x object ops reach it.
+void register_plane_subops(vm::SubopRegistry& registry, SystemState& state, Display* display = nullptr);
+// Moves the display objects of the running 90:28 motions to where they are at `now_ms`; finished motions are dropped.
+void advance_motions(SystemState& state, Display& display, std::int64_t now_ms);
+
+
+} // namespace obgi

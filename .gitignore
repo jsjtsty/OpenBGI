@@ -1,0 +1,8 @@
+build/
+.vs/
+.cache/
+compile_commands.json
+analysis/out/
+analysis/ghidra_project/
+analysis/.venv/
+__pycache__/
