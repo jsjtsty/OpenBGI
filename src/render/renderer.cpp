@@ -50,6 +50,7 @@ struct Renderer::Impl {
     bool frame_skipped = false;
     std::vector<std::uint8_t> last_frame;
     std::uint32_t key = 0;
+    std::vector<std::uint32_t> presses;
 
     ~Impl() {
         if (pipeline) SDL_ReleaseGPUGraphicsPipeline(device, pipeline);
@@ -241,15 +242,45 @@ Result<std::unique_ptr<Texture>> Renderer::create_texture(std::uint32_t w, std::
     return t;
 }
 
+namespace {
+
+// SDL keycode -> Windows virtual-key code (0 = not one the game uses)
+std::uint32_t virtual_key(SDL_Keycode k) {
+    if (k >= SDLK_0 && k <= SDLK_9) return 0x30 + (k - SDLK_0);
+    if (k >= SDLK_A && k <= SDLK_Z) return 0x41 + (k - SDLK_A);
+    switch (k) {
+    case SDLK_RETURN: case SDLK_KP_ENTER: return 0x0D;
+    case SDLK_SPACE: return 0x20;
+    case SDLK_TAB: return 0x09;
+    case SDLK_ESCAPE: return 0x1B;
+    case SDLK_LEFT: return 0x25;
+    case SDLK_UP: return 0x26;
+    case SDLK_RIGHT: return 0x27;
+    case SDLK_DOWN: return 0x28;
+    case SDLK_LCTRL: case SDLK_RCTRL: return 0x11;
+    default: return 0;
+    }
+}
+
+} // namespace
+
 bool Renderer::poll_events() {
     bool alive = true;
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
         if (e.type == SDL_EVENT_QUIT || e.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) alive = false;
         if (e.type == SDL_EVENT_KEY_DOWN && !e.key.repeat) impl_->key = e.key.key;
+        if (e.type == SDL_EVENT_KEY_DOWN)
+            if (const std::uint32_t vk = virtual_key(e.key.key)) impl_->presses.push_back(vk);
+        if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
+            static constexpr std::uint32_t kButtons[] = {0, 1, 4, 2, 5, 6}; // SDL: 1 left, 2 middle, 3 right, 4 X1, 5 X2
+            if (e.button.button < 6) impl_->presses.push_back(kButtons[e.button.button]);
+        }
     }
     return alive;
 }
+
+std::vector<std::uint32_t> Renderer::take_presses() { return std::exchange(impl_->presses, {}); }
 
 std::uint32_t Renderer::take_key() { return std::exchange(impl_->key, 0u); }
 

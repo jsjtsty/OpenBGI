@@ -312,3 +312,16 @@ TEST_CASE("main opcodes 6E and the integer maths follow the original") {
     CHECK(static_cast<std::int32_t>(w(0x404)) == -10);
     CHECK(w(0x408) == 13);
 }
+
+TEST_CASE("input numbers follow the original's default map until a script remaps them") {
+    SystemState s;
+    CHECK(s.input_numbers(0x1) == std::vector<std::uint32_t>{1});
+    CHECK(s.input_numbers(0x100) == std::vector<std::uint32_t>{0x0D});
+    CHECK(s.input_numbers(0x20000) == std::vector<std::uint32_t>{0x32, 0x62}); // digit 2
+    s.input_maps[0x100] = {0x41};
+    CHECK(s.input_numbers(0x100) == std::vector<std::uint32_t>{0x41});
+    s.press_input(0x41);
+    s.press_input(0x41);
+    s.press_input(9999); // out of range: ignored
+    CHECK(s.input_counts[0x41] == 2);
+}

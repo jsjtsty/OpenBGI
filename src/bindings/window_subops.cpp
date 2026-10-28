@@ -41,6 +41,39 @@ void add_range_pair(vm::SubopRegistry& r, SystemState& s, std::uint16_t id, cons
     });
 }
 
+} // namespace
+
+std::vector<std::uint32_t> SystemState::input_numbers(std::uint32_t bit) const {
+    if (auto it = input_maps.find(bit); it != input_maps.end()) return it->second;
+    switch (bit) { // the original's initial table
+    case 0x1: return {1};
+    case 0x2: return {2};
+    case 0x4: return {4};
+    case 0x10: return {5};
+    case 0x20: return {6};
+    case 0x40: return {0x0E};
+    case 0x80: return {0x0F};
+    case 0x100: return {0x0D};
+    case 0x200: return {0x20};
+    case 0x1000: return {0x26};
+    case 0x2000: return {0x28};
+    case 0x4000: return {0x25};
+    case 0x8000: return {0x27};
+    case 0x2000000: return {0x30, 0x60};
+    case 0x40000000: return {0x09};
+    case 0x80000000: return {0x11};
+    default:
+        if (bit >= 0x10000 && bit <= 0x1000000) { // digits 1..9
+            std::uint32_t k = 0;
+            while ((0x10000u << k) != bit) ++k;
+            return {0x31 + k, 0x61 + k};
+        }
+        return {};
+    }
+}
+
+namespace {
+
 // a zero-terminated list of at most 15 numbers at a script address (0 = no list)
 bool read_number_list(Ctx& c, Word addr, std::vector<Word>& out, const char* what) {
     out.clear();
@@ -99,6 +132,27 @@ void register_window_subops(vm::SubopRegistry& r, SystemState& state, Display* d
             return 0;
         }
         s->input_maps[mask] = std::move(list);
+        return 0;
+    });
+    // (list address): the sum of the press counts of the zero-terminated list of input numbers
+    add(r, 0x8012, "input state sum by list", 1, 1, [s](Ctx& c) {
+        std::vector<Word> list;
+        const Word addr = c.pop();
+        if (!c.ok() || !read_number_list(c, addr, list, "input list")) return 0;
+        Word sum = 0;
+        for (Word n : list) sum += n < s->input_counts.size() ? s->input_counts[n] : 0;
+        c.push(sum);
+        return 0;
+    });
+    // (mask): the same sum over every input number behind the set bits of the logical input mask
+    add(r, 0x801C, "input state sum by mask", 1, 1, [s](Ctx& c) {
+        const Word mask = c.pop();
+        if (!c.ok()) return 0;
+        Word sum = 0;
+        for (Word bit = 1; bit != 0; bit <<= 1)
+            if (mask & bit)
+                for (Word n : s->input_numbers(bit)) sum += n < s->input_counts.size() ? s->input_counts[n] : 0;
+        c.push(sum);
         return 0;
     });
     add(r, 0x8062, "window numbers", 2, 0, [s](Ctx& c) {

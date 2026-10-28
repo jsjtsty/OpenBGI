@@ -790,8 +790,6 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     add(r, 0x9022, "timed opacity (not modelled)", 7, 0, [](Ctx& c) { for (int i = 0; i < 7; ++i) c.pop(); return 0; });
     add(r, 0x8008, "mouse position", 0, 2, [](Ctx& c) { c.push(0), c.push(0); return 0; }); // client x, y; no pointer here
     add(r, 0x810F, "window minimised", 0, 1, [](Ctx& c) { c.push(0); return 0; });
-    add(r, 0x801C, "input state sum by mask", 1, 1, [](Ctx& c) { c.pop(); c.push(0); return 0; });
-    add(r, 0x8012, "input state sum by list", 1, 1, [](Ctx& c) { c.pop(); c.push(0); return 0; });
     add(r, 0x8018, "input priority add", 1, 0, [](Ctx& c) { c.pop(); return 0; });
     add(r, 0x8019, "input priority remove", 1, 0, [](Ctx& c) { c.pop(); return 0; });
     // (definitions): text replacement list, "original\replacement" per line; always succeeds

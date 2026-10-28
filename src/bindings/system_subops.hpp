@@ -47,6 +47,13 @@ struct SystemState {
     // (window, input, typesetting and display settings); the subsystem reads them when it exists.
     std::map<std::uint16_t, std::vector<std::uint32_t>> records;
     std::map<std::uint32_t, std::vector<std::uint32_t>> input_maps; // 80:1B: input mask -> input numbers
+    // Physical input numbers (Windows virtual-key codes: 1/2/4 mouse buttons, 0x0D enter, 0x20 space, ...): how many times each was
+    // pressed since the start (key repeats count). 80:12 / 80:1C answer with sums of these, scripts watch for changes
+    // (analysis/输入.md). The host calls press_input().
+    std::array<std::uint32_t, 256> input_counts{};
+    void press_input(std::uint32_t number) { if (number < input_counts.size()) ++input_counts[number]; }
+    // The input numbers behind one logical input mask bit: a script's 80:1B list, else the original's default.
+    std::vector<std::uint32_t> input_numbers(std::uint32_t bit) const;
     std::vector<std::uint32_t> window_numbers;                      // 80:62: zero-terminated list kept with `window_id`
     std::uint32_t window_id = 0;
     struct ArchiveGroup {

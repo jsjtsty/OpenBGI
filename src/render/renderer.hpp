@@ -70,6 +70,9 @@ class Renderer {
     bool poll_events();
     // Last key pressed since the previous call, as an SDL keycode (0 = none).
     std::uint32_t take_key();
+    // Key and mouse-button presses since the previous call as Windows virtual-key codes (mouse: 1 left, 2 right, 4 middle,
+    // 5, 6), key repeats included: the numbering the game scripts use for their input.
+    std::vector<std::uint32_t> take_presses();
 
     Result<void> begin_frame(const float clear_rgba[4]);
     void draw(const Texture& tex, const DrawParams& p);

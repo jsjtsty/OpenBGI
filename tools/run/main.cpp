@@ -94,6 +94,7 @@ int main(int argc, char** argv) {
     long frames = 20000;
     std::string effects_path, shot_path;
     long shot_frame = -1;
+    bool window = false; // --window: play in a window with keyboard and mouse input instead of running headless
     std::string survey, data_dir, dump_arc, dump_name, dump_out;
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
@@ -104,6 +105,7 @@ int main(int argc, char** argv) {
             i += 3;
         }
         else if (a == "--shot" && i + 2 < argc) shot_frame = std::atol(argv[i + 1]), shot_path = argv[i + 2], i += 2;
+        else if (a == "--window") window = true, frames = 1L << 60;
         else if (a == "--effects" && i + 1 < argc) effects_path = argv[++i];
         else if (a == "--survey" && i + 1 < argc) survey = argv[++i];
         else if (a == "--driver" && i + 1 < argc) driver_s = argv[++i], driver = driver_s.c_str();
@@ -122,7 +124,8 @@ int main(int argc, char** argv) {
         return 0;
     }
     RendererOptions ro;
-    ro.headless = true;
+    ro.headless = !window;
+    ro.logical_width = 1280, ro.logical_height = 720;
     ro.driver = driver;
     auto renderer = Renderer::create(ro);
     if (!renderer) return die(renderer.error().message);
@@ -269,7 +272,21 @@ int main(int argc, char** argv) {
             std::fprintf(stderr, "frame %ld\n", f);
             std::fflush(stderr);
         }
+        if (window) {
+            if (!(*renderer)->poll_events()) break;
+            for (std::uint32_t vk : (*renderer)->take_presses()) system.press_input(vk);
+        }
+        if (const char* pr = std::getenv("OBGI_PRESS")) // "frame:vk,frame:vk": scripted key presses for headless runs (vk 1 = left mouse button)
+            for (std::stringstream ss(pr); ss.good();) {
+                std::string tok;
+                std::getline(ss, tok, ',');
+                long at = 0;
+                unsigned vk = 0;
+                if (std::sscanf(tok.c_str(), "%ld:%x", &at, &vk) == 2 && at == f) system.press_input(vk);
+            }
         auto st = vm.run_frame(f * 16);
+        if (window)
+            if (auto r = (*display)->present(); !r) return die(r.error().message);
         if (const char* dm = std::getenv("OBGI_DUMPMEM")) { // "offset,length,frame,path": script global memory after that frame
             unsigned long off = 0, len = 0, fr = 0;
             char path[512] = {};
