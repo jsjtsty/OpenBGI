@@ -129,12 +129,31 @@ struct SystemState {
     // 80:98: registered items (number, two script values, flag 1), newest first in the original list
     struct Item {
         std::uint32_t id = 0, a = 0, b = 0, flag = 1;
+        std::uint32_t value = 0;                       // 80:A8
         std::deque<std::vector<std::uint8_t>> entries; // 80:9C records, newest first; a = most kept, b = bytes each
     };
     std::vector<Item> items;
     std::uint32_t last_item_id = 0;
     std::deque<std::array<std::uint32_t, 3>> event_queue; // 80:A1 / 80:A0: global FIFO of three-word messages
     std::array<bool, 8> filter_used{}; // 90:60: the eight filter object slots
+    bool left_down = false;            // the left mouse button is held (set by the host)
+    // 90:D0..DF: knob controls (sliders), handle 0xF0000000 + index, at most 32. A knob drives a display object (the thumb)
+    // along a track: the object sits at the knob's base position plus the value (pixels, or 16.16 cells when steps > 0).
+    struct Knob {
+        std::uint32_t handle = 0;                 // the knob is a display object itself (at the track's origin); the thumb follows it (91:3E)
+        std::uint32_t target = 0;                 // the thumb object
+        std::int32_t value_x = 0, value_y = 0;    // 90:D6 / 90:D7
+        std::int32_t steps_x = 0, steps_y = 0;    // 90:D8: 0 = pixels, 1 = one cell, n = n cells (16.16 values)
+        std::int32_t track_w = 0, track_h = 0;    // 90:D9: size of the track
+        std::int32_t grab_x = 0, grab_y = 0;      // pointer offset inside the thumb while dragging
+        bool enabled = true;                      // 90:DC
+        bool flagged = false;                     // set by a right click on the thumb, read and cleared by 90:DB
+        std::uint32_t priority = 0;
+    };
+    std::map<std::uint32_t, Knob> knobs;          // by handle
+    std::vector<std::uint32_t> knob_wheel;        // 90:DE / 90:DF: knobs the mouse wheel scrolls, newest first
+    std::uint32_t knob_focus = 0;                 // the knob being dragged
+    std::uint32_t knob_seen_left = 0, knob_seen_right = 0; // presses already looked at
     std::map<std::uint32_t, std::uint32_t> typesetting; // 91:9A: key -> value (analysis/排版引擎.md)
 };
 
@@ -151,6 +170,9 @@ void register_table_subops(vm::SubopRegistry& registry, SystemState& state);
 // Script window planes 90:80..89 (plane_subops.cpp).
 // `display` (may be null) gives each plane an image slot (0x10000 + slot) and a sprite under its handle, so the 90:3x object ops reach it.
 void register_plane_subops(vm::SubopRegistry& registry, SystemState& state, Display* display = nullptr);
+// Knob controls 90:D0..DF (knob_subops.cpp); knob_input() follows the pointer once per scheduler frame.
+void register_knob_subops(vm::SubopRegistry& registry, SystemState& state);
+void knob_input(SystemState& state);
 // Moves the display objects of the running 90:28 motions to where they are at `now_ms`; finished motions are dropped.
 void advance_motions(SystemState& state, Display& display, std::int64_t now_ms);
 

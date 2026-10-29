@@ -110,6 +110,34 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         c.push(0);
         return 0;
     });
+    // 92:99 (positions, count, string, font no, size, width %, bold): for every character writes three words at `positions`
+    // (left bearing, advance, offset of the glyph below the line top) and the number of characters at `count`. Pushes 0, or
+    // 0x80000001 / 0x80000003 for a bad size / font as 91:9B does.
+    add(r, 0x9299, "measure characters", 7, 1, [s, th, fh](Ctx& c) {
+        c.pop(), c.pop(); // bold, width %: not modelled
+        const Word size = c.pop(), font_no = c.pop(), str_addr = c.pop(), count_out = c.pop(), positions = c.pop();
+        if (!c.ok()) return 0;
+        if (size < 4 || size > 400) { c.push(0x80000001u); return 0; }
+        if (font_no >= fh->table.ids.size()) { c.push(0x80000003u); return 0; }
+        auto fnt = th->fonts->open(fh->table.ids[font_no], static_cast<int>(size));
+        if (!fnt) { c.push(0x80000003u); return 0; }
+        const std::string str = c.cstring(str_addr);
+        const std::u32string text = s->code_page == 65001 ? utf8_to_utf32(str) : cp932_to_utf32(str);
+        Word n = 0;
+        for (char32_t ch : text) {
+            const Glyph* g = (*fnt)->glyph(ch);
+            if (!g) g = (*fnt)->glyph(U'?');
+            if (positions) {
+                c.write(positions + 12 * n, static_cast<Word>(g ? g->left : 0), 4);
+                c.write(positions + 12 * n + 4, static_cast<Word>(g ? g->advance : 0), 4);
+                c.write(positions + 12 * n + 8, static_cast<Word>(g ? (*fnt)->ascent() - g->top : 0), 4);
+            }
+            ++n;
+        }
+        if (count_out) c.write(count_out, n, 4);
+        c.push(0);
+        return 0;
+    });
     // (window, decoration, frame, bitmap): the picture of the window's frame, -1 for none
     add(r, 0x9086, "window frame picture", 4, 0, [s](Ctx& c) {
         const Word image = c.pop(), b = c.pop(), a = c.pop(), handle = c.pop();

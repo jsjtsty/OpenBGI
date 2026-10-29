@@ -193,6 +193,7 @@ void advance_motions(SystemState& state, Display& display, std::int64_t now_ms) 
     }
     panel_sync(state);
     panel_input(state);
+    knob_input(state);
 }
 
 void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* display) {
@@ -343,12 +344,21 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
         p->order = order;
         return 0;
     });
-    // (bitmap id, handle): fits the bitmap to the plane's size (needs the image manager; not drawn yet)
+    // (image slot, handle): captures the window object as it is drawn into a new image slot of its size (the original creates
+    // the bitmap and has the object render itself into it)
     add(r, 0x9083, "window object bitmap", 2, 0, [s](Ctx& c) {
         const Word handle = c.pop(), image = c.pop();
         if (!c.ok()) return 0;
         debug_object_op(0x9083, {handle, image});
-        if (SystemState::Plane* p = plane_of(*s, c, handle)) p->extra = {image};
+        SystemState::Plane* p = plane_of(*s, c, handle);
+        if (!p) return 0;
+        p->extra = {image};
+        Display* d = s->display;
+        const Word plane_slot = kPlaneSlotBase + (handle & 0xFFFFFFu);
+        if (d && image < 0x4000 && d->slot(plane_slot) && p->width && p->height) {
+            auto made = d->create_slot(image, p->width, p->height, SlotFormat::Bgra);
+            if (made) (void)d->blit(image, 0, 0, plane_slot, 0, 0, p->width, p->height, 0, 0x100);
+        }
         return 0;
     });
     // (handle, value)

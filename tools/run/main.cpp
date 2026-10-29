@@ -167,6 +167,7 @@ int main(int argc, char** argv) {
     register_system_subops(registry, system, finder);
     register_window_subops(registry, system, display->get());
     register_table_subops(registry, system);
+    register_knob_subops(registry, system);
     register_plane_subops(registry, system, display->get());
     register_message_subops(registry, system, th, fh);
     if (!effects_path.empty()) { // id, pops, pushes of every registered sub-opcode (for comparing with the real game)
@@ -279,7 +280,16 @@ int main(int argc, char** argv) {
             if (!(*renderer)->poll_events()) break;
             for (std::uint32_t vk : (*renderer)->take_presses()) system.press_input(vk);
             std::tie(system.mouse_x, system.mouse_y) = (*renderer)->mouse_position();
+            system.left_down = (*renderer)->left_button_down();
         }
+        if (const char* hold = std::getenv("OBGI_HOLD")) // "frame:1|0,...": scripted left button held (1) or released (0) for headless drags
+            for (std::stringstream ss(hold); ss.good();) {
+                std::string tok;
+                std::getline(ss, tok, ',');
+                long at = 0;
+                int down = 0;
+                if (std::sscanf(tok.c_str(), "%ld:%d", &at, &down) == 2 && at <= f) system.left_down = down != 0;
+            }
         if (const char* pr = std::getenv("OBGI_PRESS")) // "frame:vk,frame:vk": scripted key presses for headless runs (vk 1 = left mouse button)
             for (std::stringstream ss(pr); ss.good();) {
                 std::string tok;

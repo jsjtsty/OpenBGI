@@ -242,6 +242,15 @@ void register_window_subops(vm::SubopRegistry& r, SystemState& state, Display* d
     const auto find_item = [s](Word id) {
         return std::find_if(s->items.begin(), s->items.end(), [&](const auto& x) { return x.id == id; });
     };
+    // 80:A8 (item, value): the original sets a property of the object behind the item (the engine's 0xC1 value); pushes 1 when the item exists
+    add(r, 0x80A8, "set item value", 2, 1, [s, find_item](Ctx& c) {
+        const Word value = c.pop(), id = c.pop();
+        if (!c.ok()) return 0;
+        auto it = find_item(id);
+        if (it != s->items.end()) it->value = value;
+        c.push(it != s->items.end() ? 1 : 0);
+        return 0;
+    });
     add(r, 0x809C, "push item record", 2, 1, [s, find_item](Ctx& c) {
         const Word addr = c.pop(), id = c.pop();
         if (!c.ok()) return 0;
@@ -368,6 +377,11 @@ void register_window_subops(vm::SubopRegistry& r, SystemState& state, Display* d
             s->transition_running = false;
             s->transition_end_ms = 0;
         }
+        return 0;
+    });
+    // B0:06: whether the system cursor is shown (the original asks GetCursorInfo when its own flag is unset); always shown here
+    add(r, 0xB006, "cursor shown", 0, 1, [](Ctx& c) {
+        c.push(1);
         return 0;
     });
     // fullscreen / rendering mode requests: 0, 2, 3 and 1, 4 are accepted, anything else answers 0

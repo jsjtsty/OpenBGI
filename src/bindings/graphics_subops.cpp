@@ -145,6 +145,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
     add(r, 0x9012, "free image", 1, 1, [&d](Ctx& c) {
         Word slot = c.pop();
         if (!c.ok()) return 0;
+        if (std::getenv("OBGI_SLOTS")) std::fprintf(stderr, "90:12 free slot %u\n", slot);
         c.push(d.free_slot(slot) ? 1 : 0); // verified in the real game: 1 freed, 0 no such slot
         return 0;
     });
@@ -244,6 +245,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         auto dx = static_cast<std::int32_t>(c.pop());
         Word dst = c.pop();
         if (!c.ok()) return 0;
+        if (std::getenv("OBGI_SLOTS")) std::fprintf(stderr, "90:18 blit %u <- %u at %d,%d mode %u alpha %u (src %s, dst %s)\n", dst, src, dx, dy, mode, alpha, d.slot(src) ? "ok" : "missing", d.slot(dst) ? "ok" : "missing");
         const SlotInfo* s = d.slot(src);
         if (src == kScreenSlot) { // the screen image slot (read without ever being created): the composed screen, a guess
             check(c, d.compose());
@@ -256,6 +258,46 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         }
         if (!s) {
             c.fail(Errc::Range, "no image slot " + std::to_string(src));
+            return 0;
+        }
+        check(c, d.blit(dst, dx, dy, src, 0, 0, s->width, s->height, mode, alpha));
+        return 0;
+    });
+    // 92:17 (out, slot, x, y): copies the pixel at x, y of the slot to the address (a packed pixel in the slot's format) and
+    // pushes 0; 1 no such slot, 3 the point lies outside.
+    add(r, 0x9217, "read pixel", 4, 1, [&d](Ctx& c) {
+        const auto y = static_cast<std::int32_t>(c.pop()), x = static_cast<std::int32_t>(c.pop());
+        const Word slot = c.pop(), out = c.pop();
+        if (!c.ok()) return 0;
+        const SlotInfo* info = d.slot(slot);
+        if (!info) {
+            c.push(1);
+            return 0;
+        }
+        if (x < 0 || y < 0 || x >= static_cast<std::int32_t>(info->width) || y >= static_cast<std::int32_t>(info->height)) {
+            c.push(3);
+            return 0;
+        }
+        auto px = d.read_slot(slot);
+        if (!px) {
+            c.fail(px.error().code, px.error().message);
+            return 0;
+        }
+        c.write(out, (*px)[std::size_t(y) * info->width + std::size_t(x)], 4);
+        c.push(0);
+        return 0;
+    });
+    // 90:19 (dst, dx, dy, src, mask, mode, alpha): the blit with a third bitmap. Without a bitmap at `mask` the original falls back to
+    // the plain blit; with one the mask is not read yet and the plain blit is drawn as well.
+    add(r, 0x9019, "blit image with mask", 7, 0, [&d](Ctx& c) {
+        const Word alpha = c.pop(), mode = c.pop(), mask = c.pop(), src = c.pop();
+        const auto dy = static_cast<std::int32_t>(c.pop()), dx = static_cast<std::int32_t>(c.pop());
+        const Word dst = c.pop();
+        if (!c.ok()) return 0;
+        if (std::getenv("OBGI_SLOTS")) std::fprintf(stderr, "90:19 blit %u <- %u mask %u (%s) at %d,%d mode %u alpha %u\n", dst, src, mask, d.slot(mask) ? "ok" : "missing", dx, dy, mode, alpha);
+        const SlotInfo* s = d.slot(src);
+        if (!d.slot(dst) || !s) {
+            c.fail(Errc::Range, "no image slot " + std::to_string(d.slot(dst) ? src : dst));
             return 0;
         }
         check(c, d.blit(dst, dx, dy, src, 0, 0, s->width, s->height, mode, alpha));
@@ -480,11 +522,23 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         case 0xC0: case 0xC1: case 0xC4: case 0xC5: case 0x8000: case 0x8001: case 0x8100: case 0xFFFF:
         case 0x7FFF0000: case 0x7FFFFFFF:
             break;
+        // parameters of the effect object types (0x41 and 0x80..0x83 apply to types 2, 5 and 6; 0x8F to all): the original only
+        // stores them for the effect; the scripts so far reset them to 0 (analysis/显示对象属性.md)
+        case 0x41: case 0x80: case 0x81: case 0x82: case 0x83: case 0x8F:
+            break;
+        // 0x40 origin (x, y), 0x41 rotation, 0x42 scale (x, y; 16.16, 0 = 1) of the picture types: only the identity is drawn so far
+        case 0x40: case 0x42: case 0x43: case 0x60: {
+            static std::set<Word> shown;
+            const bool identity = prop == 0x42 ? (a == 0x10000 || a == 0) && (b == 0x10000 || b == 0) : prop == 0x40 || prop == 0x43 || prop == 0x60;
+            if (!identity && shown.insert(prop).second) std::fprintf(stderr, "90:38: property 0x%X (a=%u b=%u) is stored but not drawn\n", prop, a, b);
+            break;
+        }
         case 0x8101:
             if (a > 1) c.fail(Errc::Range, "property 0x8101 takes 0 or 1");
             break;
         default: { // subclasses override the extension hook; not modelled yet, so the value is dropped (noted once per id)
             static std::set<Word> noted;
+            if (std::getenv("OBGI_DBGOBJ")) std::fprintf(stderr, "90:38 object %X slot %u prop 0x%X a=%u b=%u\n", id, s->slot, prop, a, b);
             if (noted.insert(prop).second) std::fprintf(stderr, "90:38: object property 0x%X (a=%u b=%u) is not modelled\n", prop, a, b);
             break;
         }

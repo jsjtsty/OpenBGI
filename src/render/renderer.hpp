@@ -75,6 +75,7 @@ class Renderer {
     std::vector<std::uint32_t> take_presses();
     // The pointer in logical canvas coordinates (outside the canvas when it is in the letterbox bars).
     std::pair<int, int> mouse_position() const;
+    bool left_button_down() const; // the left mouse button is held
 
     Result<void> begin_frame(const float clear_rgba[4]);
     void draw(const Texture& tex, const DrawParams& p);
