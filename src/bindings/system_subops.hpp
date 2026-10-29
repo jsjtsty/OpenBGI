@@ -106,7 +106,9 @@ struct SystemState {
         std::array<std::uint32_t, 6> info{1, 0x00370038, 0x002E0037, 0x006E0069, 0, 0}; // 90:BC record
     };
     std::map<std::uint32_t, IconControl> icon_controls; // 91:B8 registered control objects
-    std::string replacements;                       // 91:96 text replacement definitions
+    bool quit_requested = false; // 80:69 (post WM_CLOSE to the main window): the host ends the run
+    std::vector<std::function<void(std::int64_t)>> per_frame; // run once per scheduler frame with the virtual time (particle screens, ...)
+    std::vector<std::pair<std::string, std::string>> ruby; // 91:94 / 91:96: ruby dictionary (word, reading), longest word first
     std::map<std::uint16_t, std::uint32_t> values; // plain settings by sub-opcode id (80:68, 80:52, ...)
     // Named lists of strings (80:84, 80:85, 80:D8..DC). List 0x80000000 is the global key list kept in BGI.gdb
     // (`gdb.keys`); the others live only for the session.

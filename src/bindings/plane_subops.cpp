@@ -3,6 +3,7 @@
 // SystemState::planes. Analysis: analysis/子opcode语义表.md and the handlers FUN_0048cdb0..0048d240.
 #include <algorithm>
 #include <cmath>
+#include <memory>
 #include <cstdio>
 #include <cstdlib>
 
@@ -75,8 +76,8 @@ void register_object_settings(vm::SubopRegistry& r, SystemState& state, Display*
     }
     static const Rec loose[] = {{0x9039, "object setting 90:39", 2, 0}, {0x903C, "object setting 90:3C", 2, 0},
                                 {0x903D, "object query 90:3D", 1, 1},   {0x903F, "object setting 90:3F", 1, 0},
-                                {0x9040, "object setting 90:40", 1, 0}, {0x9041, "object setting 90:41", 3, 0},
-                                {0x9042, "object setting 90:42", 6, 0}, {0x9044, "object query 90:44", 2, 1},
+                                {0x9041, "object setting 90:41", 3, 0},
+                                {0x9042, "object setting 90:42", 6, 0}, {0x9044, "background frames 90:44", 2, 0},
                                 {0x9045, "object setting 90:45", 5, 0}, {0x9046, "object setting 90:46", 3, 0},
                                 {0x9048, "object setting 90:48", 5, 0}, {0x9049, "object setting 90:49", 3, 0},
                                 {0x9053, "object setting 90:53", 5, 0}, {0x9055, "object setting 90:55", 2, 0}};
@@ -229,6 +230,113 @@ void register_object_settings(vm::SubopRegistry& r, SystemState& state, Display*
         return 0;
     });
     }
+    // Child windows (B0:10..1C): pop-up OS windows of the original. There is a single screen here, so only their bookkeeping is kept
+    // (up to 8, handles 1..8, size 0x20..0x400, position); nothing is drawn into them.
+    struct Child { bool used = false; std::int32_t x = 0, y = 0; };
+    auto children = std::make_shared<std::array<Child, 8>>();
+    auto child_of = [children](Ctx& c, Word h) -> Child* {
+        const bool ok = h >= 1 && h <= 8 && (*children)[h - 1].used;
+        if (!ok) c.fail(Errc::Range, "no child window " + std::to_string(h));
+        return ok ? &(*children)[h - 1] : nullptr;
+    };
+    add(r, 0xB010, "create child window", 5, 1, [children](Ctx& c) {
+        const auto h = static_cast<std::int32_t>(c.pop()), w = static_cast<std::int32_t>(c.pop());
+        const auto y = static_cast<std::int32_t>(c.pop()), x = static_cast<std::int32_t>(c.pop());
+        c.pop(); // title
+        if (!c.ok()) return 0;
+        if (w < 0x20 || w > 0x400 || h < 0x20 || h > 0x400) { c.fail(Errc::Range, "bad child window size"); return 0; }
+        for (Word i = 0; i < 8; ++i)
+            if (!(*children)[i].used) { (*children)[i] = {true, x, y}; c.push(i + 1); return 0; }
+        c.fail(Errc::Range, "no more child windows");
+        return 0;
+    });
+    add(r, 0xB011, "destroy child window", 1, 0, [child_of](Ctx& c) { const Word h = c.pop(); if (c.ok()) if (Child* ch = child_of(c, h)) ch->used = false; return 0; });
+    add(r, 0xB014, "show child window", 2, 0, [child_of](Ctx& c) { c.pop(); const Word h = c.pop(); if (c.ok()) child_of(c, h); return 0; });
+    add(r, 0xB015, "child window title", 2, 0, [child_of](Ctx& c) { c.pop(); const Word h = c.pop(); if (c.ok()) child_of(c, h); return 0; });
+    add(r, 0xB016, "move child window", 3, 0, [child_of](Ctx& c) {
+        const auto y = static_cast<std::int32_t>(c.pop()), x = static_cast<std::int32_t>(c.pop());
+        const Word h = c.pop();
+        if (c.ok()) if (Child* ch = child_of(c, h)) ch->x = x, ch->y = y;
+        return 0;
+    });
+    add(r, 0xB017, "child window position", 1, 2, [child_of](Ctx& c) {
+        const Word h = c.pop();
+        if (!c.ok()) return 0;
+        Child* ch = child_of(c, h);
+        c.push(ch ? Word(ch->x) : 0), c.push(ch ? Word(ch->y) : 0);
+        return 0;
+    });
+    add(r, 0xB018, "fill child window", 2, 0, [child_of](Ctx& c) { c.pop(); const Word h = c.pop(); if (c.ok()) child_of(c, h); return 0; });
+    add(r, 0xB019, "draw bitmap in child window", 6, 0, [child_of](Ctx& c) {
+        for (int i = 0; i < 5; ++i) c.pop();
+        const Word h = c.pop();
+        if (c.ok()) child_of(c, h);
+        return 0;
+    });
+    add(r, 0xB01A, "draw text in child window", 10, 1, [child_of](Ctx& c) {
+        for (int i = 0; i < 9; ++i) c.pop();
+        const Word h = c.pop();
+        if (c.ok()) child_of(c, h);
+        c.push(0); // the width of the widest line: not measured, nothing is drawn
+        return 0;
+    });
+    add(r, 0xB01C, "child window copy text", 2, 0, [child_of](Ctx& c) { const Word h = c.pop(); c.pop(); if (c.ok()) child_of(c, h); return 0; });
+    // Effectors (91:60..66): up to 8 screen effect objects, handle 0x91000000 | index. Only the bookkeeping is modelled; their
+    // displacement / gradient effects on the screen below are not drawn.
+    auto effectors = std::make_shared<std::array<bool, 8>>();
+    auto effector_of = [effectors](Ctx& c, Word h) {
+        const bool ok = (h & 0xFFFFFFF8u) == 0x91000000u && (*effectors)[h & 7];
+        if (!ok) c.fail(Errc::Range, "no effector " + std::to_string(h));
+        return ok;
+    };
+    add(r, 0x9160, "create effector", 0, 1, [effectors](Ctx& c) {
+        for (Word i = 0; i < 8; ++i)
+            if (!(*effectors)[i]) { (*effectors)[i] = true; c.push(0x91000000u | i); return 0; }
+        c.fail(Errc::Range, "no more effectors (the limit is 8)");
+        return 0;
+    });
+    add(r, 0x9161, "delete effector", 1, 0, [effectors, effector_of](Ctx& c) {
+        const Word h = c.pop();
+        if (c.ok() && effector_of(c, h)) (*effectors)[h & 7] = false;
+        return 0;
+    });
+    add(r, 0x9164, "show effector", 2, 0, [effector_of](Ctx& c) {
+        c.pop();
+        const Word h = c.pop();
+        if (c.ok()) effector_of(c, h);
+        return 0;
+    });
+    for (auto [id, n] : {std::pair{0x9165, 6}, {0x9166, 4}, {0x9167, 6}, {0x9168, 9}})
+        add(r, static_cast<std::uint16_t>(id), "set effector (not drawn)", n, 0, [effector_of, n](Ctx& c) {
+            std::vector<Word> a(static_cast<std::size_t>(n));
+            for (int i = n - 1; i >= 0; --i) a[std::size_t(i)] = c.pop();
+            if (c.ok()) effector_of(c, a[0]);
+            return 0;
+        });
+    // 91:DB: the knob being dragged, 0 when none
+    add(r, 0x91DB, "dragged knob", 0, 1, [s](Ctx& c) { c.push(s->knob_focus); return 0; });
+    // Video textures (91:F0..F7): not modelled; they answer as the reference engine does without a player: 1 when the bitmap slot
+    // exists, 4 when it does not.
+    if (display) {
+        add(r, 0x91F0, "open video texture", 4, 1, [](Ctx& c) { c.pop(), c.pop(), c.pop(), c.pop(); c.push(1); return 0; });
+        for (auto [id, n] : {std::pair{0x91F1, 2}, {0x91F2, 1}, {0x91F3, 2}, {0x91F4, 5}, {0x91F5, 1}, {0x91F6, 1}})
+            add(r, static_cast<std::uint16_t>(id), "video texture (not modelled)", n, 1, [display, n, id](Ctx& c) {
+                std::vector<Word> a(static_cast<std::size_t>(n));
+                for (int i = n - 1; i >= 0; --i) a[std::size_t(i)] = c.pop();
+                if (!c.ok()) return 0;
+                const Word bmp = a[0];
+                c.push(display->slot(bmp) ? 1 : 4);
+                return 0;
+            });
+        add(r, 0x91F7, "video texture frame", 2, 1, [display](Ctx& c) {
+            const Word out = c.pop(), bmp = c.pop();
+            if (!c.ok()) return 0;
+            if (!display->slot(bmp)) { c.push(0); return 0; }
+            c.write(out, 0, 4);
+            c.push(1);
+            return 0;
+        });
+    }
     // (slave, ?): detaches a slave object
     add(r, 0x913F, "unbind slave object", 2, 0, [display](Ctx& c) {
         const Word unused = c.pop(), slave = c.pop();
@@ -324,6 +432,7 @@ void advance_motions(SystemState& state, Display& display, std::int64_t now_ms) 
         }
         it = (!sp || now_ms - it->start_ms >= it->duration_ms) ? state.motions.erase(it) : it + 1;
     }
+    for (auto& task : state.per_frame) task(now_ms);
     panel_sync(state);
     panel_input(state);
     knob_input(state);

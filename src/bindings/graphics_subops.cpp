@@ -83,7 +83,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
     // screen position (-x2, -y2), drawn opaque, and an upper picture at (-x1, -y1) over it with transparency `level`
     // (0 = fully shown). `gray` (a wipe map) is not followed: the two are cross-faded plainly. Numbers 0x7000 / 0x7001 / 0x7FFF / -1
     // for the lower picture mean black / white / none; the screen is black anyway. 90:4C (visible, mode) shows or hides it.
-    struct Background { bool visible = true; };
+    struct Background { bool visible = true; Word type = 1; }; // type: 1..12, the number of the last background op (90:40 = 1 ... 90:4A = 11)
     auto bg = std::make_shared<Background>();
     constexpr Word kBgLower = 0x7C000000, kBgUpper = 0x7C000001;
     auto bg_picture = [&d](Word id, std::int32_t bmp, std::int32_t x, std::int32_t y, Word alpha, bool visible) {
@@ -107,10 +107,43 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
             const SlotInfo* si = bmp1 >= 0 ? d.slot(static_cast<Word>(bmp1)) : nullptr;
             std::fprintf(stderr, "90:43 upper %d (%ux%u) at %d,%d lower %d at %d,%d level %u\n", bmp1, si ? si->width : 0, si ? si->height : 0, x1, y1, bmp2, x2, y2, level);
         }
+        bg->type = 4;
         bg_picture(kBgLower, bmp2, x2, y2, 0, bg->visible);
         bg_picture(kBgUpper, bmp1, x1, y1, level, bg->visible);
         return 0;
     });
+    // 90:40 (bmp): the plain background picture
+    add(r, 0x9040, "background picture", 1, 0, [bg, bg_picture](Ctx& c) {
+        const auto bmp = static_cast<std::int32_t>(c.pop());
+        if (!c.ok()) return 0;
+        bg->type = 1;
+        bg_picture(kBgLower, bmp, 0, 0, 0, bg->visible);
+        bg_picture(kBgUpper, -1, 0, 0, 0, false);
+        return 0;
+    });
+    // 90:47 (bmp, vector map, rings, ripple, level): the picture under ripples; the ripple is not drawn, the picture is
+    add(r, 0x9047, "background ripple", 5, 0, [bg, bg_picture](Ctx& c) {
+        c.pop(), c.pop(), c.pop(), c.pop();
+        const auto bmp = static_cast<std::int32_t>(c.pop());
+        if (!c.ok()) return 0;
+        bg->type = 8;
+        bg_picture(kBgLower, bmp, 0, 0, 0, bg->visible);
+        bg_picture(kBgUpper, -1, 0, 0, 0, false);
+        return 0;
+    });
+    // 90:4A (front, back, style, level, link): the mosaic transition from front to back; cross-faded plainly instead
+    add(r, 0x904A, "background flip", 5, 0, [bg, bg_picture](Ctx& c) {
+        c.pop(); // link
+        const Word level = c.pop();
+        c.pop(); // style
+        const auto back = static_cast<std::int32_t>(c.pop()), front = static_cast<std::int32_t>(c.pop());
+        if (!c.ok()) return 0;
+        bg->type = 11;
+        bg_picture(kBgLower, back, 0, 0, 0, bg->visible);
+        bg_picture(kBgUpper, front, 0, 0, level > 0x100 ? 0x100 : level, bg->visible);
+        return 0;
+    });
+    add(r, 0x904D, "background type", 0, 1, [bg](Ctx& c) { c.push(bg->type); return 0; });
     add(r, 0x904C, "background show", 2, 0, [bg, &d](Ctx& c) {
         c.pop(); // draw mode
         bg->visible = c.pop() != 0;

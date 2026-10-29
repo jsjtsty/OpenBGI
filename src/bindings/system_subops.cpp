@@ -167,10 +167,7 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     for (const auto& [id, pops] : {std::pair{0x9053u, 5}, {0x9058u, 9}, {0x9138u, 3}, {0x919Fu, 2}})
         add(r, static_cast<std::uint16_t>(id), "effect parameters (not modelled)", pops, 0, [pops](Ctx& c) { for (int i = 0; i < pops; ++i) c.pop(); return 0; });
     add(r, 0x9214, "92:14 wait object (not modelled)", 2, 0, [](Ctx& c) { c.pop(), c.pop(); return 0; });
-    add(r, 0x9219, "92:19 (not modelled)", 1, 1, [](Ctx& c) { c.pop(); c.push(0); return 0; });
     // 91:94 / 91:95 (two strings): a text (font name list) registry the original keeps; not modelled. 91:95 pushed 0 in the original.
-    add(r, 0x9194, "text registry (not modelled)", 2, 0, [](Ctx& c) { c.pop(), c.pop(); return 0; });
-    add(r, 0x9195, "text registry query (not modelled)", 2, 1, [](Ctx& c) { c.pop(), c.pop(); c.push(0); return 0; });
     // 80:99 (number): removes an 80:98 item; pushes 0, or 1 when there is none
     add(r, 0x8099, "remove item", 1, 1, [s](Ctx& c) {
         const Word id = c.pop();
@@ -895,6 +892,56 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
         c.push(sum);
         return 0;
     });
+    add(r, 0x8069, "close main window", 0, 0, [s](Ctx&) { s->quit_requested = true; return 0; });
+    // 80:C0 (dst, src, size) -> encoded size: SDC-encodes the data (the original did it on a worker thread and pushed the size when done)
+    add(r, 0x80C0, "SDC encode", 3, 1, [](Ctx& c) {
+        const Word size = c.pop(), src = c.pop(), dst = c.pop();
+        if (!c.ok()) return 0;
+        if (size > 0x4000000u) { c.push(0); return 0; }
+        std::vector<std::uint8_t> raw;
+        c.read_bytes(src, size, raw);
+        if (!c.ok()) return 0;
+        const auto enc = sdc_encode(ByteView(raw.data(), raw.size()));
+        c.write_bytes(dst, enc.data(), enc.size());
+        c.push(static_cast<Word>(enc.size()));
+        return 0;
+    });
+    add(r, 0x8006, "profiler switch", 1, 0, [](Ctx& c) { c.pop(); return 0; });
+    add(r, 0x8007, "profiler figure", 2, 0, [](Ctx& c) { c.pop(); const Word out = c.pop(); if (c.ok() && out) c.write(out, 0, 4); return 0; });
+    // 80:2B (drive, dir, fname, ext, path) -> ok: _splitpath of a Windows path; any destination may be 0
+    add(r, 0x802B, "split path", 5, 1, [](Ctx& c) {
+        const Word path = c.pop(), ext = c.pop(), fname = c.pop(), dir = c.pop(), drive = c.pop();
+        if (!c.ok()) return 0;
+        if (path == 0) { c.push(0); return 0; }
+        std::string p = c.cstring(path), d, dr, name, e;
+        std::size_t i = 0;
+        if (p.size() >= 2 && p[1] == ':') dr = p.substr(0, 2), i = 2;
+        const std::size_t sep = p.find_last_of("\\/");
+        const std::size_t name_start = sep == std::string::npos || sep < i ? i : sep + 1;
+        d = p.substr(i, name_start - i);
+        name = p.substr(name_start);
+        if (const std::size_t dot = name.find_last_of('.'); dot != std::string::npos) e = name.substr(dot), name.resize(dot);
+        if (drive) c.write_cstring(drive, dr);
+        if (dir) c.write_cstring(dir, d);
+        if (fname) c.write_cstring(fname, name);
+        if (ext) c.write_cstring(ext, e);
+        c.push(1);
+        return 0;
+    });
+    // 80:3A (buf, which): a system folder (0 Windows, 1 desktop, 2 programs, 3 documents); the user data directory stands in for all
+    add(r, 0x803A, "special folder", 2, 0, [s](Ctx& c) {
+        c.pop();
+        const Word buf = c.pop();
+        if (c.ok() && buf) c.write_cstring(buf, s->data_dir.string() + "\\");
+        return 0;
+    });
+    add(r, 0x803B, "file dialog", 6, 1, [](Ctx& c) { for (int i = 0; i < 6; ++i) c.pop(); c.push(0xFFFFFFFFu); return 0; }); // always cancelled
+    add(r, 0x803F, "install paths", 4, 1, [](Ctx& c) { for (int i = 0; i < 4; ++i) c.pop(); c.push(0); return 0; });
+    add(r, 0x80E1, "run on exit", 3, 0, [](Ctx& c) { for (int i = 0; i < 3; ++i) c.pop(); return 0; });
+    add(r, 0x80E3, "shell open", 1, 1, [](Ctx& c) { c.pop(); c.push(0); return 0; });
+    add(r, 0x8119, "touch points", 1, 1, [](Ctx& c) { c.pop(); c.push(0); return 0; });
+    add(r, 0x81F7, "create shortcut", 4, 1, [](Ctx& c) { for (int i = 0; i < 4; ++i) c.pop(); c.push(0); return 0; });
+    add(r, 0x90F1, "stop movie", 0, 0, [](Ctx&) { return 0; }); // movies are not played
     add(r, 0x8015, "skip latch", 1, 0, [s](Ctx& c) { const Word v = c.pop(); if (c.ok()) s->values[0x8015] = v; return 0; });
     // 80:39 (dir): the alternative game directory (path selector 1 of 80:3D); 1 when the directory exists
     add(r, 0x8039, "alternative directory", 1, 1, [s](Ctx& c) {
@@ -923,6 +970,26 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
             for (int k = 0; k < 6; ++k) c.write(addr + 4 * k, info[k], 4);
         }
         c.push(found);
+        return 0;
+    });
+    // 90:BD (out, number): the index of the current group (-1 none); pushes 1 for a panel that exists
+    add(r, 0x90BD, "icon control current group", 2, 1, [s](Ctx& c) {
+        const Word num = c.pop(), addr = c.pop();
+        if (!c.ok()) return 0;
+        auto it = s->icon_controls.find(num);
+        if (it != s->icon_controls.end()) c.write(addr, static_cast<Word>(it->second.current_group), 4);
+        c.push(it != s->icon_controls.end());
+        return 0;
+    });
+    // 90:BE (out, number): the selected button of every group (-1 none), one word each; pushes 1 for a panel that exists
+    add(r, 0x90BE, "icon control selections", 2, 1, [s](Ctx& c) {
+        const Word num = c.pop(), addr = c.pop();
+        if (!c.ok()) return 0;
+        auto it = s->icon_controls.find(num);
+        if (it != s->icon_controls.end())
+            for (std::size_t g = 0; g < it->second.groups.size(); ++g)
+                c.write(addr + 4 * static_cast<Word>(g), static_cast<Word>(it->second.groups[g].selected), 4);
+        c.push(it != s->icon_controls.end());
         return 0;
     });
     add(r, 0x90BF, "icon control event", 2, 1, [s](Ctx& c) {
@@ -1057,11 +1124,77 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     add(r, 0x810F, "window minimised", 0, 1, [](Ctx& c) { c.push(0); return 0; });
     add(r, 0x8018, "input priority add", 1, 0, [](Ctx& c) { c.pop(); return 0; });
     add(r, 0x8019, "input priority remove", 1, 0, [](Ctx& c) { c.pop(); return 0; });
-    // (definitions): text replacement list, "original\replacement" per line; always succeeds
-    add(r, 0x9196, "text replacement list", 1, 1, [s](Ctx& c) {
-        s->replacements = c.cstring(c.pop());
+    // The ruby (furigana) dictionary, word -> reading, longest word first (analysis: the reference engine's gfx/text/ruby.c).
+    // 91:94 (word, reading): a null word clears it, a null reading removes the word, otherwise adds / replaces the pair.
+    auto ruby_insert = [s](const std::string& word, const std::string& reading) {
+        for (auto& e : s->ruby)
+            if (e.first == word) { e.second = reading; return; }
+        auto pos = s->ruby.begin();
+        while (pos != s->ruby.end() && pos->first.size() > word.size()) ++pos;
+        s->ruby.insert(pos, {word, reading});
+    };
+    add(r, 0x9194, "ruby set", 2, 0, [s, ruby_insert](Ctx& c) {
+        const Word reading = c.pop(), word = c.pop();
         if (!c.ok()) return 0;
-        c.push(1);
+        if (word == 0) { s->ruby.clear(); return 0; }
+        const std::string w = c.cstring(word);
+        if (reading == 0) { std::erase_if(s->ruby, [&](const auto& e) { return e.first == w; }); return 0; }
+        ruby_insert(w, c.cstring(reading));
+        return 0;
+    });
+    // 91:95 (text, tags) -> count: writes "word\reading\n" for every dictionary word that starts at a character of the text (the
+    // rest of a matched word is skipped) into the buffer, pushes how many
+    add(r, 0x9195, "ruby parse", 2, 1, [s](Ctx& c) {
+        const Word tags = c.pop(), str = c.pop();
+        if (!c.ok()) return 0;
+        const std::string text = c.cstring(str);
+        std::string out;
+        Word count = 0;
+        std::size_t skip = 0;
+        const bool utf8 = s->code_page == 65001;
+        for (std::size_t i = 0; i < text.size();) {
+            const auto b = static_cast<unsigned char>(text[i]);
+            const std::size_t len = utf8 ? (b >= 0xF0 ? 4 : b >= 0xE0 ? 3 : b >= 0xC0 ? 2 : 1) : ((b >= 0x81 && b <= 0x9F) || (b >= 0xE0 && b <= 0xFC) ? 2 : 1);
+            if (skip == 0) {
+                for (const auto& e : s->ruby)
+                    if (text.compare(i, e.first.size(), e.first) == 0) {
+                        out += e.first + "\\" + e.second + "\n";
+                        ++count;
+                        std::size_t chars = 0;
+                        for (std::size_t k = 0; k < e.first.size(); ++chars) {
+                            const auto kb = static_cast<unsigned char>(e.first[k]);
+                            k += utf8 ? (kb >= 0xF0 ? 4 : kb >= 0xE0 ? 3 : kb >= 0xC0 ? 2 : 1) : ((kb >= 0x81 && kb <= 0x9F) || (kb >= 0xE0 && kb <= 0xFC) ? 2 : 1);
+                        }
+                        skip = chars - 1;
+                        break;
+                    }
+            } else
+                --skip;
+            i += len;
+        }
+        if (out.size() >= 0x400) out.resize(0x3FF);
+        c.write_cstring(tags, out);
+        c.push(count);
+        return 0;
+    });
+    // 91:96 (list): adds the "word\reading" lines of the list to the dictionary; 1 when the whole list was consumed
+    add(r, 0x9196, "ruby add list", 1, 1, [s, ruby_insert](Ctx& c) {
+        const Word list = c.pop();
+        if (!c.ok()) return 0;
+        const std::string text = list ? c.cstring(list, 0x10000) : std::string();
+        std::size_t p = 0;
+        bool whole = list != 0;
+        while (p < text.size()) {
+            const std::size_t sep = text.find('\\', p);
+            if (sep == std::string::npos || sep == p) { whole = false; break; }
+            const std::string word = text.substr(p, sep - p);
+            p = sep + 1;
+            const std::size_t end = text.find('\n', p);
+            const std::size_t len = (end == std::string::npos ? text.size() : end) - p;
+            if (len > 0) ruby_insert(word, text.substr(p, len));
+            p += len + (end == std::string::npos ? 0 : 1);
+        }
+        c.push(whole ? 1 : 0);
         return 0;
     });
 
@@ -1107,7 +1240,6 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     add_setter(r, state, 0x910D, "setting 91:0D");
     add_setter(r, state, 0x909F, "setting 90:9F");
     add_setter(r, state, 0x900D, "display mode", 3);
-    add_setter(r, state, 0xC01F, "setting C0:1F", 2);
     add_setter(r, state, 0x9003, "display object cache size", 0x20000000);
     add_setter(r, state, 0x90AF, "display option 90:AF");
     // (a, b): two numbers kept by the display object manager, which then refreshes (nothing script-visible)

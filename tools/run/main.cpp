@@ -18,6 +18,9 @@
 #include "bindings/arc_image_source.hpp"
 #include "bindings/arc_program_provider.hpp"
 #include "bindings/arc_resource_finder.hpp"
+#include "bindings/sequence_subops.hpp"
+#include "bindings/bitmap_effect_subops.hpp"
+#include "bindings/particle_subops.hpp"
 #include "bindings/audio_subops.hpp"
 #include "bindings/font_subops.hpp"
 #include "bindings/graphics_subops.hpp"
@@ -90,6 +93,7 @@ void write_png(const std::string& path, const std::vector<std::uint32_t>& px, un
 
 int main(int argc, char** argv) {
     using namespace obgi;
+    if (std::getenv("OBGI_UNBUF")) std::setvbuf(stdout, nullptr, _IONBF, 0); // keep the log of a crashing run
     std::string game, driver_s, entry_arc = "autoload.arc", entry_name = "ipl._bp";
     const char* driver = nullptr;
     long frames = 20000;
@@ -169,6 +173,9 @@ int main(int argc, char** argv) {
     register_window_subops(registry, system, display->get());
     register_table_subops(registry, system);
     register_knob_subops(registry, system);
+    register_sequence_subops(registry, display->get(), finder);
+    register_bitmap_effect_subops(registry, display->get());
+    register_particle_subops(registry, system, display->get());
     register_plane_subops(registry, system, display->get());
     register_message_subops(registry, system, th, fh);
     if (!effects_path.empty()) { // id, pops, pushes of every registered sub-opcode (for comparing with the real game)
@@ -361,6 +368,11 @@ int main(int argc, char** argv) {
             for (const auto& line : recent) std::printf("  %s\n", line.c_str());
             for (const auto& line : recent_ops) std::printf("  %s\n", line.c_str());
             return 2;
+        }
+        if (system.quit_requested) {
+            std::printf("the script asked to quit (80:69) at frame %ld\n", f + 1);
+            report_hits();
+            return 0;
         }
         if (*st == vm::FrameStatus::AllThreadsDead) {
             std::printf("all threads finished after %ld frames\n", f + 1);
