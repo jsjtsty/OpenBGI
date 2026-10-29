@@ -105,7 +105,7 @@ int main(int argc, char** argv) {
             i += 3;
         }
         else if (a == "--shot" && i + 2 < argc) shot_frame = std::atol(argv[i + 1]), shot_path = argv[i + 2], i += 2;
-        else if (a == "--window") window = true, frames = 1L << 60;
+        else if (a == "--window") window = true, frames = 0x7FFFFFFF;
         else if (a == "--effects" && i + 1 < argc) effects_path = argv[++i];
         else if (a == "--survey" && i + 1 < argc) survey = argv[++i];
         else if (a == "--driver" && i + 1 < argc) driver_s = argv[++i], driver = driver_s.c_str();

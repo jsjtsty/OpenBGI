@@ -1,3 +1,5 @@
+#include <cstdio>
+#include <cstdlib>
 #include "render/renderer.hpp"
 
 #include <SDL3/SDL.h>
@@ -268,7 +270,7 @@ bool Renderer::poll_events() {
     bool alive = true;
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
-        if (e.type == SDL_EVENT_QUIT || e.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) alive = false;
+        if (e.type == SDL_EVENT_QUIT || e.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) { alive = false; if (std::getenv("OBGI_DBGWIN")) std::fprintf(stderr, "window event %u\n", e.type); }
         if (e.type == SDL_EVENT_KEY_DOWN && !e.key.repeat) impl_->key = e.key.key;
         if (e.type == SDL_EVENT_KEY_DOWN)
             if (const std::uint32_t vk = virtual_key(e.key.key)) impl_->presses.push_back(vk);

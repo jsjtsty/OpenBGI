@@ -6,7 +6,7 @@ total = float(sys.argv[1]); keys = [(float(a.split(':')[0]), int(a.split(':')[1]
 import csv
 H = {}
 for r in csv.DictReader(open(r"D:/Projects/C++/OpenBGI/analysis/子opcode表.tsv", encoding="utf-8-sig"), delimiter="	"):
-    if r["主opcode"]+":"+r["子opcode"] in ("91:9F","91:38","90:58","92:90","90:90","90:3A","90:53","80:1A","80:11"): H[int(r["处理器VA"],16)] = r["主opcode"]+":"+r["子opcode"]
+    if r["主opcode"]+":"+r["子opcode"] in ("90:29","92:19","92:14","92:16","91:9F","91:38","90:58","92:90","90:90","90:3A","90:53","80:1A","80:11"): H[int(r["处理器VA"],16)] = r["主opcode"]+":"+r["子opcode"]
 JS = """
 const exe = Process.getModuleByName('ac2_ML.exe');
 const delta = exe.base.sub(ptr(0x400000));

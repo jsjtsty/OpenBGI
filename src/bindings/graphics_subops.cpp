@@ -1,3 +1,4 @@
+#include <set>
 #include <cstdlib>
 #include <cstdio>
 #include "bindings/graphics_subops.hpp"
@@ -356,7 +357,11 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         case 0x8101:
             if (a > 1) c.fail(Errc::Range, "property 0x8101 takes 0 or 1");
             break;
-        default: c.fail(Errc::Range, "unknown object property " + std::to_string(prop)); break;
+        default: { // subclasses override the extension hook; not modelled yet, so the value is dropped (noted once per id)
+            static std::set<Word> noted;
+            if (noted.insert(prop).second) std::fprintf(stderr, "90:38: object property 0x%X (a=%u b=%u) is not modelled\n", prop, a, b);
+            break;
+        }
         }
         return 0;
     });
