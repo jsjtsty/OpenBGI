@@ -224,7 +224,7 @@ void panel_input(SystemState& s) {
     for (auto& [id, ic] : s.icon_controls) {
         if (ic.groups.empty() || ic.paint_only || (ic.basic && ic.info[0] == 0)) continue; // not started, painted only, or a plain panel that has decided
         const Sprite* win = s.display->find_sprite(ic.window);
-        if (win && !win->visible) continue;
+        if (win && (!win->is_shown() || !s.display->windows_shown)) continue;
         // The button under the pointer: the enabled, drawn buttons of the current group (every group while none is current).
         int hg = -1, hi = -1;
         std::int32_t lx = 0, ly = 0;
@@ -411,7 +411,8 @@ void panel_sync(SystemState& s) {
                 sp->y = (win ? win->y : 0) + b.y;
                 sp->priority = (win ? win->priority : 0) + 1;
                 sp->alpha = win ? win->alpha : 0;
-                sp->visible = (!win || win->visible) && s.display->slot(sp->slot) != nullptr;
+                sp->fade = win ? win->fade : 0, sp->opacity = win ? win->opacity : 0x100;
+                sp->visible = (!win || (win->is_shown() && s.display->windows_shown)) && s.display->slot(sp->slot) != nullptr;
             }
     }
 }

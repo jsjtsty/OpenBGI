@@ -30,6 +30,11 @@ struct Sprite {
     std::uint32_t alpha = 0;
     std::uint32_t priority = 0;
     bool visible = true;
+    // 90:31 enabled, 90:34 fade (an extra transparency, passed on to the children), 90:39 opacity (0x100 = opaque), 90:36 /
+    // 90:37 draw offsets. They combine with `alpha` according to the blend family (see Display::compose).
+    bool enabled = true;
+    std::uint32_t fade = 0, opacity = 0x100;
+    std::int32_t off_x = 0, off_y = 0, off2_x = 0, off2_y = 0;
     // 91:3E: a slave object follows a master object by an offset. compose() keeps x,y = master + offset; a move
     // of the slave itself (90:33, 90:28/29: move_to) re-reads the offset from the new position, as the original
     // does. 90:56 sets x,y without telling the master.
@@ -38,6 +43,7 @@ struct Sprite {
     std::int32_t master_dx = 0, master_dy = 0;
     bool moved = false;
     void move_to(std::int32_t nx, std::int32_t ny) { x = nx, y = ny, moved = true; }
+    bool is_shown() const { return visible && enabled && fade < 0x100 && opacity > 0; }
 };
 
 bool blend_mode_supported(std::uint32_t mode);
@@ -71,6 +77,10 @@ class Display {
     std::map<std::uint32_t, Sprite>& sprites() { return sprites_; }
     // Shows or hides a sprite and, as the original does, every sprite attached to it by 91:3E.
     void set_visible(std::uint32_t id, bool on, int depth = 0);
+    void set_fade(std::uint32_t id, std::uint32_t v, int depth = 0);
+    void set_opacity(std::uint32_t id, std::uint32_t v, int depth = 0);
+    bool windows_shown = true;         // 90:0C: hides every window and what hangs on one
+    std::uint32_t windows_level = 0;    // 90:0C: transparency added to all of them
 
     // Composes the sprites (by priority, then id) into the screen slot, which is returned for reading.
     Result<void> compose();

@@ -13,6 +13,21 @@
 namespace obgi {
 
 namespace {
+constexpr std::uint32_t kPlaneHandleBase = 0xB0000000u;
+}
+
+// Windows are created hidden; one shows when 90:84 turned it on and 90:0C has not hidden all of them. Its transparency
+// is its own (90:85) combined with the global one: 0x100 - (0x100 - own) * (0x100 - global) / 0x100.
+void SystemState::refresh_planes() {
+    if (!display) return;
+    for (std::size_t i = 0; i < planes.size(); ++i) {
+        if (!planes[i]) continue;
+        const std::uint32_t h = kPlaneHandleBase + static_cast<std::uint32_t>(i);
+        display->set_visible(h, plane_shown[i]);
+    }
+}
+
+namespace {
 
 using vm::Ctx;
 using vm::Word;
@@ -56,8 +71,7 @@ void register_object_settings(vm::SubopRegistry& r, SystemState& state, Display*
                                {0x914A, "object layer 91:4A", 4, 0}, {0x9155, "object query 91:55", 2, 1},
                                {0x913D, "object query 91:3D", 1, 1}, {0x9138, "object parameter read 91:38", 3, 0}};
     // 90:3x..5x: settings kept per op; those the analysis says take an object first check that it exists
-    static const Rec objrecs[] = {{0x9031, "object setting 90:31", 2, 0}, {0x9035, "object setting 90:35", 2, 0},
-                                  {0x9036, "object setting 90:36", 3, 0}, {0x9037, "object setting 90:37", 3, 0}};
+    static const Rec objrecs[] = {{0x9035, "object setting 90:35", 2, 0}};
     for (const Rec& rec : objrecs) {
         const std::uint16_t id = rec.id;
         const int pops = rec.pops;
@@ -74,7 +88,7 @@ void register_object_settings(vm::SubopRegistry& r, SystemState& state, Display*
             return 0;
         });
     }
-    static const Rec loose[] = {{0x9039, "object setting 90:39", 2, 0}, {0x903C, "object setting 90:3C", 2, 0},
+    static const Rec loose[] = {{0x903C, "object setting 90:3C", 2, 0},
                                 {0x903D, "object query 90:3D", 1, 1},   {0x903F, "object setting 90:3F", 1, 0},
                                 {0x9041, "object setting 90:41", 3, 0},
                                 {0x9042, "object setting 90:42", 6, 0}, {0x9044, "background frames 90:44", 2, 0},
@@ -560,7 +574,9 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
             Sprite& sp = display->sprite(kHandleBase + static_cast<Word>(slot));
             sp = Sprite{};
             sp.slot = slot_id;
+            sp.visible = false; // windows start hidden; 90:84 shows them
         }
+        s->plane_shown[slot] = false, s->plane_level[slot] = 0, s->plane_effect[slot] = 1;
         s->planes[slot] = std::move(p);
         c.push(kHandleBase + static_cast<Word>(slot));
         return 0;
@@ -610,7 +626,11 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
     add(r, 0x9084, "window object flag", 2, 0, [s](Ctx& c) {
         const Word value = c.pop(), handle = c.pop();
         if (!c.ok()) return 0;
-        if (SystemState::Plane* p = plane_of(*s, c, handle)) p->flag = value;
+        if (SystemState::Plane* p = plane_of(*s, c, handle)) {
+            p->flag = value;
+            s->plane_shown[handle & 0xFFFFFFu] = value != 0;
+            s->refresh_planes();
+        }
         return 0;
     });
     // (handle, x, y, a, b, c, d): position and display parameters. The first two numbers after the handle are x, y.
@@ -630,7 +650,9 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
             if (Sprite* sp = s->display ? s->display->find_sprite(a[0]) : nullptr) { // the window object's own place and draw order
                 sp->x = p->x, sp->y = p->y;
                 sp->priority = a[6];
+                sp->alpha = std::min<Word>(a[4], 0x100); // the window's own transparency
             }
+            s->plane_effect[a[0] & 0xFFFFFFu] = a[3], s->plane_level[a[0] & 0xFFFFFFu] = a[4];
         }
         return 0;
     });

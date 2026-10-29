@@ -427,6 +427,8 @@ void register_window_subops(vm::SubopRegistry& r, SystemState& state, Display* d
             return 0;
         }
         s->records[0x900C] = {q, p};
+        if (std::getenv("OBGI_SLOTS")) std::fprintf(stderr, "90:0C shown=%u level=%u\n", q, p);
+        if (s->display) s->display->windows_shown = q != 0, s->display->windows_level = p;
         return 0;
     });
     add_record(r, state, 0x9000, "display update flag", 1);

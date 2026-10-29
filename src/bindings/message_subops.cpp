@@ -188,10 +188,19 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
     });
 
     // Writes `str` at the cursor of window `handle`. Returns false after failing the context.
-    auto write_text = [s, th, fh, shared](Ctx& c, Word handle, const std::string& str, Word colour, Reveal& rv) {
+    auto write_text = [s, th, fh, shared](Ctx& c, Word handle, const std::string& whole, Word colour, Reveal& rv) {
         std::size_t idx = 0;
         SystemState::Plane* p = plane_of(*s, c, handle, &idx);
         if (!p) return false;
+        // The original's text output acts on two control bytes: 0x01 scrolls the page out and 0x0C fades it out; both then
+        // clear the text layer and put the cursor home. What comes before the last one is cleared at once, the rest is typed.
+        std::string str = whole;
+        if (const std::size_t cut = str.find_last_of("\x01\x0C"); cut != std::string::npos) {
+            str.erase(0, cut + 1);
+            if (s->display && s->display->slot(text_layer(*s, idx))) (void)s->display->fill_slot(text_layer(*s, idx), 0);
+            shared->cursors[idx] = {};
+            recompose(*s, idx);
+        }
         const auto font_it = p->props.find(0x9188);
         // 91:88: font number, size, width percent, bold, proportional, ruby reserve
         const std::vector<Word> font = font_it != p->props.end() ? font_it->second : std::vector<Word>{0, 24, 100, 0, 0, 0};

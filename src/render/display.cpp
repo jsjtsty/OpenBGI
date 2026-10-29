@@ -5,6 +5,7 @@
 #include <SDL3/SDL.h>
 
 #include <algorithm>
+#include <set>
 #include <cstring>
 #include <string>
 
@@ -321,6 +322,22 @@ void Display::set_visible(std::uint32_t id, bool on, int depth) {
         if (kv.second.has_master && kv.second.master == id) set_visible(kv.first, on, depth + 1);
 }
 
+void Display::set_fade(std::uint32_t id, std::uint32_t v, int depth) {
+    Sprite* sp = find_sprite(id);
+    if (!sp || depth > 16) return;
+    sp->fade = v;
+    for (auto& kv : sprites_)
+        if (kv.second.has_master && kv.second.master == id) set_fade(kv.first, v, depth + 1);
+}
+
+void Display::set_opacity(std::uint32_t id, std::uint32_t v, int depth) {
+    Sprite* sp = find_sprite(id);
+    if (!sp || depth > 16) return;
+    sp->opacity = v;
+    for (auto& kv : sprites_)
+        if (kv.second.has_master && kv.second.master == id) set_opacity(kv.first, v, depth + 1);
+}
+
 void Display::resolve_masters() {
     // masters first: a sprite is settled after the one it follows (chains are short; cycles are cut by `done`)
     std::map<std::uint32_t, bool> done;
@@ -348,8 +365,24 @@ Result<void> Display::compose() {
     if (auto r = m.fill(m.screen, 0); !r) return r;
     resolve_masters();
     std::vector<const std::pair<const std::uint32_t, Sprite>*> order;
+    // 90:0C: a switch and a transparency for every window, and for what is attached to one
+    auto in_window = [this](std::uint32_t id) {
+        for (int depth = 0; depth < 16; ++depth) {
+            if ((id >> 24) == 0xB0) return true;
+            const Sprite* sp = const_cast<Display*>(this)->find_sprite(id);
+            if (!sp || !sp->has_master) return false;
+            id = sp->master;
+        }
+        return false;
+    };
+    std::set<std::uint32_t> window_parts;
+    if (!windows_shown || windows_level)
+        for (const auto& kv : sprites_)
+            if (in_window(kv.first)) window_parts.insert(kv.first);
     for (const auto& kv : sprites_)
-        if (kv.second.visible) order.push_back(&kv);
+        if (kv.second.is_shown() &&
+            !(!windows_shown && window_parts.count(kv.first)))
+            order.push_back(&kv);
     std::stable_sort(order.begin(), order.end(), [](auto* a, auto* b) { return a->second.priority < b->second.priority; });
     for (const auto* kv : order) {
         const Sprite& sp = kv->second;
@@ -357,8 +390,17 @@ Result<void> Display::compose() {
         auto it = m.slots.find(sp.slot);
         if (it == m.slots.end()) continue; // a sprite whose image was freed draws nothing
         if (!blend_mode_supported(sp.blend)) return fail(Errc::Unsupported, "blend mode " + std::to_string(sp.blend) + " is not implemented");
-        if (auto r = m.do_blit(m.screen, sp.x, sp.y, it->second, 0, 0, it->second.info.width, it->second.info.height, sp.blend,
-                               sp.alpha);
+        std::uint32_t alpha = sp.alpha;
+        if (sp.fade || sp.opacity != 0x100) { // the effective level of the effect family (dispobj.c: DispObj_EffectiveLevel)
+            if (sp.blend == 1 || (sp.blend >= 0x20 && sp.blend <= 0x24))
+                alpha = 0x100u - (((0x100u - sp.fade) * (0x100u - std::min(alpha, 0x100u)) * sp.opacity) >> 16);
+            else if ((sp.blend >= 2 && sp.blend <= 4) || sp.blend == 0xC0 || sp.blend == 0xC1)
+                alpha = ((0x100u - sp.fade) * alpha * sp.opacity) >> 16;
+        }
+        if (windows_level && sp.blend == 1 && window_parts.count(kv->first))
+            alpha = 0x100u - (((0x100u - std::min(alpha, 0x100u)) * (0x100u - std::min(windows_level, 0x100u))) >> 8);
+        if (auto r = m.do_blit(m.screen, sp.x + sp.off_x + sp.off2_x, sp.y + sp.off_y + sp.off2_y, it->second, 0, 0, it->second.info.width, it->second.info.height, sp.blend,
+                               alpha);
             !r)
             return r;
     }

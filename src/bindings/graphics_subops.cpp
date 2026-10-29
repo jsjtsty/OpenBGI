@@ -570,13 +570,41 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         if (Sprite* s = object(c, d, id)) s->move_to(x, y);
         return 0;
     });
-    add(r, 0x9034, "set object factor", 2, 0, [&d](Ctx& c) {
+    // (object, fade 0..0x100): an extra transparency for the object and what hangs on it
+    add(r, 0x9034, "set object fade", 2, 0, [&d](Ctx& c) {
         Word value = c.pop(), id = c.pop();
         if (!c.ok()) return 0;
         if (!object(c, d, id)) return 0;
-        if (value > 0x100) c.fail(Errc::Range, "factor out of range"); // stored by the engine, no visible effect yet
+        if (value > 0x100) c.fail(Errc::Range, "fade out of range");
+        else d.set_fade(id, value);
         return 0;
     });
+    // (object, opacity 0..0x100): 1.599 on, multiplies in like the fade
+    add(r, 0x9039, "set object opacity", 2, 0, [&d](Ctx& c) {
+        Word value = c.pop(), id = c.pop();
+        if (!c.ok()) return 0;
+        if (!object(c, d, id)) return 0;
+        if (value > 0x100) c.fail(Errc::Range, "opacity out of range");
+        else d.set_opacity(id, value);
+        return 0;
+    });
+    // (object, enabled): a second condition of visibility besides 90:30
+    add(r, 0x9031, "set object enabled", 2, 0, [&d](Ctx& c) {
+        Word value = c.pop(), id = c.pop();
+        if (!c.ok()) return 0;
+        if (Sprite* s = object(c, d, id)) s->enabled = value != 0;
+        return 0;
+    });
+    // (object, dx, dy): the draw offsets 90:36 (second) and 90:37, added to the position
+    for (const std::uint16_t op : {std::uint16_t(0x9036), std::uint16_t(0x9037)})
+        add(r, op, op == 0x9036 ? "set object offset 2" : "set object offset", 3, 0, [&d, op](Ctx& c) {
+            const auto dy = static_cast<std::int32_t>(c.pop());
+            const auto dx = static_cast<std::int32_t>(c.pop());
+            const Word id = c.pop();
+            if (!c.ok()) return 0;
+            if (Sprite* s = object(c, d, id)) (op == 0x9036 ? s->off2_x : s->off_x) = dx, (op == 0x9036 ? s->off2_y : s->off_y) = dy;
+            return 0;
+        });
     add(r, 0x9038, "set object property", 4, 0, [&d](Ctx& c) {
         Word b = c.pop(), a = c.pop(), prop = c.pop(), id = c.pop();
         if (!c.ok()) return 0;

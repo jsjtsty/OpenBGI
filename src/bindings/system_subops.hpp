@@ -142,6 +142,11 @@ struct SystemState {
     std::map<std::uint16_t, std::vector<std::uint32_t>> props; // 91:88.. / 92:88.. text settings, by sub-opcode id
     };
     std::array<std::optional<Plane>, 16> planes;
+    // 90:84 shows a window (created hidden), 90:85 gives its effect and own transparency, 90:0C a global switch and a
+    // transparency added to all of them; refresh_planes() applies the three to the windows' display sprites
+    std::array<bool, 16> plane_shown{};
+    std::array<std::uint32_t, 16> plane_level{}, plane_effect{};
+    void refresh_planes();
     // B0:80: the script shows a message box (UTF-8 text). The host decides what to do with it; the script goes on.
     std::function<void(const std::string&)> message_box;
     // 80:98: registered items (number, two script values, flag 1), newest first in the original list
