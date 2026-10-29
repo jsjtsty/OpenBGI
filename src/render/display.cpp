@@ -46,9 +46,16 @@ struct Display::Impl {
     // a wipe sprite's picture and gray pattern as pixels, and the progress its temporary slot was last made for
     struct WipeCache {
         std::uint32_t src = 0, gray = 0, progress = 0xFFFFFFFFu, mode = 0;
+        std::int32_t x = 0, y = 0; // where the picture was when a screen-aligned map was applied
+        bool through_gray = false;
         std::vector<std::uint32_t> src_px, gray_px;
     };
     std::map<std::uint32_t, WipeCache> wipes;
+    // a slot's pixels changed: the pixels cached from it are stale (the temporary slots 0x7F... are the cache's own)
+    void stale(std::uint32_t id) {
+        if (id >= 0x7F000000u) return;
+        for (auto it = wipes.begin(); it != wipes.end();) it = (it->second.src == id || it->second.gray == id) ? wipes.erase(it) : std::next(it);
+    }
     GpuSlot screen;
     std::unique_ptr<Texture> screen_tex;
     SDL_GPUCommandBuffer* cmd = nullptr;
@@ -270,6 +277,7 @@ Result<void> Display::create_slot(std::uint32_t id, std::uint32_t w, std::uint32
     auto buf = m.make_buffer(w * h);
     if (!buf) return std::unexpected(buf.error());
     if (auto it = m.slots.find(id); it != m.slots.end()) SDL_ReleaseGPUBuffer(m.device, it->second.buffer);
+    m.stale(id);
     GpuSlot& s = m.slots[id];
     s.info = {w, h, format};
     s.buffer = *buf;
@@ -282,12 +290,14 @@ Result<void> Display::free_slot(std::uint32_t id) {
     if (it == m.slots.end()) return fail(Errc::Range, "no such image slot");
     SDL_ReleaseGPUBuffer(m.device, it->second.buffer);
     m.slots.erase(it);
+    m.stale(id);
     return {};
 }
 
 Result<void> Display::fill_slot(std::uint32_t id, std::uint32_t packed) {
     auto it = impl_->slots.find(id);
     if (it == impl_->slots.end()) return fail(Errc::Range, "no such image slot");
+    impl_->stale(id);
     return impl_->fill(it->second, packed);
 }
 
@@ -306,6 +316,7 @@ Result<void> Display::blit(std::uint32_t dst, std::int32_t dx, std::int32_t dy, 
     if (d == m.slots.end() || s == m.slots.end()) return fail(Errc::Range, "no such image slot");
     if (alpha > 0x100) return fail(Errc::Range, "alpha out of range");
     if (!blend_mode_supported(mode)) return fail(Errc::Unsupported, "blend mode " + std::to_string(mode) + " is not implemented");
+    m.stale(dst);
     return m.do_blit(d->second, dx, dy, s->second, sx, sy, w, h, mode, alpha);
 }
 
@@ -316,6 +327,9 @@ Result<std::vector<std::uint32_t>> Display::read_slot(std::uint32_t id) {
 }
 
 Sprite* Display::find_sprite(std::uint32_t id) {
+    // handle 0 is the background object, whose position, level, progress and visibility are the upper picture's
+    if (id == 0)
+        if (auto bg = sprites_.find(kBackgroundUpper); bg != sprites_.end()) return &bg->second;
     auto it = sprites_.find(id);
     return it == sprites_.end() ? nullptr : &it->second;
 }
@@ -435,14 +449,15 @@ Result<void> Display::compose() {
             continue;
         }
         std::uint32_t draw_id = sp.slot;
-        if (sp.wipe_gray == 0xFFFFFFFFu || sp.progress >= 0x100) {
+        const std::int32_t draw_x = sp.x + sp.off_x + sp.off2_x, draw_y = sp.y + sp.off_y + sp.off2_y;
+        if (sp.wipe_gray == 0xFFFFFFFFu || (sp.through_gray ? sp.progress == 0 : sp.progress >= 0x100)) {
             m.wipes.erase(kv->first);
         } else { // a wipe sprite part-way: the picture's alpha is scaled by how far the gray pattern has been passed (blit_xform.c: GrayWipeTo)
-            if (sp.progress == 0) continue;
+            if (!sp.through_gray && sp.progress == 0) continue;
             auto s0 = m.slots.find(sp.slot);
             auto g0 = m.slots.find(sp.wipe_gray);
-            if (s0 != m.slots.end() && g0 != m.slots.end() && s0->second.info.width == g0->second.info.width &&
-                s0->second.info.height == g0->second.info.height) {
+            if (s0 != m.slots.end() && g0 != m.slots.end() &&
+                (sp.through_gray || (s0->second.info.width == g0->second.info.width && s0->second.info.height == g0->second.info.height))) {
                 Impl::WipeCache& wc = m.wipes[kv->first];
                 bool fresh = wc.src_px.empty() || wc.src != sp.slot || wc.gray != sp.wipe_gray;
                 if (fresh) {
@@ -454,18 +469,53 @@ Result<void> Display::compose() {
                     }
                 }
                 const std::uint32_t tmp_id = 0x7F100000u | (kv->first & 0xFFFFFu);
-                if (!wc.src_px.empty() && (wc.progress != sp.progress || wc.mode != sp.wipe_mode)) {
+                if (!wc.src_px.empty() && (wc.progress != sp.progress || wc.mode != sp.wipe_mode || wc.through_gray != sp.through_gray ||
+                                           (sp.through_gray && (wc.x != draw_x || wc.y != draw_y)))) {
                     const bool has_alpha = s0->second.info.format == SlotFormat::Bgra;
-                    const int mode = static_cast<int>(sp.wipe_mode & 7), thr = ((1 << mode) + 1) * static_cast<int>(sp.progress);
+                    const std::uint32_t sw = s0->second.info.width, gw = g0->second.info.width, gh = g0->second.info.height;
                     std::vector<std::uint32_t> out(wc.src_px.size());
-                    for (std::size_t i = 0; i < out.size(); ++i) {
-                        int v = thr - (static_cast<int>(wc.gray_px[i] & 0xFF) << mode);
-                        v = std::clamp(v, 0, 0x100);
-                        const std::uint32_t a = has_alpha ? wc.src_px[i] >> 24 : 0xFF;
-                        out[i] = (wc.src_px[i] & 0xFFFFFFu) | (((a * static_cast<std::uint32_t>(v)) >> 8) << 24);
+                    if (!sp.through_gray) {
+                        const int mode = static_cast<int>(sp.wipe_mode & 7), thr = ((1 << mode) + 1) * static_cast<int>(sp.progress);
+                        for (std::size_t i = 0; i < out.size(); ++i) {
+                            int v = thr - (static_cast<int>(wc.gray_px[i] & 0xFF) << mode);
+                            v = std::clamp(v, 0, 0x100);
+                            const std::uint32_t a = has_alpha ? wc.src_px[i] >> 24 : 0xFF;
+                            out[i] = (wc.src_px[i] & 0xFFFFFFu) | (((a * static_cast<std::uint32_t>(v)) >> 8) << 24);
+                        }
+                    } else {
+                        // blit_filter.c Blit_ThroughGray: the map is aligned with the screen; parameters 0..7 give a threshold of
+                        // that width, 8..15 a triangle wave of 2p + 1 segments
+                        const int param = static_cast<int>(sp.wipe_mode & 15), level = static_cast<int>(std::min(sp.progress, 0x100u));
+                        int table[0x100] = {};
+                        if (param >= 8) {
+                            const int p = param & 7;
+                            const double seg = 256.0 / (2 * p + 1), k = 1.0 / seg;
+                            for (int i = 0; i < 0x100; ++i) {
+                                const int n = static_cast<int>(i * k);
+                                double f = i - n * seg;
+                                if (n & 1) f = seg - f;
+                                table[i] = static_cast<int>(k * f * 256.0);
+                            }
+                        }
+                        const int base = 0x100 - ((1 << param) + 1) * level, bias = (0x80 - level) * 2;
+                        for (std::size_t i = 0; i < out.size(); ++i) {
+                            const std::int64_t gx = std::int64_t(draw_x) + std::int64_t(i % sw), gy = std::int64_t(draw_y) + std::int64_t(i / sw);
+                            int v = 0; // outside the map nothing is revealed
+                            if (gx >= 0 && gy >= 0 && gx < gw && gy < gh) {
+                                const int g = static_cast<int>(wc.gray_px[std::size_t(gy) * gw + std::size_t(gx)] & 0xFF);
+                                if (param < 8) {
+                                    v = std::clamp((g << param) + base, 0, 0x100);
+                                } else {
+                                    const int idx = g + bias;
+                                    v = idx <= 0 ? 0 : idx >= 0x100 ? 0x100 : table[idx];
+                                }
+                            }
+                            const std::uint32_t a = has_alpha ? wc.src_px[i] >> 24 : 0xFF;
+                            out[i] = (wc.src_px[i] & 0xFFFFFFu) | (((a * static_cast<std::uint32_t>(v)) >> 8) << 24);
+                        }
                     }
                     if (upload_slot(tmp_id, s0->second.info.width, s0->second.info.height, SlotFormat::Bgra, out)) {
-                        wc.progress = sp.progress, wc.mode = sp.wipe_mode;
+                        wc.progress = sp.progress, wc.mode = sp.wipe_mode, wc.through_gray = sp.through_gray, wc.x = draw_x, wc.y = draw_y;
                     }
                 }
                 if (m.slots.count(tmp_id) && wc.progress == sp.progress) draw_id = tmp_id;

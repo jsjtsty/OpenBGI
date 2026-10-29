@@ -33,6 +33,7 @@ struct SystemState {
         std::int32_t curve = 0;                  // ease curve of the position
         std::int32_t from_level = 0, to_level = 0; // the object's alpha (90:32)
         std::int32_t level_curve = 0;
+        std::int32_t from_progress = 0, to_progress = 0; // 90:28/29: the object's progress (0..0x100), linearly; equal = untouched
     };
     std::vector<Motion> motions;
     std::uint32_t last_manager_object = 0;

@@ -68,6 +68,10 @@ Word text_layer(SystemState& s, std::size_t idx) {
 
 // A message being typed out: draw(k) shows its first k characters.
 struct Reveal {
+    // plain output (90:90): draw(k) shows the first k characters, `total` characters, one every 90:94 ms.
+    // rich output (91:90, 92:90): draw(ms) shows the text `ms` after it began, `total` = the time the last glyph is solid; every
+    // glyph appears 91:98's delay after the one before it and fades in over 91:98's steps (a step is a millisecond).
+    bool rich = false;
     std::size_t total = 0;
     std::function<void(std::size_t)> draw;
     // a page leaving before the text: pre(k, pre_frames) for k = 0 .. pre_frames - 1, then pre_done() clears the layer
@@ -84,6 +88,34 @@ int frames_per_char(const SystemState& s) {
     const auto it = s.records.find(0x9094);
     if (it == s.records.end() || it->second.empty()) return 2;
     return static_cast<int>((it->second[0] + 8) / 16);
+}
+
+// How a message is drawn beyond its colour: the shadow (90:9C/9D globally, or 92:90's own) and the rich pacing (91:98).
+struct TextOpts {
+    bool rich = false;
+    int shadow_on = 0, shadow_dx_pct = 0, shadow_dy_pct = 0, shadow_level = 0x100;
+    std::uint32_t shadow_colour = 0;
+};
+
+// The shadow of the plain output and of 91:90: 90:9C switches it on, 90:9D gives offsets in percent of the font and the level.
+TextOpts global_text_opts(const SystemState& s, bool rich) {
+    TextOpts o;
+    o.rich = rich;
+    const auto on = s.records.find(0x909C);
+    const auto par = s.records.find(0x909D);
+    if (on != s.records.end() && !on->second.empty() && on->second[0] && par != s.records.end() && par->second.size() >= 3) {
+        o.shadow_on = static_cast<int>(on->second[0]);
+        o.shadow_dx_pct = static_cast<int>(par->second[0]), o.shadow_dy_pct = static_cast<int>(par->second[1]);
+        o.shadow_level = static_cast<int>(par->second[2]);
+    }
+    return o;
+}
+
+// 91:98 (delay per character, fade steps, ...) in milliseconds; the engine starts with 25 and 30
+std::pair<int, int> rich_pacing(const SystemState& s) {
+    const auto it = s.records.find(0x9198);
+    if (it == s.records.end() || it->second.size() < 2) return {25, 30};
+    return {static_cast<int>(it->second[0]), std::max(static_cast<int>(it->second[1]), 1)};
 }
 
 // 90:97 (on, ms) and 90:9B (on, ms) as milliseconds, 0 when off or unset
@@ -199,7 +231,7 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
     });
 
     // Writes `str` at the cursor of window `handle`. Returns false after failing the context.
-    auto write_text = [s, th, fh, shared](Ctx& c, Word handle, const std::string& whole, Word colour, Reveal& rv) {
+    auto write_text = [s, th, fh, shared](Ctx& c, Word handle, const std::string& whole, Word colour, const TextOpts& opts, Reveal& rv) {
         std::size_t idx = 0;
         SystemState::Plane* p = plane_of(*s, c, handle, &idx);
         if (!p) return false;
@@ -304,13 +336,23 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         TextStyle style;
         style.color = colour & 0xFFFFFF;
         style.line_gap = gap;
+        if (opts.shadow_on) { // offsets are percentages of the font size, at least one pixel; colour 0 = the glyph dimmed to black
+            style.shadow_dx = std::max(size * opts.shadow_dx_pct / 100, 1);
+            style.shadow_dy = std::max(size * opts.shadow_dy_pct / 100, 1);
+            style.shadow_color = opts.shadow_colour & 0xFFFFFF;
+            style.shadow_level = opts.shadow_level;
+        }
         // lay out from the left edge of the text area, the first line indented to where the cursor is
         style.first_indent = cur.x - p->area[0];
         const std::int64_t room = std::int64_t{p->area[2]} - p->area[0] + 1;
         const std::uint32_t max_w = room > 0 ? static_cast<std::uint32_t>(room) : 1;
         const std::u32string text = s->code_page == 65001 ? utf8_to_utf32(str) : cp932_to_utf32(str);
-        auto img = render_text(*face, text, style, max_w);
-        if (!img || img->width == 0 || img->height == 0) return true;
+        auto layout = std::make_shared<TextLayout>(layout_text(*face, text, style, max_w));
+        if (layout->glyphs.empty()) return true;
+        const auto [char_delay, fade_steps] = rich_pacing(*s);
+        if (std::getenv("OBGI_DBGTEXT"))
+            std::fprintf(stderr, "text opts rich=%d shadow=%d dx%%=%d dy%%=%d colour=%06X level=%d delay=%d fade=%d size=%d\n", opts.rich, opts.shadow_on,
+                         opts.shadow_dx_pct, opts.shadow_dy_pct, opts.shadow_colour, opts.shadow_level, char_delay, fade_steps, size);
         const Word text_slot = text_layer(*s, idx);
         auto snapshot = std::make_shared<std::vector<std::uint32_t>>();
         std::uint32_t tw = 0, th_ = 0;
@@ -320,21 +362,31 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
             else if (auto px = s->display->read_slot(text_slot)) *snapshot = std::move(*px);
         }
         const std::int32_t x0 = p->area[0], y0 = cur.y;
-        const int line_h = img->lines > 0 ? static_cast<int>(img->height) / img->lines : size;
-        rv.total = text.size();
-        rv.draw = [s, idx, text_slot, text, style, max_w, face, snapshot, tw, th_, x0, y0](std::size_t k) {
+        const int line_h = layout->row_height;
+        const std::size_t glyphs = layout->glyphs.size();
+        rv.rich = opts.rich && char_delay > 0;
+        rv.total = rv.rich ? static_cast<std::size_t>(char_delay) * (glyphs - 1) + static_cast<std::size_t>(fade_steps) : glyphs;
+        rv.draw = [s, idx, text_slot, layout, style, face, snapshot, tw, th_, x0, y0, rich = rv.rich, char_delay = char_delay, fade_steps = fade_steps](std::size_t k) {
             Display* d = s->display;
             if (!d || !s->planes[idx]) return;
             if (snapshot->size() == std::size_t{tw} * th_) (void)d->upload_slot(text_slot, tw, th_, SlotFormat::Bgra, *snapshot);
-            auto part = render_text(*face, text.substr(0, k), style, max_w);
-            if (!part || part->width == 0 || part->height == 0) return;
-            if (d->upload_slot(kTempSlot, part->width, part->height, SlotFormat::Bgra, part->pixels)) {
-                (void)d->blit(text_slot, x0, y0, kTempSlot, 0, 0, part->width, part->height, 1, 0);
+            std::vector<std::uint8_t> opacity;
+            if (rich) { // k ms after the start: glyph i begins to fade in at i * delay and is solid fade_steps later
+                opacity.resize(layout->glyphs.size());
+                for (std::size_t i = 0; i < opacity.size(); ++i) {
+                    const std::int64_t t = std::int64_t(k) - std::int64_t(i) * char_delay;
+                    opacity[i] = static_cast<std::uint8_t>(t <= 0 ? 0 : t >= fade_steps ? 255 : t * 255 / fade_steps);
+                }
+            }
+            const TextImage part = paint_text(*layout, style, rich ? layout->glyphs.size() : k, opacity);
+            if (part.width == 0 || part.height == 0) return;
+            if (d->upload_slot(kTempSlot, part.width, part.height, SlotFormat::Bgra, part.pixels)) {
+                (void)d->blit(text_slot, x0, y0, kTempSlot, 0, 0, part.width, part.height, 1, 0);
                 d->free_slot(kTempSlot);
             }
             recompose(*s, idx);
         };
-        cur = {p->area[0] + img->last_width, cur.y + line_h * (img->lines - 1), true};
+        cur = {p->area[0] + layout->last_width, cur.y + line_h * (layout->lines - 1), true};
         return true;
     };
     // Ends the op: the thread types the message out (a click shows the rest at once), then waits for a click at the end when
@@ -383,6 +435,10 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
                     *base = decide_count(*st); // this click only hurries the typing
                     *shown = rv.total;
                     rv.draw(*shown);
+                } else if (rv.rich) { // a frame is 16 ms of the glyphs' own clock
+                    *shown = std::min(*shown + 16, rv.total);
+                    rv.draw(*shown);
+                    return false;
                 } else if (++*ticks >= per_char) {
                     *ticks = 0;
                     rv.draw(++*shown);
@@ -411,7 +467,7 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         const std::string str = c.cstring(c.pop());
         const Word handle = c.pop();
         Reveal rv;
-        if (!c.ok() || !write_text(c, handle, str, colour, rv)) return 0;
+        if (!c.ok() || !write_text(c, handle, str, colour, global_text_opts(*s, false), rv)) return 0;
         return finish(c, rv, instant != 0, skip != 0, wait_end != 0, s);
     });
     // 91:90 (window, string, colour, instant, wait at end, allow skip, allow keys, ruby on, hang, unused)
@@ -425,7 +481,7 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         const std::string str = c.cstring(c.pop());
         const Word handle = c.pop();
         Reveal rv;
-        if (!c.ok() || !write_text(c, handle, str, colour, rv)) return 0;
+        if (!c.ok() || !write_text(c, handle, str, colour, global_text_opts(*s, true), rv)) return 0;
         return finish(c, rv, instant != 0, skip != 0, wait_end != 0, s);
     });
     // 92:90 (window, string, colour, ruby on, ruby colour, hang, shadow on, dx, dy, shadow colour, shadow level, instant,
@@ -435,13 +491,19 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         const Word skip = c.pop();
         const Word wait_end = c.pop();
         const Word instant = c.pop();
-        for (int i = 0; i < 5; ++i) c.pop(); // shadow level, colour, dy, dx, on
+        TextOpts opts;
+        opts.rich = true;
+        opts.shadow_level = static_cast<int>(c.pop());
+        opts.shadow_colour = c.pop();
+        opts.shadow_dy_pct = static_cast<int>(c.pop());
+        opts.shadow_dx_pct = static_cast<int>(c.pop());
+        opts.shadow_on = static_cast<int>(c.pop());
         c.pop(), c.pop(), c.pop();   // hang, ruby colour, ruby on
         const Word colour = c.pop();
         const std::string str = c.cstring(c.pop());
         const Word handle = c.pop();
         Reveal rv;
-        if (!c.ok() || !write_text(c, handle, str, colour, rv)) return 0;
+        if (!c.ok() || !write_text(c, handle, str, colour, opts, rv)) return 0;
         return finish(c, rv, instant != 0, skip != 0, wait_end != 0, s);
     });
 }

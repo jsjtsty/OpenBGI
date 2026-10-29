@@ -94,11 +94,14 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         s.x = -x, s.y = -y;
         s.priority = 0, s.blend = 1, s.alpha = alpha;
         s.background = true;
+        s.flip_position = id == kBgUpper;
+        s.through_gray = false, s.wipe_gray = 0xFFFFFFFFu, s.progress = 0x100;
         s.visible = real && visible;
     };
     add(r, 0x9043, "background two pictures", 9, 0, [bg, bg_picture, &d](Ctx& c) {
         const Word level = c.pop();
-        c.pop(), c.pop(); // wipe parameter, wipe map
+        const Word wipe_param = c.pop();
+        const auto wipe_map = static_cast<std::int32_t>(c.pop());
         const auto bmp2 = static_cast<std::int32_t>(c.pop());
         const auto y2 = static_cast<std::int32_t>(c.pop()), x2 = static_cast<std::int32_t>(c.pop());
         const auto bmp1 = static_cast<std::int32_t>(c.pop());
@@ -107,11 +110,18 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         if (level > 0x100) { c.fail(Errc::Range, "alpha out of range"); return 0; }
         if (std::getenv("OBGI_DBGBG")) {
             const SlotInfo* si = bmp1 >= 0 ? d.slot(static_cast<Word>(bmp1)) : nullptr;
-            std::fprintf(stderr, "90:43 upper %d (%ux%u) at %d,%d lower %d at %d,%d level %u\n", bmp1, si ? si->width : 0, si ? si->height : 0, x1, y1, bmp2, x2, y2, level);
+            std::fprintf(stderr, "90:43 upper %d (%ux%u) at %d,%d lower %d at %d,%d level %u wipe map %d param %u\n", bmp1, si ? si->width : 0, si ? si->height : 0, x1, y1,
+                         bmp2, x2, y2, level, wipe_map, wipe_param);
         }
         bg->type = 4;
         bg_picture(kBgLower, bmp2, x2, y2, 0, bg->visible);
         bg_picture(kBgUpper, bmp1, x1, y1, level, bg->visible);
+        // with a gray map the upper picture is revealed through it (level 0 = all shown) instead of faded by `level`
+        const SlotInfo* gi = wipe_map >= 0 && wipe_map < 0x4000 ? d.slot(static_cast<Word>(wipe_map)) : nullptr;
+        if (Sprite* up = d.find_sprite(kBgUpper); up && gi && gi->format == SlotFormat::Gray8) {
+            up->through_gray = true, up->wipe_gray = static_cast<Word>(wipe_map), up->wipe_mode = wipe_param;
+            up->progress = level, up->alpha = 0;
+        }
         return 0;
     });
     // 90:40 (bmp): the plain background picture
@@ -596,7 +606,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         Word id = c.pop();
         if (!c.ok()) return 0;
         if (std::getenv("OBGI_DBGMOVE")) std::fprintf(stderr, "90:33 object %X to %d,%d\n", id, x, y);
-        if (Sprite* s = object(c, d, id)) s->move_to(x, y);
+        if (Sprite* s = object(c, d, id)) s->script_move_to(x, y);
         return 0;
     });
     // (object, fade 0..0x100): an extra transparency for the object and what hangs on it
@@ -644,7 +654,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
             if (seen.insert({prop, a, b}).second) std::fprintf(stderr, "90:38 prop 0x%X a=%u b=%u (object %X)\n", prop, a, b, id);
         }
         switch (prop) {
-        case 0: s->move_to(static_cast<std::int32_t>(a), static_cast<std::int32_t>(b)); break;
+        case 0: s->script_move_to(static_cast<std::int32_t>(a), static_cast<std::int32_t>(b)); break;
         case 1:
             if (!blend_mode_supported(a)) c.fail(Errc::Unsupported, "blend mode " + std::to_string(a) + " is not implemented");
             else s->blend = a;

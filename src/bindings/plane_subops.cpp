@@ -383,7 +383,7 @@ std::int32_t ease(std::int32_t t, int curve) {
 // Starts a timed change of display object `id`: to (x, y) along `curve` and to alpha `level` along `level_curve`, over
 // `duration` ms. The object becomes visible; scripts wait for the end with 80:5C. `move` = false leaves the position alone.
 void start_motion(SystemState& s, Display& display, Ctx& c, Word id, bool move, std::int32_t x, std::int32_t y, int curve, Word level,
-                  int level_curve, Word duration) {
+                  int level_curve, Word duration, std::int32_t progress = -1) {
     Sprite* sp = display.find_sprite(id);
     if (!sp && id >= 0x90000000u) return; // filters, effectors, windows and the like are not drawn objects here
     if (!sp) { c.fail(Errc::Range, "no display object " + std::to_string(id)); return; }
@@ -391,18 +391,21 @@ void start_motion(SystemState& s, Display& display, Ctx& c, Word id, bool move, 
     m.object = id;
     m.start_ms = c.vm.now_ms;
     m.duration_ms = duration;
-    m.from_x = sp->x, m.from_y = sp->y;
-    m.to_x = move ? x : sp->x, m.to_y = move ? y : sp->y;
+    m.from_x = sp->script_x(), m.from_y = sp->script_y();
+    m.to_x = move ? x : m.from_x, m.to_y = move ? y : m.from_y;
     m.curve = curve;
     m.from_level = static_cast<std::int32_t>(sp->alpha), m.to_level = static_cast<std::int32_t>(level);
     m.level_curve = level_curve;
+    m.from_progress = static_cast<std::int32_t>(sp->progress);
+    m.to_progress = progress < 0 ? m.from_progress : progress; // -1 keeps it
     sp->visible = true;
     if (std::getenv("OBGI_DBGOBJ"))
         std::fprintf(stderr, "motion object %X: %d,%d -> %d,%d level %d -> %d over %u ms\n", id, m.from_x, m.from_y, m.to_x, m.to_y, m.from_level, m.to_level, duration);
     std::erase_if(s.motions, [&](const auto& o) { return o.object == id; });
     if (m.duration_ms <= 0) {
-        if (move) sp->move_to(m.to_x, m.to_y);
+        if (move) sp->script_move_to(m.to_x, m.to_y);
         sp->alpha = level;
+        if (m.to_progress != m.from_progress) display.set_progress(id, static_cast<std::uint32_t>(m.to_progress));
         return;
     }
     s.motions.push_back(m);
@@ -419,9 +422,11 @@ void advance_motions(SystemState& state, Display& display, std::int64_t now_ms) 
             const bool done = elapsed >= it->duration_ms;
             const auto t = static_cast<std::int32_t>(elapsed * 0x1000000 / it->duration_ms);
             const std::int64_t fp = done ? 0x10000 : ease(t, it->curve), fl = done ? 0x10000 : ease(t, it->level_curve);
-            sp->move_to(it->from_x + static_cast<std::int32_t>((std::int64_t{it->to_x} - it->from_x) * fp >> 16),
+            sp->script_move_to(it->from_x + static_cast<std::int32_t>((std::int64_t{it->to_x} - it->from_x) * fp >> 16),
                         it->from_y + static_cast<std::int32_t>((std::int64_t{it->to_y} - it->from_y) * fp >> 16));
             sp->alpha = static_cast<std::uint32_t>(it->from_level + static_cast<std::int32_t>((std::int64_t{it->to_level} - it->from_level) * fl >> 16));
+            if (it->to_progress != it->from_progress) // linear in time, whatever the curves
+                display.set_progress(it->object, static_cast<std::uint32_t>(it->from_progress + (std::int64_t{it->to_progress} - it->from_progress) * elapsed / it->duration_ms));
             if (sp->slot == 0xFFFFFFFFu) // a group (90:E0): its members take its level
                 for (auto& [mid, m] : display.sprites())
                     if (m.has_master && m.master == it->object) m.alpha = sp->alpha;
@@ -466,7 +471,7 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
         if (!c.ok()) return 0;
         if (a[3] == 0) { c.fail(Errc::Range, "90:28: rate 0"); return 0; }
         start_motion(*s, *display, c, a[11], true, static_cast<std::int32_t>(a[10]), static_cast<std::int32_t>(a[9]), static_cast<int>(a[8]), a[7],
-                     static_cast<int>(a[6]), a[4]);
+                     static_cast<int>(a[6]), a[4], static_cast<std::int32_t>(a[5]));
         return 0;
     });
     // 90:20 fade: prio, skip, fps, duration, level, object. 90:22 adds max skip after skip.
@@ -504,7 +509,7 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
         const auto to_x = static_cast<std::int32_t>(c.read(last, 4, false)) >> 16;
         const auto to_y = static_cast<std::int32_t>(c.read(last + 4, 4, false)) >> 16;
         if (!c.ok()) return 0;
-        start_motion(*s, *display, c, id, true, to_x, to_y, static_cast<int>(a[8]), a[7], static_cast<int>(a[6]), duration);
+        start_motion(*s, *display, c, id, true, to_x, to_y, static_cast<int>(a[8]), a[7], static_cast<int>(a[6]), duration, static_cast<std::int32_t>(a[5]));
         return 0;
     });
     // 90:24: through a via point; popped: prio, skip, max skip, fps, duration, level, curve, y, x, via y, via x, object.

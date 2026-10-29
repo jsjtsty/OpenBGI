@@ -39,8 +39,17 @@ struct Sprite {
     std::uint32_t filter_colour = 0;         // 0x00RRGGBB; `alpha` is the filter's level
     // 90:35 progress (0..0x100) reveals the picture through the gray slot `wipe_gray` (90:5A) while it is below 0x100
     std::uint32_t progress = 0x100, wipe_gray = 0xFFFFFFFFu, wipe_mode = 0;
+    // The background's two-picture type (90:43) reveals the upper picture through a gray map aligned with the screen instead:
+    // `progress` then holds the script's level (0 = all shown, 0x100 = all hidden) and `wipe_mode` its curve parameter 0..15
+    // (blit_filter.c: Blit_ThroughGray).
+    bool through_gray = false;
     std::uint32_t fade = 0, opacity = 0x100;
     std::int32_t off_x = 0, off_y = 0, off2_x = 0, off2_y = 0;
+    // the background's upper picture is drawn at minus the object's position (a view origin, not a place)
+    bool flip_position = false;
+    std::int32_t script_x() const { return flip_position ? -x : x; }
+    std::int32_t script_y() const { return flip_position ? -y : y; }
+    void script_move_to(std::int32_t nx, std::int32_t ny) { move_to(flip_position ? -nx : nx, flip_position ? -ny : ny); }
     // 91:3E: a slave object follows a master object by an offset. compose() keeps x,y = master + offset; a move
     // of the slave itself (90:33, 90:28/29: move_to) re-reads the offset from the new position, as the original
     // does. 90:56 sets x,y without telling the master.
@@ -82,6 +91,8 @@ class Display {
         if (inserted) created_[id] = ++created_counter_;
         return it->second;
     }
+    // The background (object 0) is two sprites: the lower picture and the upper one over it (90:43); find_sprite(0) is the upper.
+    static constexpr std::uint32_t kBackgroundLower = 0x7C000000u, kBackgroundUpper = 0x7C000001u;
     Sprite* find_sprite(std::uint32_t id);
     void remove_sprite(std::uint32_t id) { sprites_.erase(id), created_.erase(id); }
     std::map<std::uint32_t, Sprite>& sprites() { return sprites_; }
