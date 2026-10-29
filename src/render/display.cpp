@@ -394,13 +394,46 @@ Result<void> Display::compose() {
         for (const auto& kv : sprites_)
             if (in_window(kv.first)) window_parts.insert(kv.first);
     for (const auto& kv : sprites_)
-        if (kv.second.is_shown() &&
+        if (kv.second.is_shown() && (kv.second.priority >= draw_limit || kv.second.background) &&
             !(!windows_shown && window_parts.count(kv.first)))
             order.push_back(&kv);
-    std::stable_sort(order.begin(), order.end(), [](auto* a, auto* b) { return a->second.priority < b->second.priority; });
+    // the original's sort key: (priority * 16 + class order) << 16, plus the bias, plus the creation counter
+    auto class_order = [](std::uint32_t id, const Sprite& s) -> std::uint32_t {
+        if (s.background) return 0;
+        switch (id >> 24) {
+        case 0xA0: return 1;
+        case 0xB0: return 3;
+        case 0xC0: return 4;
+        case 0xC1: return 5;
+        case 0x91: return 6;
+        case 0x90: return 7;
+        case 0xF1: return 9;
+        case 0xF0: return 10;
+        default: return 2; // sprites
+        }
+    };
+    auto sort_key = [&](const std::pair<const std::uint32_t, Sprite>* kv) -> std::int64_t {
+        const auto cr = created_.find(kv->first);
+        return (std::int64_t{kv->second.priority} * 16 + class_order(kv->first, kv->second)) * 65536 + kv->second.sort_bias +
+               (cr == created_.end() ? 0 : cr->second & 0x7FFF);
+    };
+    std::stable_sort(order.begin(), order.end(), [&](auto* a, auto* b) { return sort_key(a) < sort_key(b); });
     for (const auto* kv : order) {
         const Sprite& sp = kv->second;
         if (std::getenv("OBGI_SPRITES")) std::fprintf(stderr, "sprite %X slot %u at %d,%d blend %u alpha %u prio %u%s""\n", kv->first, sp.slot, sp.x, sp.y, sp.blend, sp.alpha, sp.priority, m.slots.count(sp.slot) ? "" : " (no slot)");
+        if (sp.filter_kind >= 0) { // kind 0: the picture so far is blended towards the colour by level / 256 (blit.c: Tint32); kinds 1..3 are not drawn yet
+            if (sp.filter_kind != 0 || sp.alpha == 0) continue;
+            constexpr std::uint32_t kFilterSlot = 0x7F200000u;
+            const std::uint32_t fw = m.screen.info.width, fh = m.screen.info.height;
+            const SlotInfo* fs = slot(kFilterSlot);
+            if (!fs || fs->width != fw || fs->height != fh) {
+                if (auto made = create_slot(kFilterSlot, fw, fh, SlotFormat::Bgrx); !made) return made;
+            }
+            if (auto filled = fill_slot(kFilterSlot, sp.filter_colour & 0xFFFFFFu); !filled) return filled;
+            auto fit = m.slots.find(kFilterSlot);
+            if (auto r = m.do_blit(m.screen, 0, 0, fit->second, 0, 0, fw, fh, 1, 0x100u - std::min(sp.alpha, 0x100u)); !r) return r;
+            continue;
+        }
         std::uint32_t draw_id = sp.slot;
         if (sp.wipe_gray == 0xFFFFFFFFu || sp.progress >= 0x100) {
             m.wipes.erase(kv->first);

@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <map>
 #include <memory>
@@ -92,6 +93,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         s.slot = real ? static_cast<Word>(bmp) : 0;
         s.x = -x, s.y = -y;
         s.priority = 0, s.blend = 1, s.alpha = alpha;
+        s.background = true;
         s.visible = real && visible;
     };
     add(r, 0x9043, "background two pictures", 9, 0, [bg, bg_picture, &d](Ctx& c) {
@@ -637,6 +639,10 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         if (!c.ok()) return 0;
         Sprite* s = object(c, d, id);
         if (!s) return 0;
+        if (std::getenv("OBGI_SLOTS") && prop > 2) {
+            static std::set<std::array<Word, 3>> seen;
+            if (seen.insert({prop, a, b}).second) std::fprintf(stderr, "90:38 prop 0x%X a=%u b=%u (object %X)\n", prop, a, b, id);
+        }
         switch (prop) {
         case 0: s->move_to(static_cast<std::int32_t>(a), static_cast<std::int32_t>(b)); break;
         case 1:
@@ -648,7 +654,8 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
             else s->alpha = a;
             break;
         // properties the engine stores without any effect we render yet (analysis/显示对象属性.md)
-        case 0xC0: case 0xC1: case 0xC4: case 0xC5: case 0x8000: case 0x8001: case 0x8100: case 0xFFFF:
+        case 0x8100: s->sort_bias = static_cast<std::int32_t>(a); break; // the sort key's bias: equal priorities draw in this order
+        case 0xC0: case 0xC1: case 0xC4: case 0xC5: case 0x8000: case 0x8001: case 0xFFFF:
         case 0x7FFF0000: case 0x7FFFFFFF:
             break;
         // parameters of the effect object types (0x41 and 0x80..0x83 apply to types 2, 5 and 6; 0x8F to all): the original only

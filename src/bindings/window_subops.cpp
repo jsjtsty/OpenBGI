@@ -325,7 +325,13 @@ void register_window_subops(vm::SubopRegistry& r, SystemState& state, Display* d
             return 0;
         }
         *free_slot = true;
-        c.push(0x90000000u + static_cast<Word>(free_slot - s->filter_used.begin()));
+        const Word handle = 0x90000000u + static_cast<Word>(free_slot - s->filter_used.begin());
+        if (s->display) {
+            Sprite& sp = s->display->sprite(handle);
+            sp = Sprite{};
+            sp.visible = false, sp.filter_kind = 0, sp.alpha = 0; // hidden until 90:64
+        }
+        c.push(handle);
         return 0;
     });
     // (handle): deletes a filter object; an unknown handle is a script error
@@ -338,6 +344,7 @@ void register_window_subops(vm::SubopRegistry& r, SystemState& state, Display* d
             return 0;
         }
         s->filter_used[slot] = false;
+        if (s->display) s->display->remove_sprite(h);
         return 0;
     });
     // (handle, value): a filter parameter. The filter effects themselves are not drawn yet.
@@ -350,6 +357,7 @@ void register_window_subops(vm::SubopRegistry& r, SystemState& state, Display* d
             return 0;
         }
         s->records[0x9064] = {h, value};
+        if (s->display) s->display->set_visible(h, value != 0); // 90:64 (filter, show)
         return 0;
     });
     // 80:A1 (a, b): appends the message {0, b, a} to the global queue
@@ -470,9 +478,49 @@ void register_window_subops(vm::SubopRegistry& r, SystemState& state, Display* d
         st->records[0x909D] = {x, y, density};
         return 0;
     });
-    add_record(r, state, 0x9065, "filter setting 90:65", 4);
-    add_record(r, state, 0x9066, "filter bitmap 90:66", 7);
-    add_record(r, state, 0x9009, "display setting 90:09", 1); // the original also range-checks the value (limit unknown)
+    // 90:65 (filter, colour, level 0..0x100, priority) is a uniform kind 0 filter: what is drawn below its priority is blended
+    // towards the colour by level / 256
+    add(r, 0x9065, "filter set", 4, 0, [s](Ctx& c) {
+        const Word prio = c.pop(), level = c.pop(), colour = c.pop(), h = c.pop();
+        if (!c.ok()) return 0;
+        if (prio > 0xFFFF || level > 0x100) {
+            c.fail(Errc::Range, "filter priority or level out of range");
+            return 0;
+        }
+        Sprite* sp = s->display ? s->display->find_sprite(h) : nullptr;
+        if (!sp || sp->filter_kind < 0) {
+            c.fail(Errc::Range, "not a filter object handle: " + std::to_string(h));
+            return 0;
+        }
+        sp->filter_kind = 0, sp->filter_colour = colour, sp->alpha = level, sp->priority = prio;
+        return 0;
+    });
+    // 90:66 (filter, kind 0..3, colour, gray bitmap, param, level, priority): the kinds with a gray bitmap and 1..3 are kept but
+    // not drawn yet
+    add(r, 0x9066, "filter set (kind)", 7, 0, [s](Ctx& c) {
+        const Word prio = c.pop(), level = c.pop(), param = c.pop(), bmp = c.pop(), colour = c.pop(), kind = c.pop(), h = c.pop();
+        if (!c.ok()) return 0;
+        Sprite* sp = s->display ? s->display->find_sprite(h) : nullptr;
+        if (!sp || sp->filter_kind < 0) {
+            c.fail(Errc::Range, "not a filter object handle: " + std::to_string(h));
+            return 0;
+        }
+        s->records[0x9066] = {h, kind, colour, bmp, param, level, prio};
+        sp->filter_kind = kind == 0 && static_cast<std::int32_t>(bmp) < 0 ? 0 : 1 + static_cast<int>(kind);
+        sp->filter_colour = colour, sp->alpha = std::min<Word>(level, 0x100), sp->priority = prio;
+        return 0;
+    });
+    // 90:09 (priority): objects below this priority are not drawn (the background layers are)
+    add(r, 0x9009, "draw limit", 1, 0, [s](Ctx& c) {
+        const Word prio = c.pop();
+        if (!c.ok()) return 0;
+        if (prio > 0xFFFF) {
+            c.fail(Errc::Range, "priority " + std::to_string(prio) + " is not allowed");
+            return 0;
+        }
+        if (s->display) s->display->draw_limit = prio;
+        return 0;
+    });
 }
 
 } // namespace obgi

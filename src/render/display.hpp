@@ -33,6 +33,10 @@ struct Sprite {
     // 90:31 enabled, 90:34 fade (an extra transparency, passed on to the children), 90:39 opacity (0x100 = opaque), 90:36 /
     // 90:37 draw offsets. They combine with `alpha` according to the blend family (see Display::compose).
     bool enabled = true;
+    std::int32_t sort_bias = 0;              // 90:38 property 0x8100: added to the sort key
+    bool background = false;                // the background layers are not held back by the draw limit (90:09)
+    int filter_kind = -1;                    // 90:65 / 90:66: a filter object (no picture) changes what is drawn below it; -1 = not one
+    std::uint32_t filter_colour = 0;         // 0x00RRGGBB; `alpha` is the filter's level
     // 90:35 progress (0..0x100) reveals the picture through the gray slot `wipe_gray` (90:5A) while it is below 0x100
     std::uint32_t progress = 0x100, wipe_gray = 0xFFFFFFFFu, wipe_mode = 0;
     std::uint32_t fade = 0, opacity = 0x100;
@@ -73,16 +77,21 @@ class Display {
     Result<std::vector<std::uint32_t>> read_slot(std::uint32_t id);
 
     // ---- sprites ----
-    Sprite& sprite(std::uint32_t id) { return sprites_[id]; } // creates on first use
+    Sprite& sprite(std::uint32_t id) { // creates on first use; the creation order breaks ties in the draw order (dispobj.c: DispObj_SortKey)
+        auto [it, inserted] = sprites_.try_emplace(id);
+        if (inserted) created_[id] = ++created_counter_;
+        return it->second;
+    }
     Sprite* find_sprite(std::uint32_t id);
-    void remove_sprite(std::uint32_t id) { sprites_.erase(id); }
+    void remove_sprite(std::uint32_t id) { sprites_.erase(id), created_.erase(id); }
     std::map<std::uint32_t, Sprite>& sprites() { return sprites_; }
     // Shows or hides a sprite and, as the original does, every sprite attached to it by 91:3E.
     void set_visible(std::uint32_t id, bool on, int depth = 0);
     void set_progress(std::uint32_t id, std::uint32_t v, int depth = 0);
     void set_fade(std::uint32_t id, std::uint32_t v, int depth = 0);
     void set_opacity(std::uint32_t id, std::uint32_t v, int depth = 0);
-    bool windows_shown = true;         // 90:0C: hides every window and what hangs on one
+    std::uint32_t draw_limit = 0;       // 90:09: objects below this priority are not drawn
+    bool windows_shown = true;        // 90:0C: hides every window and what hangs on one
     std::uint32_t windows_level = 0;    // 90:0C: transparency added to all of them
 
     // Composes the sprites (by priority, then id) into the screen slot, which is returned for reading.
@@ -100,6 +109,8 @@ class Display {
     struct Impl;
     std::unique_ptr<Impl> impl_;
     std::map<std::uint32_t, Sprite> sprites_;
+    std::map<std::uint32_t, std::uint32_t> created_;
+    std::uint32_t created_counter_ = 0;
 };
 
 } // namespace obgi
