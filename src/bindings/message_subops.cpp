@@ -72,13 +72,20 @@ struct Reveal {
     std::function<void(std::size_t)> draw;
 };
 
-// Frames between two characters of a message (OBGI_TEXT_FRAMES overrides; 0 shows messages at once).
-int frames_per_char() {
-    static const int v = [] {
-        const char* e = std::getenv("OBGI_TEXT_FRAMES");
-        return e ? std::atoi(e) : 2;
-    }();
-    return v;
+// Frames between two characters of a message: 90:94 gives milliseconds (a frame is 16 ms), 2 frames until a script sets it;
+// OBGI_TEXT_FRAMES overrides; 0 shows messages at once.
+int frames_per_char(const SystemState& s) {
+    static const char* e = std::getenv("OBGI_TEXT_FRAMES");
+    if (e) return std::atoi(e);
+    const auto it = s.records.find(0x9094);
+    if (it == s.records.end() || it->second.empty()) return 2;
+    return static_cast<int>((it->second[0] + 8) / 16);
+}
+
+// 90:97 (on, ms) and 90:9B (on, ms) as milliseconds, 0 when off or unset
+std::uint32_t record_ms(const SystemState& s, std::uint16_t id) {
+    const auto it = s.records.find(id);
+    return it != s.records.end() && it->second.size() >= 2 && it->second[0] ? it->second[1] : 0;
 }
 
 // What the click that ends a message looks like: Enter, Space, the left button.
@@ -289,10 +296,17 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         auto base = std::make_shared<std::uint32_t>(decide_count(*st));
         auto shown = std::make_shared<std::size_t>(0);
         auto ticks = std::make_shared<int>(0);
-        const int per_char = frames_per_char();
+        const int per_char = frames_per_char(*st);
+        // 90:97: a message that waits at its end finishes by itself that long after the end was reached;
+        // 90:9B: the wait does not start (clicks do not count) until that long after the message began
+        const int auto_frames = static_cast<int>((record_ms(*st, 0x9097) + 8) / 16);
+        const bool auto_on = record_ms(*st, 0x9097) != 0 || (st->records.count(0x9097) && st->records[0x9097][0]);
+        const int delay_frames = static_cast<int>((record_ms(*st, 0x909B) + 8) / 16);
+        auto age = std::make_shared<int>(0), idle = std::make_shared<int>(0);
         if (rv.draw && (instant || per_char <= 0)) rv.draw(*shown = rv.total);
         c.t.wait.kind = vm::WaitObject::Kind::Poll;
-        c.t.wait.poll = [t, st, base, shown, ticks, per_char, rv, allow_skip, wait_click]() {
+        c.t.wait.poll = [t, st, base, shown, ticks, per_char, rv, allow_skip, wait_click, auto_on, auto_frames, delay_frames, age, idle]() {
+            ++*age;
             if (rv.draw && *shown < rv.total) {
                 if (allow_skip && decide_count(*st) != *base) {
                     *base = decide_count(*st); // this click only hurries the typing
@@ -306,7 +320,10 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
                     return false;
                 }
             }
-            if (wait_click && decide_count(*st) == *base) return false;
+            if (wait_click) {
+                if (*age < delay_frames) *base = decide_count(*st); // too early: clicks are not taken yet
+                if (decide_count(*st) == *base && !(auto_on && ++*idle >= auto_frames)) return false;
+            }
             t->expr[t->depth] = wait_click ? 1u : 0u;
             t->depth = t->depth + 1 < t->expr.size() ? t->depth + 1 : 0;
             return true;
