@@ -512,10 +512,9 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
     // ?, y, x, object): turns an object into a perspective-projected plane showing the image slot. The position is the
     // plane's top-left corner relative to the screen centre in 16.16 fixed point. Only the flat, untransformed case is
     // modelled: the image is drawn at that position at full size (checked against the original's arguments).
-    add(r, 0x905C, "projected plane", 17, 0, [&d](Ctx& c) {
-        Word v[17];
-        for (Word& x : v) x = c.pop();
-        if (!c.ok()) return 0;
+    // 90:5D (1.588 on) is 90:5C with the rotations about the X, Y and Z axes between the angle and the projection distance; the
+    // reference engine ignores them too (the game's screens call it with all three at 0)
+    auto projected = [&d](Ctx& c, const Word (&v)[17]) {
         if (std::getenv("OBGI_DBG5C"))
             std::fprintf(stderr, "90:5C h=%X fx=%d fy=%d fz=%d bmp1=%d bmp2=%d mix=%u route=%d ox=%d oy=%d angle=%d dist=%d projPos=%d smooth=%d effect=%u level=%u prio=%u\n",
                          v[16], static_cast<int>(v[15]), static_cast<int>(v[14]), static_cast<int>(v[13]), static_cast<int>(v[12]), static_cast<int>(v[11]), v[10], static_cast<int>(v[9]),
@@ -533,8 +532,23 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         s->slot = v[12];
         s->x = static_cast<std::int32_t>(d.screen_width() / 2) + (static_cast<std::int32_t>(v[15]) >> 16);
         s->y = static_cast<std::int32_t>(d.screen_height() / 2) + (static_cast<std::int32_t>(v[14]) >> 16);
-        s->alpha = v[1], s->priority = v[0], s->visible = v[2] != 0;
+        s->alpha = v[1], s->priority = v[0];
+        if (blend_mode_supported(v[2])) s->blend = v[2]; // v[2] is the effect, not a visibility flag
         return 0;
+    };
+    add(r, 0x905C, "projected plane", 17, 0, [projected](Ctx& c) {
+        Word v[17];
+        for (Word& x : v) x = c.pop();
+        if (!c.ok()) return 0;
+        return projected(c, v);
+    });
+    add(r, 0x905D, "projected plane 3D", 20, 0, [projected](Ctx& c) {
+        Word w[20], v[17];
+        for (Word& x : w) x = c.pop();
+        if (!c.ok()) return 0;
+        for (int i = 0, j = 0; i < 20; ++i)
+            if (i < 6 || i > 8) v[j++] = w[i]; // drop rotZ, rotY, rotX
+        return projected(c, v);
     });
     add(r, 0x9057, "set sprite image", 2, 0, [&d](Ctx& c) {
         Word slot = c.pop(), id = c.pop();

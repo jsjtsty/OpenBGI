@@ -385,6 +385,7 @@ int main(int argc, char** argv) {
         }
     }
     std::printf("ran %ld frames without stopping\n", frames);
+    report_hits();
     if (const char* dp = std::getenv("OBGI_DUMPPROG_END")) // "id,path": that thread's program area after the last frame
         if (const char* comma = std::strchr(dp, ','))
             if (const vm::Thread* th = vm.find(static_cast<vm::Word>(std::strtoul(dp, nullptr, 10))))
