@@ -1,4 +1,5 @@
 #include "bindings/system_subops.hpp"
+#include "bindings/panel.hpp"
 
 #include <algorithm>
 #include <cstring>
@@ -159,7 +160,7 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     add(r, 0x90E4, "90:E4 (not modelled)", 2, 0, [](Ctx& c) { c.pop(), c.pop(); return 0; });
     // not modelled yet (display object / effect parameters); pop counts measured in the original: 90:3A 2, 90:53 5, 90:58 9,
     // 91:38 3, 91:9F 2, 92:90 15, 90:90 6 (none pushes anything). 80:1A (mouse region priority) pushes the logical input mask: 0 here
-    for (const auto& [id, pops] : {std::pair{0x903Au, 2}, {0x9053u, 5}, {0x9058u, 9}, {0x9138u, 3}, {0x919Fu, 2}, {0x9290u, 15}, {0x9090u, 6}})
+    for (const auto& [id, pops] : {std::pair{0x9053u, 5}, {0x9058u, 9}, {0x9138u, 3}, {0x919Fu, 2}, {0x9290u, 15}, {0x9090u, 6}})
         add(r, static_cast<std::uint16_t>(id), "effect parameters (not modelled)", pops, 0, [pops](Ctx& c) { for (int i = 0; i < pops; ++i) c.pop(); return 0; });
     add(r, 0x801A, "mouse region input (not modelled)", 1, 1, [](Ctx& c) { c.pop(); c.push(0); return 0; });
     add(r, 0x9214, "92:14 wait object (not modelled)", 2, 0, [](Ctx& c) { c.pop(), c.pop(); return 0; });
@@ -872,6 +873,8 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
             if (w[0] == 0x10000000) {
                 it->second.events.push_back({0x10000006u, w[1], w[2]});
                 it->second.info = {1, 0, w[1], 0, 0, 0};
+            } else if (w[0] == 0x10000002) {
+                panel_select(*s, num, static_cast<int>(w[1]), static_cast<int>(w[2]));
             }
         }
         c.push(it != s->icon_controls.end());
@@ -900,23 +903,25 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     // icon controls (DCIPIconEx): 91:B8 (window) registers one and pushes its number; 91:BA (description, number)
     // pushes 1 when the number does not exist; 90:B9 (number) removes it and pushes 1, or 0 when not found
     add(r, 0x91B8, "register icon control", 1, 1, [s](Ctx& c) {
-        c.pop();
+        const Word window = c.pop();
         if (!c.ok()) return 0;
         const Word id = ++s->last_icon_control;
         s->icon_controls[id] = {};
+        s->icon_controls[id].window = window;
         c.push(id);
         return 0;
     });
     add(r, 0x91BA, "icon control description", 2, 1, [s](Ctx& c) {
-        c.pop(); // description address (popped first)
+        const Word desc = c.pop(); // description address (popped first)
         const Word id = c.pop();
         if (!c.ok()) return 0;
-        c.push(s->icon_controls.count(id) ? 0 : 1);
+        c.push(panel_start(*s, id, c, desc));
         return 0;
     });
     add(r, 0x90B9, "remove icon control", 1, 1, [s](Ctx& c) {
         const Word id = c.pop();
         if (!c.ok()) return 0;
+        panel_stop(*s, id);
         c.push(s->icon_controls.erase(id) ? 1 : 0);
         return 0;
     });

@@ -49,7 +49,7 @@ add_library(obgi_vm STATIC vm/ctx.cpp vm/interp.cpp vm/scheduler.cpp vm/core_sub
 target_link_libraries(obgi_vm PUBLIC obgi_core)
 obgi_target_defaults(obgi_vm)
 
-add_library(obgi_bindings STATIC bindings/arc_program_provider.cpp bindings/arc_resource_finder.cpp bindings/arc_image_source.cpp bindings/graphics_subops.cpp bindings/text_subops.cpp bindings/audio_subops.cpp bindings/movie_subops.cpp bindings/system_subops.cpp bindings/font_subops.cpp bindings/window_subops.cpp bindings/table_subops.cpp bindings/plane_subops.cpp)
+add_library(obgi_bindings STATIC bindings/arc_program_provider.cpp bindings/arc_resource_finder.cpp bindings/arc_image_source.cpp bindings/graphics_subops.cpp bindings/text_subops.cpp bindings/audio_subops.cpp bindings/movie_subops.cpp bindings/system_subops.cpp bindings/font_subops.cpp bindings/window_subops.cpp bindings/table_subops.cpp bindings/plane_subops.cpp bindings/panel.cpp)
 target_link_libraries(obgi_bindings PUBLIC obgi_vm obgi_vfs obgi_formats obgi_render obgi_text obgi_audio obgi_video)
 obgi_target_defaults(obgi_bindings)
 

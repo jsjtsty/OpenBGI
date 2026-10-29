@@ -3,6 +3,7 @@
 // SystemState::planes. Analysis: analysis/子opcode语义表.md and the handlers FUN_0048cdb0..0048d240.
 #include <algorithm>
 
+#include "bindings/panel.hpp"
 #include "bindings/system_subops.hpp"
 
 namespace obgi {
@@ -172,10 +173,12 @@ void advance_motions(SystemState& state, Display& display, std::int64_t now_ms) 
         }
         it = (!sp || now_ms - it->start_ms >= it->duration_ms) ? state.motions.erase(it) : it + 1;
     }
+    panel_sync(state);
 }
 
 void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* display) {
     SystemState* s = &state;
+    if (display) state.display = display;
 
     register_object_settings(r, state, display);
 
@@ -212,6 +215,35 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
         m.duration_ms = std::int64_t{total} * 1000 / rate;
         m.from_x = sp->x, m.from_y = sp->y;
         m.to_x = static_cast<std::int32_t>(x), m.to_y = static_cast<std::int32_t>(y);
+        std::erase_if(s->motions, [&](const auto& o) { return o.object == id; });
+        if (m.duration_ms <= 0) {
+            sp->x = m.to_x, sp->y = m.to_y;
+            return 0;
+        }
+        s->motions.push_back(m);
+        c.t.objects_until = std::max(c.t.objects_until, m.start_ms + m.duration_ms);
+        return 0;
+    });
+    // 90:29: the same over a path of n points (four 16.16 words each: x, y, z, padding); popped in this order: priority, skip,
+    // max skip, fps, duration (frames), progress, level curve, level, curve, point address, n, object. Simplified: the object
+    // moves straight to the last point; the intermediate points and the curve are not followed yet.
+    if (display) add(r, 0x9029, "move object along a path", 12, 0, [s, display](Ctx& c) {
+        Word a[12];
+        for (Word& w : a) w = c.pop();
+        if (!c.ok()) return 0;
+        const Word id = a[11], n = a[10], points = a[9], duration = a[4], fps = a[3];
+        if (fps == 0 || n == 0) { c.fail(Errc::Range, "90:29: bad frame rate or point count"); return 0; }
+        Sprite* sp = display->find_sprite(id);
+        if (!sp) { c.fail(Errc::Range, "no display object " + std::to_string(id)); return 0; }
+        const Word last = points + 16 * (n - 1);
+        SystemState::Motion m;
+        m.object = id;
+        m.start_ms = c.vm.now_ms;
+        m.duration_ms = std::int64_t{duration} * 1000 / fps;
+        m.from_x = sp->x, m.from_y = sp->y;
+        m.to_x = static_cast<std::int32_t>(c.read(last, 4, false)) >> 16;
+        m.to_y = static_cast<std::int32_t>(c.read(last + 4, 4, false)) >> 16;
+        if (!c.ok()) return 0;
         std::erase_if(s->motions, [&](const auto& o) { return o.object == id; });
         if (m.duration_ms <= 0) {
             sp->x = m.to_x, sp->y = m.to_y;
@@ -316,6 +348,10 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
             p->x = static_cast<std::int32_t>(a[1]);
             p->y = static_cast<std::int32_t>(a[2]);
             p->extra.assign(a.begin() + 3, a.end());
+            if (Sprite* sp = s->display ? s->display->find_sprite(a[0]) : nullptr) { // the window object's own place and draw order
+                sp->x = p->x, sp->y = p->y;
+                sp->priority = a[6];
+            }
         }
         return 0;
     });

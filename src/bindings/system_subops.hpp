@@ -65,9 +65,24 @@ struct SystemState {
     std::string window_title;                                       // 80:66 (CP932)
     bool transition_running = false;                                // B0:05
     std::int64_t transition_end_ms = 0;
+    Display* display = nullptr;                      // set by the subsystem that draws (may stay null)
     std::uint32_t last_icon_control = 0;
+    struct PanelButton {
+        bool enabled = false, shown = false;
+        std::int32_t x = 0, y = 0;            // top-left of the picture, relative to the window object
+        std::int32_t bmp_normal = -1, bmp_selected = -1;
+        std::uint32_t flags = 0;
+        std::uint32_t sprite = 0;             // display object id of the drawn button, 0 = not drawn
+    };
+    struct PanelGroup {
+        std::int32_t columns = 1, selected = -1;
+        std::vector<PanelButton> buttons;
+    };
     struct IconControl {
-        int reads = 0;                                   // 90:BF reads answered so far (the first two give the initial event)
+        std::uint32_t window = 0;                        // 91:B8: the window object the buttons sit on
+        std::vector<PanelGroup> groups;                  // 91:BA: the started panel
+        int current_group = -1;
+        int reads = 0;                                  // 90:BF reads answered so far (the first two give the initial event)
         std::deque<std::array<std::uint32_t, 3>> events; // pending 90:BF records
         std::array<std::uint32_t, 6> info{1, 0x00370038, 0x002E0037, 0x006E0069, 0, 0}; // 90:BC record
     };

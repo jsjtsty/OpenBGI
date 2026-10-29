@@ -161,6 +161,22 @@ void register_core_subops(SubopRegistry& r) {
         if (time == 0 && c.t.objects_until <= c.vm.now_ms) c.t.wait = {WaitObject::Kind::Frame, static_cast<std::int64_t>(c.vm.frame) + 1};
         return static_cast<int>(StayThread);
     });
+    // 80:4C (thread, a, b, c): tells a thread blocked in a wait object about an event; a = 1 cuts an 80:5C wait short (the wait then
+    // yields 1 instead of 0). Pushes 1 when the thread was waiting, 0 otherwise. The other waits (text, selection, tween) are not modelled.
+    add(r, 0x804C, "notify waiting thread", 4, 1, [](Ctx& c) {
+        c.pop(), c.pop(); // b, c
+        const Word a = c.pop(), id = c.pop();
+        if (!c.ok()) return 0;
+        Thread* target = c.vm.find(id);
+        Word result = 0;
+        if (target && !target->dead && target->wait.kind == WaitObject::Kind::Time && a == 1 && target->depth > 0) {
+            target->expr[target->depth - 1] = 1;
+            target->wait = {WaitObject::Kind::Frame, static_cast<std::int64_t>(c.vm.frame) + 1};
+            result = 1;
+        }
+        c.push(result);
+        return 0;
+    });
     add(r, 0x805F, "yield", 0, 0, [](Ctx&) { return static_cast<int>(NextThread); });
     add(r, 0x806A, "yield rest of frame", 0, 0, [](Ctx&) { return static_cast<int>(SkipFrame); });
 }

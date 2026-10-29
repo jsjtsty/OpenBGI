@@ -1,3 +1,5 @@
+#include <map>
+#include <memory>
 #include <set>
 #include <cstdlib>
 #include <cstdio>
@@ -75,16 +77,27 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         check(c, d.create_slot(slot, w, h, static_cast<SlotFormat>(format)));
         return 0;
     });
-    // (slot, address): writes the image's width and height there (two words); 1 if the slot exists
-    add(r, 0x9216, "image size", 2, 1, [&d](Ctx& c) {
-        Word addr = c.pop(), slot = c.pop();
+    // 92:12 (slot, w, h): sets the base size of a slot (the design size of its image); 1 for a valid slot number.
+    // 92:16 (out, slot): reads it into two words at out; until set, the size of the image in the slot (0, 0 without one).
+    auto base_sizes = std::make_shared<std::map<Word, std::pair<std::int32_t, std::int32_t>>>();
+    add(r, 0x9212, "set image base size", 3, 1, [base_sizes](Ctx& c) {
+        const auto h = static_cast<std::int32_t>(c.pop()), w = static_cast<std::int32_t>(c.pop());
+        const Word slot = c.pop();
         if (!c.ok()) return 0;
-        const SlotInfo* info = d.slot(slot);
-        if (info) {
-            c.write(addr, info->width, 4);
-            c.write(addr + 4, info->height, 4);
-        }
-        c.push(info ? 1 : 0);
+        if (slot <= kMaxSlot) (*base_sizes)[slot] = {w, h};
+        c.push(slot <= kMaxSlot ? 1 : 0);
+        return 0;
+    });
+    add(r, 0x9216, "image base size", 2, 1, [&d, base_sizes](Ctx& c) {
+        const Word slot = c.pop(), out = c.pop();
+        if (!c.ok()) return 0;
+        if (slot > kMaxSlot) { c.push(0); return 0; }
+        std::int32_t w = 0, h = 0;
+        if (auto it = base_sizes->find(slot); it != base_sizes->end()) w = it->second.first, h = it->second.second;
+        else if (const SlotInfo* info = d.slot(slot)) w = static_cast<std::int32_t>(info->width), h = static_cast<std::int32_t>(info->height);
+        c.write(out, static_cast<Word>(w), 4);
+        c.write(out + 4, static_cast<Word>(h), 4);
+        c.push(1);
         return 0;
     });
     add(r, 0x9012, "free image", 1, 1, [&d](Ctx& c) {
@@ -318,6 +331,14 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         if (!s) return 0;
         if (alpha > 0x100) c.fail(Errc::Range, "alpha out of range");
         else s->alpha = alpha;
+        return 0;
+    });
+    // (object, priority): the draw order of the object (1.69/472 on)
+    add(r, 0x903A, "set object priority", 2, 0, [&d](Ctx& c) {
+        Word prio = c.pop(), id = c.pop();
+        if (!c.ok()) return 0;
+        if (std::getenv("OBGI_DBGPANEL")) std::fprintf(stderr, "90:3A object %X priority %u\n", id, prio);
+        if (Sprite* s = object(c, d, id)) s->priority = prio;
         return 0;
     });
     add(r, 0x9033, "move object", 3, 0, [&d](Ctx& c) {
