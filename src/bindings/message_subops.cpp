@@ -54,7 +54,7 @@ void recompose(SystemState& s, std::size_t idx) {
     (void)d->fill_slot(plane_slot, 0);
     if (p.image != 0xFFFFFFFFu && p.image < 0x4000 && d->slot(p.image))
         (void)d->blit(plane_slot, 0, 0, p.image, 0, 0, p.width, p.height, 0x80, 0);
-    if (d->slot(text_slot)) (void)d->blit(plane_slot, 0, 0, text_slot, 0, 0, p.width, p.height, 1, 0);
+    if (d->slot(text_slot)) (void)d->blit(plane_slot, 0, 0, text_slot, 0, 0, p.width, p.height, 1, s.plane_text_level[idx]);
 }
 
 Word text_layer(SystemState& s, std::size_t idx) {
@@ -70,6 +70,10 @@ Word text_layer(SystemState& s, std::size_t idx) {
 struct Reveal {
     std::size_t total = 0;
     std::function<void(std::size_t)> draw;
+    // a page leaving before the text: pre(k, pre_frames) for k = 0 .. pre_frames - 1, then pre_done() clears the layer
+    int pre_frames = 0;
+    std::function<void(int, int)> pre;
+    std::function<void()> pre_done;
 };
 
 // Frames between two characters of a message: 90:94 gives milliseconds (a frame is 16 ms), 2 frames until a script sets it;
@@ -202,11 +206,10 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         // The original's text output acts on two control bytes: 0x01 scrolls the page out and 0x0C fades it out; both then
         // clear the text layer and put the cursor home. What comes before the last one is cleared at once, the rest is typed.
         std::string str = whole;
+        char control = 0;
         if (const std::size_t cut = str.find_last_of("\x01\x0C"); cut != std::string::npos) {
+            control = str[cut];
             str.erase(0, cut + 1);
-            if (s->display && s->display->slot(text_layer(*s, idx))) (void)s->display->fill_slot(text_layer(*s, idx), 0);
-            shared->cursors[idx] = {};
-            recompose(*s, idx);
         }
         const auto font_it = p->props.find(0x9188);
         // 91:88: font number, size, width percent, bold, proportional, ruby reserve
@@ -249,6 +252,50 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         if (std::getenv("OBGI_DBGTEXT"))
             std::fprintf(stderr, "text win=%X font=%s size=%d gap=%d colour=%08X area=%d,%d,%d,%d str=%s\n", handle, name.c_str(), size, gap, colour,
                          p->area[0], p->area[1], p->area[2], p->area[3], str.c_str());
+        // 0x0C fades the old page over 90:96's steps x ms, 0x01 scrolls it out line by line (90:95's steps x ms per line);
+        // the new text starts from an empty layer and the cursor at home
+        bool cleared = false;
+        if (control && s->display) {
+            cleared = true;
+            const Word text_slot0 = text_layer(*s, idx);
+            const Cursor old_cur = shared->cursors[idx];
+            shared->cursors[idx] = {};
+            auto pace = [&](std::uint16_t id) { // frames of one step group: steps x ms / 16
+                const auto it = s->records.find(id);
+                return it != s->records.end() && it->second.size() >= 2 ? static_cast<int>(it->second[0] * it->second[1] / 16) : 0;
+            };
+            const SlotInfo* si = s->display->slot(text_slot0);
+            if (std::getenv("OBGI_DBGTEXT")) std::fprintf(stderr, "control %02X: fade %d scroll %d frames per group\n", control, pace(0x9096), pace(0x9095));
+            if (si &&!std::getenv("OBGI_TEXT_FRAMES")) {
+                const std::uint32_t tw0 = si->width, th0 = si->height;
+                if (control == '\x0C') {
+                    rv.pre_frames = pace(0x9096);
+                    rv.pre = [s, idx](int k, int total) {
+                        s->plane_text_level[idx] = static_cast<std::uint32_t>(0x100 * (k + 1) / std::max(total, 1));
+                        recompose(*s, idx);
+                    };
+                } else if (old_cur.placed) {
+                    const int line_h = std::max(size + gap, 1);
+                    const int lines = (old_cur.y - p->area[1]) / line_h + (old_cur.x > p->area[0] ? 1 : 0) + 1;
+                    rv.pre_frames = lines * std::max(pace(0x9095), 1);
+                    auto old_px = std::make_shared<std::vector<std::uint32_t>>();
+                    if (auto px = s->display->read_slot(text_slot0)) *old_px = std::move(*px);
+                    rv.pre = [s, idx, text_slot0, old_px, tw0, th0, lines, line_h](int k, int total) {
+                        const std::size_t off = std::size_t(lines) * line_h * (k + 1) / std::max(total, 1);
+                        std::vector<std::uint32_t> moved(old_px->size(), 0);
+                        if (old_px->size() == std::size_t{tw0} * th0 && off < th0)
+                            std::copy(old_px->begin() + off * tw0, old_px->end(), moved.begin());
+                        (void)s->display->upload_slot(text_slot0, tw0, th0, SlotFormat::Bgra, moved);
+                        recompose(*s, idx);
+                    };
+                }
+            }
+            rv.pre_done = [s, idx, text_slot0]() {
+                (void)s->display->fill_slot(text_slot0, 0);
+                s->plane_text_level[idx] = 0;
+                recompose(*s, idx);
+            };
+        }
         auto fnt = th->fonts->open(name, size);
         if (!fnt) return true; // no font to draw with: the text just does not show
         std::shared_ptr<Font> face = *fnt;
@@ -269,7 +316,8 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         std::uint32_t tw = 0, th_ = 0;
         if (const SlotInfo* si = s->display->slot(text_slot)) {
             tw = si->width, th_ = si->height;
-            if (auto px = s->display->read_slot(text_slot)) *snapshot = std::move(*px);
+            if (cleared) snapshot->assign(std::size_t{tw} * th_, 0); // the old page is gone before this text starts
+            else if (auto px = s->display->read_slot(text_slot)) *snapshot = std::move(*px);
         }
         const std::int32_t x0 = p->area[0], y0 = cur.y;
         const int line_h = img->lines > 0 ? static_cast<int>(img->height) / img->lines : size;
@@ -303,9 +351,32 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         const bool auto_on = record_ms(*st, 0x9097) != 0 || (st->records.count(0x9097) && st->records[0x9097][0]);
         const int delay_frames = static_cast<int>((record_ms(*st, 0x909B) + 8) / 16);
         auto age = std::make_shared<int>(0), idle = std::make_shared<int>(0);
-        if (rv.draw && (instant || per_char <= 0)) rv.draw(*shown = rv.total);
+        if (rv.pre_frames > 0 && std::getenv("OBGI_DBGTEXT")) std::fprintf(stderr, "page leaves over %d frames\n", rv.pre_frames);
+        auto pre_k = std::make_shared<int>(0);
+        auto started = std::make_shared<bool>(false);
+        if (rv.pre_frames <= 0 && rv.pre_done) rv.pre_done(), *started = true;
+        if (*started && rv.draw && (instant || per_char <= 0)) rv.draw(*shown = rv.total);
+        if (!rv.pre_done) {
+            *started = true;
+            if (rv.draw && (instant || per_char <= 0)) rv.draw(*shown = rv.total);
+        }
         c.t.wait.kind = vm::WaitObject::Kind::Poll;
-        c.t.wait.poll = [t, st, base, shown, ticks, per_char, rv, allow_skip, wait_click, auto_on, auto_frames, delay_frames, age, idle]() {
+        c.t.wait.poll = [t, st, base, shown, ticks, per_char, rv, allow_skip, wait_click, auto_on, auto_frames, delay_frames, age, idle,
+                         pre_k, started, instant]() {
+            if (!*started) { // the old page leaves first; a click hurries it
+                if (allow_skip && decide_count(*st) != *base) {
+                    *base = decide_count(*st);
+                    *pre_k = rv.pre_frames;
+                }
+                if (*pre_k < rv.pre_frames) {
+                    rv.pre(*pre_k, rv.pre_frames);
+                    ++*pre_k;
+                    return false;
+                }
+                rv.pre_done();
+                *started = true;
+                if (rv.draw && (instant || per_char <= 0)) rv.draw(*shown = rv.total);
+            }
             ++*age;
             if (rv.draw && *shown < rv.total) {
                 if (allow_skip && decide_count(*st) != *base) {

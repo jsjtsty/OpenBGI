@@ -146,6 +146,7 @@ struct SystemState {
     // transparency added to all of them; refresh_planes() applies the three to the windows' display sprites
     std::array<bool, 16> plane_shown{};
     std::array<std::uint32_t, 16> plane_level{}, plane_effect{};
+    std::array<std::uint32_t, 16> plane_text_level{}; // transparency of a window's text layer while a page fades out (0 = opaque)
     void refresh_planes();
     // B0:80: the script shows a message box (UTF-8 text). The host decides what to do with it; the script goes on.
     std::function<void(const std::string&)> message_box;
