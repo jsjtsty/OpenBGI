@@ -1,5 +1,6 @@
 #include "formats/sdc.hpp"
 
+#include <algorithm>
 #include <cstring>
 
 #include "formats/keystream.hpp"
@@ -60,6 +61,34 @@ Result<SdcResult> sdc_decode(ByteView in) {
     }
     if (out.size() != osize) return fail(Errc::Format, "SDC decoded size mismatch");
     return r;
+}
+
+std::vector<std::uint8_t> sdc_encode(ByteView in, std::uint32_t seed) {
+    // literal runs only (up to 128 bytes each): valid SDC, just not compressed
+    std::vector<std::uint8_t> plain;
+    for (std::size_t at = 0; at < in.size();) {
+        const std::size_t n = std::min<std::size_t>(128, in.size() - at);
+        plain.push_back(static_cast<std::uint8_t>(n - 1));
+        plain.insert(plain.end(), in.begin() + at, in.begin() + at + n);
+        at += n;
+    }
+    std::vector<std::uint8_t> out(kHeaderSize + plain.size());
+    std::memcpy(out.data(), kMagic, sizeof kMagic);
+    Keystream ks(seed);
+    std::uint16_t sum = 0, xr = 0;
+    for (std::size_t i = 0; i < plain.size(); ++i) {
+        const auto b = static_cast<std::uint8_t>(plain[i] + ks.next());
+        out[kHeaderSize + i] = b;
+        sum = static_cast<std::uint16_t>(sum + b);
+        xr ^= b;
+    }
+    const std::uint32_t csize = static_cast<std::uint32_t>(plain.size()), osize = static_cast<std::uint32_t>(in.size());
+    std::memcpy(out.data() + 0x10, &seed, 4);
+    std::memcpy(out.data() + 0x14, &csize, 4);
+    std::memcpy(out.data() + 0x18, &osize, 4);
+    std::memcpy(out.data() + 0x1c, &sum, 2);
+    std::memcpy(out.data() + 0x1e, &xr, 2);
+    return out;
 }
 
 } // namespace obgi

@@ -274,6 +274,47 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     // destination: a base plane of N bytes, then M-1 planes of N bytes, each given as alternating runs (a varint length;
     // "same as the previous plane", then "literal", ...). Pushes M (the number of planes), 0 for a block that is not
     // SDC or not DCFS.
+    // 80:C4 (dst, src, frame bytes n, frame count m): the encoder of 80:C5: "DCFS FORMAT 1.00", n, m, the first frame, then for
+    // every later frame alternating runs (same as the previous frame, literal, ...; varint lengths, starting with "same"), all
+    // wrapped as SDC. The original runs it as a wait object; here it finishes at once and pushes the encoded size, 0 on failure.
+    add(r, 0x80C4, "encode DCFS", 4, 1, [](Ctx& c) {
+        const Word frames = c.pop(), n = c.pop(), src = c.pop(), dst = c.pop();
+        if (!c.ok()) return 0;
+        if (n == 0 || frames == 0 || std::uint64_t{n} * frames > 0x4000000u) {
+            c.push(0);
+            return 0;
+        }
+        std::vector<std::uint8_t> data;
+        c.read_bytes(src, std::size_t{n} * frames, data);
+        if (!c.ok()) return 0;
+        std::vector<std::uint8_t> body(0x18);
+        std::memcpy(body.data(), "DCFS FORMAT 1.00", 16);
+        std::memcpy(body.data() + 0x10, &n, 4);
+        std::memcpy(body.data() + 0x14, &frames, 4);
+        body.insert(body.end(), data.begin(), data.begin() + n);
+        const auto varint = [&](std::size_t v) {
+            while (v >= 0x80) body.push_back(static_cast<std::uint8_t>(v | 0x80)), v >>= 7;
+            body.push_back(static_cast<std::uint8_t>(v));
+        };
+        for (Word pass = 1; pass < frames; ++pass) {
+            const std::uint8_t* prev = data.data() + std::size_t{pass - 1} * n;
+            const std::uint8_t* cur = data.data() + std::size_t{pass} * n;
+            std::size_t at = 0;
+            bool literal = false;
+            while (at < n) {
+                std::size_t end = at;
+                while (end < n && (cur[end] == prev[end]) != literal) ++end;
+                varint(end - at);
+                if (literal) body.insert(body.end(), cur + at, cur + end);
+                at = end;
+                literal = !literal;
+            }
+        }
+        const std::vector<std::uint8_t> block = sdc_encode(ByteView(body.data(), body.size()));
+        c.write_bytes(dst, block.data(), block.size());
+        c.push(static_cast<Word>(block.size()));
+        return 0;
+    });
     add(r, 0x80C5, "expand DCFS", 2, 1, [](Ctx& c) {
         const Word src = c.pop(), dst = c.pop();
         if (!c.ok()) return 0;
@@ -432,6 +473,34 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
         if (std::getenv("OBGI_DBG34")) std::fprintf(stderr, "80:30 dst=%X [%s] [%s] %zu bytes\n", dst, archive.c_str(), name.c_str(), bytes.size());
         if (dst != 0 && !bytes.empty()) c.write_bytes(dst, bytes.data(), bytes.size());
         c.push(static_cast<Word>(bytes.size()));
+        return 0;
+    });
+    // (destination, archive, name, offset, size): a range of the resource into script memory (offset = size = 0: all of it).
+    // Pushes 0 ok, 1 not found, 2 the range ends beyond the data, 3 size 0 or beyond (a missing file is not a script error).
+    add(r, 0x8031, "load resource range", 5, 1, [s, res](Ctx& c) {
+        const Word size = c.pop(), offset = c.pop();
+        std::string name = c.cstring(c.pop());
+        const Word archive_addr = c.pop();
+        std::string archive = archive_addr ? c.cstring(archive_addr) : std::string();
+        const Word dst = c.pop();
+        if (!c.ok()) return 0;
+        std::vector<std::uint8_t> bytes;
+        bool found = false;
+        std::error_code ec;
+        for (const std::filesystem::path& p : {host_path(*s, name), s->game_dir / std::filesystem::path(std::u8string(name.begin(), name.end()))}) {
+            if (!std::filesystem::is_regular_file(p, ec)) continue;
+            if (auto data = read_whole(p)) { bytes = std::move(*data); found = true; break; }
+        }
+        if (!found) {
+            if (auto data = res->read(archive, name)) { bytes = std::move(*data); found = true; }
+        }
+        if (!found) { c.push(1); return 0; }
+        std::size_t from = offset, count = size;
+        if (offset == 0 && size == 0) count = bytes.size();
+        else if (size == 0 || size > 0x4000000u) { c.push(3); return 0; }
+        if (from + count > bytes.size()) { c.push(2); return 0; }
+        if (dst && count) c.write_bytes(dst, bytes.data() + from, count);
+        c.push(0);
         return 0;
     });
     add(r, 0x8130, "load resource bytes", 5, 1, [load_resource](Ctx& c) {
@@ -835,9 +904,47 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
             } else if (ctl.reads++ < 2) {
                 ev = {0x10000002u, 0xFFFFFFFFu, 0};
             }
+            if (std::getenv("OBGI_DBGPANEL") && ev[0]) std::fprintf(stderr, "90:BF control %u event %X %X %X\n", num, ev[0], ev[1], ev[2]);
             for (int k = 0; k < 3; ++k) c.write(addr + 4 * k, ev[k], 4);
         }
         c.push(it != s->icon_controls.end());
+        return 0;
+    });
+    // 80:32 (name, data, size): creates or overwrites a file with the bytes; pushes 1 when all were written. Files inside the game
+    // folder go to the data directory (host_path); anything that would land elsewhere is refused (pushes 0).
+    add(r, 0x8032, "write file", 3, 1, [s](Ctx& c) {
+        const Word size = c.pop(), data = c.pop(), name_addr = c.pop();
+        if (!c.ok()) return 0;
+        const std::string name = name_addr ? c.cstring(name_addr) : std::string();
+        std::vector<std::uint8_t> bytes;
+        if (size) c.read_bytes(data, size, bytes);
+        if (!c.ok()) return 0;
+        const std::filesystem::path p = host_path(*s, name);
+        bool ok = false;
+        if (!name.empty() && !s->data_dir.empty() && p.generic_string().starts_with(s->data_dir.generic_string())) {
+            std::error_code ec;
+            std::filesystem::create_directories(p.parent_path(), ec);
+            if (std::ofstream f(p, std::ios::binary); f) {
+                f.write(reinterpret_cast<const char*>(bytes.data()), std::streamsize(bytes.size()));
+                ok = bool(f);
+            }
+        }
+        c.push(ok ? 1 : 0);
+        return 0;
+    });
+    // 81:2F (directory): 1 when a file can be created there (the original makes and deletes a temporary file), else 0. The
+    // scripts ask it about their user-data folder; here: the directory exists on the host (creating it when it is the data dir).
+    add(r, 0x812F, "directory writable", 1, 1, [s](Ctx& c) {
+        const Word addr = c.pop();
+        if (!c.ok()) return 0;
+        const std::string name = addr ? c.cstring(addr) : std::string();
+        std::error_code ec;
+        const std::filesystem::path p = host_path(*s, name);
+        bool ok = std::filesystem::is_directory(p, ec);
+        if (std::getenv("OBGI_DBGPANEL")) std::fprintf(stderr, "81:2F dir '%s' -> %s ok=%d\n", name.c_str(), p.string().c_str(), ok);
+        if (!ok && !name.empty() && !s->data_dir.empty() && p.generic_string().starts_with(s->data_dir.generic_string()))
+            ok = std::filesystem::create_directories(p, ec) || std::filesystem::is_directory(p, ec); // our own data folder: make it
+        c.push(ok ? 1 : 0);
         return 0;
     });
     // 81:35 (path, 0: pushed first by every script call): the size in bytes of a file, 0 when there is none (checked against the
@@ -869,6 +976,7 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
             Word w[3];
             for (int k = 0; k < 3; ++k) w[k] = static_cast<Word>(c.read(addr + 4 * k, 4, false));
             if (!c.ok()) return 0;
+            if (std::getenv("OBGI_DBGPANEL")) std::fprintf(stderr, "80:AC control %u msg %X %X %X\n", num, w[0], w[1], w[2]);
             if (w[0] == 0x10000000) {
                 it->second.events.push_back({0x10000006u, w[1], w[2]});
                 it->second.info = {1, 0, w[1], 0, 0, 0};
@@ -887,7 +995,7 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     add(r, 0x90BA, "object property (not modelled)", 2, 1, [](Ctx& c) { c.pop(), c.pop(); c.push(0); return 0; });
     add(r, 0x90B8, "object property (not modelled)", 1, 1, [](Ctx& c) { c.pop(); c.push(0); return 0; });
     add(r, 0x9022, "timed opacity (not modelled)", 7, 0, [](Ctx& c) { for (int i = 0; i < 7; ++i) c.pop(); return 0; });
-    add(r, 0x8008, "mouse position", 0, 2, [](Ctx& c) { c.push(0), c.push(0); return 0; }); // client x, y; no pointer here
+    add(r, 0x8008, "mouse position", 0, 2, [s](Ctx& c) { c.push(static_cast<Word>(s->mouse_x)), c.push(static_cast<Word>(s->mouse_y)); return 0; }); // client x, y
     add(r, 0x810F, "window minimised", 0, 1, [](Ctx& c) { c.push(0); return 0; });
     add(r, 0x8018, "input priority add", 1, 0, [](Ctx& c) { c.pop(); return 0; });
     add(r, 0x8019, "input priority remove", 1, 0, [](Ctx& c) { c.pop(); return 0; });

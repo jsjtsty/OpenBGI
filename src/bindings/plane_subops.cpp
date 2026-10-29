@@ -192,6 +192,7 @@ void advance_motions(SystemState& state, Display& display, std::int64_t now_ms) 
         it = (!sp || now_ms - it->start_ms >= it->duration_ms) ? state.motions.erase(it) : it + 1;
     }
     panel_sync(state);
+    panel_input(state);
 }
 
 void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* display) {

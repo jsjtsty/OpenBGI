@@ -53,6 +53,7 @@ struct Renderer::Impl {
     std::vector<std::uint8_t> last_frame;
     std::uint32_t key = 0;
     std::vector<std::uint32_t> presses;
+    int mouse_x = 0, mouse_y = 0; // pointer in logical canvas coordinates
 
     ~Impl() {
         if (pipeline) SDL_ReleaseGPUGraphicsPipeline(device, pipeline);
@@ -274,6 +275,18 @@ bool Renderer::poll_events() {
         if (e.type == SDL_EVENT_KEY_DOWN && !e.key.repeat) impl_->key = e.key.key;
         if (e.type == SDL_EVENT_KEY_DOWN)
             if (const std::uint32_t vk = virtual_key(e.key.key)) impl_->presses.push_back(vk);
+        if (e.type == SDL_EVENT_MOUSE_MOTION || e.type == SDL_EVENT_MOUSE_BUTTON_DOWN || e.type == SDL_EVENT_MOUSE_BUTTON_UP) {
+            // window units -> pixels -> the letterboxed logical canvas
+            const float mx = e.type == SDL_EVENT_MOUSE_MOTION ? e.motion.x : e.button.x;
+            const float my = e.type == SDL_EVENT_MOUSE_MOTION ? e.motion.y : e.button.y;
+            int ww = 0, wh = 0, pw = 0, ph = 0;
+            if (impl_->window && SDL_GetWindowSize(impl_->window, &ww, &wh) && SDL_GetWindowSizeInPixels(impl_->window, &pw, &ph) && ww > 0 && wh > 0) {
+                const float lw = float(impl_->opt.logical_width), lh = float(impl_->opt.logical_height);
+                const float scale = std::min(float(pw) / lw, float(ph) / lh);
+                impl_->mouse_x = int((mx * pw / ww - (pw - lw * scale) * 0.5f) / scale);
+                impl_->mouse_y = int((my * ph / wh - (ph - lh * scale) * 0.5f) / scale);
+            }
+        }
         if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
             static constexpr std::uint32_t kButtons[] = {0, 1, 4, 2, 5, 6}; // SDL: 1 left, 2 middle, 3 right, 4 X1, 5 X2
             if (e.button.button < 6) impl_->presses.push_back(kButtons[e.button.button]);
@@ -283,6 +296,8 @@ bool Renderer::poll_events() {
 }
 
 std::vector<std::uint32_t> Renderer::take_presses() { return std::exchange(impl_->presses, {}); }
+
+std::pair<int, int> Renderer::mouse_position() const { return {impl_->mouse_x, impl_->mouse_y}; }
 
 std::uint32_t Renderer::take_key() { return std::exchange(impl_->key, 0u); }
 

@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <cmath>
 #include <map>
 #include <memory>
 #include <set>
@@ -265,9 +267,18 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         auto x = static_cast<std::int32_t>(c.pop());
         Word src = c.pop(), dst = c.pop();
         if (!c.ok() || !slot_ok(c, dst)) return 0;
+        if (src == kScreenSlot) { // the screen image slot is read without ever being created: the composed screen, as in the blit above
+            check(c, d.compose());
+            auto px = d.read_screen();
+            if (c.ok() && px) check(c, d.upload_slot(src, d.screen_width(), d.screen_height(), SlotFormat::Bgrx, *px));
+            if (!c.ok()) return 0;
+        } else if (!d.slot(src) && src >= kScreenSlot - 4 && src < kScreenSlot) { // neighbours of the screen slot: blank until filled
+            check(c, d.create_slot(src, d.screen_width(), d.screen_height(), SlotFormat::Bgrx));
+            if (!c.ok()) return 0;
+        }
         const SlotInfo* s = d.slot(src);
         if (!s || w == 0 || h == 0) {
-            c.fail(Errc::Range, "bad crop source or size");
+            c.fail(Errc::Range, "bad crop source or size (dst " + std::to_string(dst) + " src " + std::to_string(src) + " at " + std::to_string(x) + "," + std::to_string(y) + " size " + std::to_string(w) + "x" + std::to_string(h) + ")");
             return 0;
         }
         if (src == dst) {
@@ -278,6 +289,55 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         check(c, created);
         if (!created) return 0;
         check(c, d.blit(dst, 0, 0, src, x, y, w, h, 0, 0x100));
+        return 0;
+    });
+
+    // (destination, source, x scale, y scale (16.16), smooth): a new slot holding the source scaled; smooth 0 picks the nearest
+    // pixel, else the four neighbours are blended per channel. The original refuses non-true-colour sources (not modelled).
+    add(r, 0x911C, "resample image", 5, 0, [&d](Ctx& c) {
+        const Word smooth = c.pop();
+        const auto sy = static_cast<std::int32_t>(c.pop()), sx = static_cast<std::int32_t>(c.pop());
+        const Word src = c.pop(), dst = c.pop();
+        if (!c.ok() || !slot_ok(c, dst)) return 0;
+        const SlotInfo* s = d.slot(src);
+        if (!s || src == dst || sx <= 0 || sy <= 0) {
+            c.fail(Errc::Range, "bad resample source or rate");
+            return 0;
+        }
+        const SlotInfo info = *s;
+        const std::uint64_t nw = std::uint64_t{info.width} * static_cast<std::uint32_t>(sx) >> 16, nh = std::uint64_t{info.height} * static_cast<std::uint32_t>(sy) >> 16;
+        if (nw == 0 || nh == 0 || nw > 8192 || nh > 8192) {
+            c.fail(Errc::Range, "bad resample rate");
+            return 0;
+        }
+        auto px = d.read_slot(src);
+        if (!px) {
+            c.fail(px.error().code, px.error().message);
+            return 0;
+        }
+        std::vector<std::uint32_t> out(nw * nh);
+        const auto at = [&](std::int64_t x, std::int64_t y) {
+            x = std::clamp<std::int64_t>(x, 0, info.width - 1), y = std::clamp<std::int64_t>(y, 0, info.height - 1);
+            return (*px)[std::size_t(y) * info.width + std::size_t(x)];
+        };
+        for (std::uint64_t y = 0; y < nh; ++y)
+            for (std::uint64_t x = 0; x < nw; ++x) {
+                const double fx = (double(x) + 0.5) * info.width / double(nw) - 0.5, fy = (double(y) + 0.5) * info.height / double(nh) - 0.5;
+                if (!smooth) {
+                    out[y * nw + x] = at(std::int64_t(fx + 0.5), std::int64_t(fy + 0.5));
+                    continue;
+                }
+                const std::int64_t x0 = std::int64_t(std::floor(fx)), y0 = std::int64_t(std::floor(fy));
+                const double ax = fx - double(x0), ay = fy - double(y0);
+                std::uint32_t v = 0;
+                for (int sh = 0; sh < 32; sh += 8) {
+                    const auto ch = [&](std::int64_t xx, std::int64_t yy) { return double((at(xx, yy) >> sh) & 0xFF); };
+                    const double top = ch(x0, y0) * (1 - ax) + ch(x0 + 1, y0) * ax, bot = ch(x0, y0 + 1) * (1 - ax) + ch(x0 + 1, y0 + 1) * ax;
+                    v |= std::uint32_t(std::lround(top * (1 - ay) + bot * ay)) << sh;
+                }
+                out[y * nw + x] = v;
+            }
+        check(c, d.upload_slot(dst, std::uint32_t(nw), std::uint32_t(nh), info.format, out));
         return 0;
     });
 

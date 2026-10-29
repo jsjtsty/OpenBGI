@@ -51,6 +51,7 @@ struct SystemState {
     // pressed since the start (key repeats count). 80:12 / 80:1C answer with sums of these, scripts watch for changes
     // (analysis/输入.md). The host calls press_input().
     std::array<std::uint32_t, 256> input_counts{};
+    int mouse_x = 0, mouse_y = 0;                       // pointer in screen coordinates, set by the host
     void press_input(std::uint32_t number) { if (number < input_counts.size()) ++input_counts[number]; }
     // The input numbers behind one logical input mask bit: a script's 80:1B list, else the original's default.
     std::vector<std::uint32_t> input_numbers(std::uint32_t bit) const;
@@ -70,7 +71,7 @@ struct SystemState {
     struct PanelButton {
         bool enabled = false, shown = false;
         std::int32_t x = 0, y = 0;            // top-left of the picture, relative to the window object
-        std::int32_t bmp_normal = -1, bmp_selected = -1;
+        std::int32_t bmp_normal = -1, bmp_focus = -1, bmp_selected = -1, bmp_selected_focus = -1;
         std::uint32_t flags = 0;
         std::uint32_t sprite = 0;             // display object id of the drawn button, 0 = not drawn
     };
@@ -82,7 +83,9 @@ struct SystemState {
         std::uint32_t window = 0;                        // 91:B8: the window object the buttons sit on
         std::vector<PanelGroup> groups;                  // 91:BA: the started panel
         int current_group = -1;
-        int reads = 0;                                  // 90:BF reads answered so far (the first two give the initial event)
+        int hover_group = -1, hover_index = -1;          // the button under the pointer
+        std::uint32_t seen_clicks = 0;                   // left-button presses already looked at
+        int reads = 0;                                 // 90:BF reads answered so far (the first two give the initial event)
         std::deque<std::array<std::uint32_t, 3>> events; // pending 90:BF records
         std::array<std::uint32_t, 6> info{1, 0x00370038, 0x002E0037, 0x006E0069, 0, 0}; // 90:BC record
     };

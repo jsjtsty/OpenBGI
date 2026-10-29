@@ -278,6 +278,7 @@ int main(int argc, char** argv) {
         if (window) {
             if (!(*renderer)->poll_events()) break;
             for (std::uint32_t vk : (*renderer)->take_presses()) system.press_input(vk);
+            std::tie(system.mouse_x, system.mouse_y) = (*renderer)->mouse_position();
         }
         if (const char* pr = std::getenv("OBGI_PRESS")) // "frame:vk,frame:vk": scripted key presses for headless runs (vk 1 = left mouse button)
             for (std::stringstream ss(pr); ss.good();) {
@@ -286,6 +287,14 @@ int main(int argc, char** argv) {
                 long at = 0;
                 unsigned vk = 0;
                 if (std::sscanf(tok.c_str(), "%ld:%x", &at, &vk) == 2 && at == f) system.press_input(vk);
+            }
+        if (const char* pm = std::getenv("OBGI_MOUSE")) // "frame:x:y,...": scripted pointer moves for headless runs
+            for (std::stringstream ss(pm); ss.good();) {
+                std::string tok;
+                std::getline(ss, tok, ',');
+                long at = 0;
+                int mx = 0, my = 0;
+                if (std::sscanf(tok.c_str(), "%ld:%d:%d", &at, &mx, &my) == 3 && at <= f) system.mouse_x = mx, system.mouse_y = my;
             }
         auto st = vm.run_frame(f * 16);
         if (window)

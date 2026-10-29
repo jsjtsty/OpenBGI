@@ -16,11 +16,17 @@ std::int32_t word(Ctx& c, Word addr) { return static_cast<std::int32_t>(c.read(a
 
 std::uint32_t button_sprite(std::uint32_t control, std::uint32_t index) { return kSpriteBase | (control & 0xFFF) << 12 | (index & 0xFFF); }
 
-// the picture a button shows: its selected picture while it is its group's selection and has one
-std::int32_t picture(const SystemState::PanelGroup& g, int index) {
+// the picture a button shows: normal / focus / selected / selected+focus, falling back to the nearest one that exists
+std::int32_t picture(const SystemState::PanelGroup& g, int index, bool focus = false) {
     const auto& b = g.buttons[static_cast<std::size_t>(index)];
-    return (index == g.selected && b.bmp_selected != -1) ? b.bmp_selected : b.bmp_normal;
+    const bool sel = index == g.selected && b.bmp_selected != -1;
+    if (sel && focus && b.bmp_selected_focus != -1) return b.bmp_selected_focus;
+    if (sel) return b.bmp_selected;
+    if (focus && b.bmp_focus != -1) return b.bmp_focus;
+    return b.bmp_normal;
 }
+
+bool hovered(const SystemState::IconControl& ic, int group, int index) { return ic.hover_group == group && ic.hover_index == index; }
 
 void show(SystemState& s, const SystemState::IconControl& ic, const SystemState::PanelButton& b, std::int32_t bmp) {
     if (!s.display || b.sprite == 0) return;
@@ -63,7 +69,8 @@ std::uint32_t panel_start(SystemState& s, std::uint32_t id, Ctx& c, std::uint32_
             b.enabled = word(c, ba) != 0;
             b.shown = word(c, ba + 4) != 0;
             b.x = word(c, ba + 8), b.y = word(c, ba + 0xC);
-            b.bmp_normal = word(c, ba + 0x20), b.bmp_selected = word(c, ba + 0x28);
+            b.bmp_normal = word(c, ba + 0x20), b.bmp_focus = word(c, ba + 0x24);
+            b.bmp_selected = word(c, ba + 0x28), b.bmp_selected_focus = word(c, ba + 0x2C);
             b.flags = static_cast<std::uint32_t>(word(c, ba + 0xC0));
             if (!c.ok()) return 3;
             pg.buttons.push_back(b);
@@ -95,7 +102,61 @@ void panel_select(SystemState& s, std::uint32_t id, int group, int index) {
     const int old = g.selected;
     g.selected = index;
     for (int i : {old, index})
-        if (i >= 0) show(s, ic, g.buttons[static_cast<std::size_t>(i)], picture(g, i));
+        if (i >= 0) show(s, ic, g.buttons[static_cast<std::size_t>(i)], picture(g, i, hovered(ic, group, i)));
+}
+
+// Pointer handling, once per scheduler frame (analysis: openbgi docs/panel_system.md, ButtonPanel_Update step 3):
+// the button under the pointer changes -> event 0x10000001 (group, index) and the focus picture; a left click on an
+// enabled button -> 0x10000007 (click position inside the button) and 0x10000006 (decision), as a sprite panel reports it.
+void panel_input(SystemState& s) {
+    if (!s.display) return;
+    for (auto& [id, ic] : s.icon_controls) {
+        if (std::getenv("OBGI_DBGPANEL") && s.input_counts[1] != ic.seen_clicks)
+            std::fprintf(stderr, "panel %u click: groups %zu current %d window %X visible %d\n", id, ic.groups.size(), ic.current_group, ic.window,
+                         s.display->find_sprite(ic.window) ? s.display->find_sprite(ic.window)->visible : -1);
+        const int cur = ic.current_group >= 0 ? ic.current_group : (ic.groups.size() == 1 ? 0 : -1);
+        if (cur < 0) continue;
+        const Sprite* win = s.display->find_sprite(ic.window);
+        if (win && !win->visible) continue;
+        int hg = -1, hi = -1;
+        std::int32_t lx = 0, ly = 0;
+        const auto& g = ic.groups[static_cast<std::size_t>(cur)];
+        for (std::size_t i = 0; i < g.buttons.size() && hi < 0; ++i) {
+            const auto& b = g.buttons[i];
+            if (!b.enabled || b.sprite == 0) continue;
+            const Sprite* sp = s.display->find_sprite(b.sprite);
+            const SlotInfo* info = sp ? s.display->slot(sp->slot) : nullptr;
+            if (!sp || !sp->visible || !info) continue;
+            if (s.mouse_x >= sp->x && s.mouse_y >= sp->y && s.mouse_x < sp->x + std::int32_t(info->width) &&
+                s.mouse_y < sp->y + std::int32_t(info->height)) {
+                hg = cur, hi = int(i);
+                lx = s.mouse_x - sp->x, ly = s.mouse_y - sp->y;
+            }
+        }
+        if (std::getenv("OBGI_DBGPANEL") && (hg != ic.hover_group || hi != ic.hover_index || s.input_counts[1] != ic.seen_clicks))
+            std::fprintf(stderr, "panel %u pointer %d,%d hover %d/%d clicks %u group %d\n", id, s.mouse_x, s.mouse_y, hg, hi, s.input_counts[1], ic.current_group);
+        if (hg != ic.hover_group || hi != ic.hover_index) {
+            const int og = ic.hover_group, oi = ic.hover_index;
+            ic.hover_group = hg, ic.hover_index = hi;
+            ic.events.push_back({0x10000001u, static_cast<std::uint32_t>(hg), static_cast<std::uint32_t>(hi)});
+            if (og >= 0 && oi >= 0) show(s, ic, ic.groups[std::size_t(og)].buttons[std::size_t(oi)], picture(ic.groups[std::size_t(og)], oi));
+            if (hi >= 0) {
+                show(s, ic, g.buttons[std::size_t(hi)], picture(g, hi, true));
+                ic.events.push_back({0x10000002u, static_cast<std::uint32_t>(hg) << 16 | static_cast<std::uint32_t>(hi), g.buttons[std::size_t(hi)].bmp_focus != -1});
+            }
+        }
+        const std::uint32_t clicks = s.input_counts[1];
+        if (clicks != ic.seen_clicks) {
+            ic.seen_clicks = clicks;
+            if (hi >= 0) {
+                const std::uint32_t item = static_cast<std::uint32_t>(hg) << 16 | static_cast<std::uint32_t>(hi);
+                ic.events.push_back({0x10000007u, item, static_cast<std::uint32_t>(ly) << 16 | static_cast<std::uint32_t>(lx & 0xFFFF)});
+                ic.events.push_back({0x10000006u, item, 0});
+                ic.info = {1, 0, item, 0, 0, 0};
+            }
+        }
+        while (ic.events.size() > 256) ic.events.pop_front(); // nobody is draining them
+    }
 }
 
 void panel_sync(SystemState& s) {

@@ -76,6 +76,24 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
     FontHost* fh = &fonts;
     auto shared = std::make_shared<Shared>();
 
+    // 91:9B (out, string, font no, size, width %, bold, proportional): writes the width in pixels of the string to `out`, pushes 0
+    // (0x80000001 bad size, 0x80000003 bad font number; nothing written then). Width = the laid-out line's width, unwrapped.
+    add(r, 0x919B, "measure text", 7, 1, [s, th, fh](Ctx& c) {
+        c.pop(), c.pop(), c.pop(); // proportional, bold, width %: not modelled
+        const Word size = c.pop(), font_no = c.pop(), str_addr = c.pop(), out = c.pop();
+        if (!c.ok()) return 0;
+        if (size < 4 || size > 400) { c.push(0x80000001u); return 0; }
+        if (font_no >= fh->table.ids.size()) { c.push(0x80000003u); return 0; }
+        const std::string str = c.cstring(str_addr);
+        auto fnt = th->fonts->open(fh->table.ids[font_no], static_cast<int>(size));
+        if (!fnt) { c.push(0x80000003u); return 0; }
+        TextStyle style;
+        style.wrap = false;
+        auto img = render_text(**fnt, s->code_page == 65001 ? utf8_to_utf32(str) : cp932_to_utf32(str), style, 0);
+        c.write(out, img ? img->width : 0, 4);
+        c.push(0);
+        return 0;
+    });
     // (window, decoration, frame, bitmap): the picture of the window's frame, -1 for none
     add(r, 0x9086, "window frame picture", 4, 0, [s](Ctx& c) {
         const Word image = c.pop(), b = c.pop(), a = c.pop(), handle = c.pop();

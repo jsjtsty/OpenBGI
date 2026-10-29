@@ -73,6 +73,8 @@ class Renderer {
     // Key and mouse-button presses since the previous call as Windows virtual-key codes (mouse: 1 left, 2 right, 4 middle,
     // 5, 6), key repeats included: the numbering the game scripts use for their input.
     std::vector<std::uint32_t> take_presses();
+    // The pointer in logical canvas coordinates (outside the canvas when it is in the letterbox bars).
+    std::pair<int, int> mouse_position() const;
 
     Result<void> begin_frame(const float clear_rgba[4]);
     void draw(const Texture& tex, const DrawParams& p);

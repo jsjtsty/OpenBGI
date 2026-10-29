@@ -16,6 +16,8 @@ std::uint32_t panel_start(SystemState& state, std::uint32_t id, vm::Ctx& c, std:
 void panel_select(SystemState& state, std::uint32_t id, int group, int index);
 // Once per frame: the buttons follow their window object (place, draw order, transparency, visibility).
 void panel_sync(SystemState& state);
+// Once per frame: pointer hover and left clicks on the current group's buttons become panel events (90:BF).
+void panel_input(SystemState& state);
 // Removes the button sprites of the panel.
 void panel_stop(SystemState& state, std::uint32_t id);
 

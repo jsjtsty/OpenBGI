@@ -14,5 +14,7 @@ struct SdcResult {
 
 bool is_sdc(ByteView in);
 Result<SdcResult> sdc_decode(ByteView in);
+// Wraps data into an SDC block using literal runs only (sdc_decode reads it back; the original's encoder also finds matches).
+std::vector<std::uint8_t> sdc_encode(ByteView in, std::uint32_t seed = 0x1234567u);
 
 } // namespace obgi
