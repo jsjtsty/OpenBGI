@@ -188,17 +188,18 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         TextStyle style;
         style.color = colour & 0xFFFFFF;
         style.line_gap = gap;
-        const std::int64_t room = std::int64_t{p->area[2]} - cur.x + 1;
+        // lay out from the left edge of the text area, the first line indented to where the cursor is
+        style.first_indent = cur.x - p->area[0];
+        const std::int64_t room = std::int64_t{p->area[2]} - p->area[0] + 1;
         auto img = render_text(**fnt, s->code_page == 65001 ? utf8_to_utf32(str) : cp932_to_utf32(str), style, room > 0 ? static_cast<std::uint32_t>(room) : 1);
         if (!img || img->width == 0 || img->height == 0) return true;
         const Word text_slot = text_layer(*s, idx);
         if (s->display->upload_slot(kTempSlot, img->width, img->height, SlotFormat::Bgra, img->pixels)) {
-            (void)s->display->blit(text_slot, cur.x, cur.y, kTempSlot, 0, 0, img->width, img->height, 1, 0);
+            (void)s->display->blit(text_slot, p->area[0], cur.y, kTempSlot, 0, 0, img->width, img->height, 1, 0);
             s->display->free_slot(kTempSlot);
         }
         const int line_h = img->lines > 0 ? static_cast<int>(img->height) / img->lines : size;
-        if (img->lines > 1) cur = {p->area[0], cur.y + line_h * (img->lines - 1), true};
-        else cur.x += static_cast<std::int32_t>(img->width);
+        cur = {p->area[0] + img->last_width, cur.y + line_h * (img->lines - 1), true};
         recompose(*s, idx);
         return true;
     };

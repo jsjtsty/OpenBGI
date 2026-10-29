@@ -12,6 +12,7 @@ struct TextStyle {
     std::uint32_t color = 0xFFFFFF; // 0xRRGGBB
     int line_gap = 0;               // extra pixels between lines
     bool wrap = true;               // break lines at max_width
+    int first_indent = 0;           // pixels the first line starts in (text continuing after earlier text on the line)
 };
 
 // Straight-alpha BGRA pixels (one packed uint32 each, B | G<<8 | R<<16 | A<<24) of a block of text on a
@@ -19,6 +20,7 @@ struct TextStyle {
 struct TextImage {
     std::uint32_t width = 0, height = 0;
     int lines = 0;
+    int last_width = 0; // pen position at the end of the last line (includes first_indent when there is one line)
     std::vector<std::uint32_t> pixels;
 };
 

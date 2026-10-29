@@ -15,7 +15,7 @@ struct Placed {
 
 Result<TextImage> render_text(Font& font, const std::u32string& text, const TextStyle& style, std::uint32_t max_width) {
     std::vector<Placed> placed;
-    int pen = 0, line = 0, widest = 0;
+    int pen = style.first_indent, line = 0, widest = 0;
     auto end_line = [&] {
         widest = std::max(widest, pen);
         pen = 0;
@@ -40,6 +40,7 @@ Result<TextImage> render_text(Font& font, const std::u32string& text, const Text
     const int row_height = font.line_height() + style.line_gap;
     TextImage img;
     img.lines = lines;
+    img.last_width = pen;
     img.width = static_cast<std::uint32_t>(std::max(widest, 1));
     img.height = static_cast<std::uint32_t>(std::max(lines * row_height - style.line_gap, 1));
     // glyph ink can reach past the advance box (italic overhang) or above the line: size to the box, clip the rest

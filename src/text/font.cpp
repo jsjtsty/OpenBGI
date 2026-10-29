@@ -4,6 +4,7 @@
 #include FT_FREETYPE_H
 
 #include <algorithm>
+#include <cstdio>
 #include <cstdlib>
 #include <fstream>
 
@@ -58,6 +59,7 @@ std::vector<std::string> candidates_for(const std::string& name_utf8) {
         out = {"meiryo.ttc"};
     else if (k.find("yu gothic") != std::string::npos || k.find("游ゴシック") != std::string::npos)
         out = {"yugothm.ttc", "yugothr.ttc"};
+    out.push_back(n); // already a file name
     out.push_back(n + ".ttf");
     out.push_back(n + ".ttc");
     out.push_back(n + ".otf");
@@ -70,12 +72,17 @@ const char* const kFallbacks[] = {"msgothic.ttc", "yugothr.ttc", "yugothm.ttc", 
                                   "HiraginoSans-W3.ttc", "ヒラギノ角ゴシック W3.ttc", "DroidSansFallbackFull.ttf",
                                   "DroidSansFallback.ttf", "simsun.ttc"};
 
+// File names tried per glyph, after the named font, when it lacks a code point.
+const char* const kGlyphFallbacks[] = {"msyh.ttc", "simsun.ttc", "msjh.ttc", "yugothr.ttc", "meiryo.ttc",
+                                       "NotoSansCJK-Regular.ttc", "NotoSansSC-Regular.otf", "DroidSansFallbackFull.ttf"};
+
 } // namespace
 
 struct Font::Impl {
     FT_Face face = nullptr;
     FileData data;
     std::map<char32_t, std::unique_ptr<Glyph>> cache; // null entry = missing glyph
+    std::vector<std::shared_ptr<Font>> fallbacks;     // tried, in order, for code points this face lacks
     ~Impl() {
         if (face) FT_Done_Face(face);
     }
@@ -88,6 +95,13 @@ const Glyph* Font::glyph(char32_t cp) {
     if (it != impl_->cache.end()) return it->second.get();
     std::unique_ptr<Glyph> g;
     FT_Face face = impl_->face;
+    if (FT_Get_Char_Index(face, cp) == 0) {
+        for (const auto& fb : impl_->fallbacks)
+            if (const Glyph* fg = fb->glyph(cp)) {
+                auto copy = std::make_unique<Glyph>(*fg);
+                return impl_->cache.emplace(cp, std::move(copy)).first->second.get();
+            }
+    }
     if (FT_Get_Char_Index(face, cp) != 0 && FT_Load_Char(face, cp, FT_LOAD_RENDER | FT_LOAD_TARGET_NORMAL) == 0) {
         const FT_GlyphSlot slot = face->glyph;
         const FT_Bitmap& bm = slot->bitmap;
@@ -150,7 +164,7 @@ Result<fs::path> FontLibrary::resolve_impl(const std::string& cp932_name, bool f
             std::error_code ec;
             if (!fs::is_directory(dir, ec)) continue;
             // direct hit first (the common case), then a shallow recursive scan for distro layouts
-            if (fs::path p = dir / file; fs::exists(p, ec)) return p;
+            if (fs::path p = dir / file; fs::is_regular_file(p, ec)) return p;
             for (fs::recursive_directory_iterator it(dir, fs::directory_options::skip_permission_denied, ec), end; !ec && it != end;
                  it.increment(ec)) {
                 if (it.depth() > 3) it.disable_recursion_pending();
@@ -160,6 +174,13 @@ Result<fs::path> FontLibrary::resolve_impl(const std::string& cp932_name, bool f
         return {};
     };
 
+    // OBGI_FONT=<file name or path> replaces every font the scripts name (e.g. msyh.ttc for a Chinese build)
+    if (fallback)
+        if (const char* over = std::getenv("OBGI_FONT")) {
+            std::error_code ec;
+            if (fs::path direct(over); fs::is_regular_file(direct, ec)) return direct;
+            if (fs::path p = find(over); !p.empty()) return p;
+        }
     const std::string utf8 = to_utf8(cp932_to_utf32(cp932_name));
     for (const std::string& file : candidates_for(utf8))
         if (fs::path p = find(file); !p.empty()) return p;
@@ -170,10 +191,26 @@ Result<fs::path> FontLibrary::resolve_impl(const std::string& cp932_name, bool f
 }
 
 Result<std::shared_ptr<Font>> FontLibrary::open(const std::string& cp932_name, int pixel_size) {
-    Impl& m = *impl_;
     if (pixel_size < 4 || pixel_size > 512) return fail(Errc::Range, "font size out of range");
     auto path = resolve(cp932_name);
     if (!path) return std::unexpected(path.error());
+    auto font = open_path(*path, pixel_size);
+    if (!font) return font;
+    // code points the named font lacks (simplified Chinese in a Japanese face, say) come from the first installed font that has them
+    std::vector<std::shared_ptr<Font>> chain;
+    for (const char* file : kGlyphFallbacks) {
+        auto p = resolve_impl(file, false);
+        if (!p || *p == *path) continue;
+        if (auto fb = open_path(*p, pixel_size)) chain.push_back(*fb);
+    }
+    if (std::getenv("OBGI_DBGFONT")) std::fprintf(stderr, "font %s: %zu fallbacks\n", path->string().c_str(), chain.size());
+    (*font)->impl_->fallbacks = std::move(chain);
+    return font;
+}
+
+Result<std::shared_ptr<Font>> FontLibrary::open_path(const fs::path& path_in, int pixel_size) {
+    Impl& m = *impl_;
+    const fs::path* path = &path_in;
     const auto key = std::make_pair(*path, pixel_size);
     if (auto it = m.fonts.find(key); it != m.fonts.end())
         if (auto sp = it->second.lock()) return sp;

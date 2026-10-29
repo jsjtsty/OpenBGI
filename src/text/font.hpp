@@ -58,6 +58,7 @@ class FontLibrary {
 
   private:
     Result<std::filesystem::path> resolve_impl(const std::string& cp932_name, bool fallback) const;
+    Result<std::shared_ptr<Font>> open_path(const std::filesystem::path& path, int pixel_size);
     FontLibrary() = default;
     struct Impl;
     std::unique_ptr<Impl> impl_;
