@@ -9,6 +9,7 @@ struct TextHost {
     Display* display = nullptr;
     FontLibrary* fonts = nullptr;
     const std::uint32_t* code_page = nullptr; // 81:00: 932 or 65001 (UTF-8) for the scripts' strings
+    const std::vector<std::string>* font_ids = nullptr; // B0:C1: font names by the id the scripts hold (92:1E)
 };
 
 // 92:9C draws a string into an image slot (analysis/文字绘制.md). Supported: font name and size, colour,

@@ -158,6 +158,8 @@ void register_core_subops(SubopRegistry& r) {
         std::int64_t until = c.vm.now_ms + static_cast<std::int64_t>(time) * 10;
         if (c.t.objects_until > until) until = c.t.objects_until; // timed display-object changes
         c.t.wait = {WaitObject::Kind::Time, until};
+        if (std::getenv("OBGI_DBGWAIT"))
+            std::fprintf(stderr, "80:5C thread %u at %lld ms: time %u, until %lld (objects until %lld)\n", c.t.id, static_cast<long long>(c.vm.now_ms), time, static_cast<long long>(until), static_cast<long long>(c.t.objects_until));
         if (time == 0 && c.t.objects_until <= c.vm.now_ms) c.t.wait = {WaitObject::Kind::Frame, static_cast<std::int64_t>(c.vm.frame) + 1};
         return static_cast<int>(StayThread);
     });

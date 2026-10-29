@@ -68,6 +68,7 @@ class Display {
     Sprite& sprite(std::uint32_t id) { return sprites_[id]; } // creates on first use
     Sprite* find_sprite(std::uint32_t id);
     void remove_sprite(std::uint32_t id) { sprites_.erase(id); }
+    std::map<std::uint32_t, Sprite>& sprites() { return sprites_; }
     // Shows or hides a sprite and, as the original does, every sprite attached to it by 91:3E.
     void set_visible(std::uint32_t id, bool on, int depth = 0);
 

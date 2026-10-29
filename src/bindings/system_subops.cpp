@@ -154,29 +154,23 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     // on display objects that are not drawn yet, 90:B7 (object, description) -> status 0, 90:E0 creates an object
     add(r, 0x9106, "91:06 (not modelled)", 2, 0, [](Ctx& c) { c.pop(), c.pop(); return 0; });
     add(r, 0x8050, "setting 80:50", 1, 0, [s](Ctx& c) { const Word v = c.pop(); if (c.ok()) s->values[0x8050] = v; return 0; });
-    add(r, 0x90B7, "object method (not modelled)", 2, 1, [](Ctx& c) {
+    add(r, 0x90B7, "paint sprite panel buttons", 2, 1, [s](Ctx& c) {
         const Word desc = c.pop(), object = c.pop();
-        if (std::getenv("OBGI_DBGPANEL") && c.ok())
+        if (!c.ok()) return 0;
+        if (std::getenv("OBGI_DBGPANEL"))
             std::fprintf(stderr, "90:B7 object %X desc %X: groups %d current %d\n", object, desc, int(c.read(desc, 4, false)), int(c.read(desc + 8, 4, false)));
-        c.push(0);
+        c.push(panel_paint(*s, c, object, desc, false));
         return 0;
     });
-    add(r, 0x90E0, "create manager object", 0, 1, [s](Ctx& c) { c.push(0xA0000000u + s->last_manager_object++); return 0; });
-    add(r, 0x90E1, "90:E1 (not modelled)", 1, 0, [](Ctx& c) { c.pop(); return 0; });
-    add(r, 0x90E4, "90:E4 (not modelled)", 2, 0, [](Ctx& c) { c.pop(), c.pop(); return 0; });
     // not modelled yet (display object / effect parameters); pop counts measured in the original: 90:3A 2, 90:53 5, 90:58 9,
     // 91:38 3, 91:9F 2, 92:90 15, 90:90 6 (none pushes anything). 80:1A (mouse region priority) pushes the logical input mask: 0 here
     for (const auto& [id, pops] : {std::pair{0x9053u, 5}, {0x9058u, 9}, {0x9138u, 3}, {0x919Fu, 2}})
         add(r, static_cast<std::uint16_t>(id), "effect parameters (not modelled)", pops, 0, [pops](Ctx& c) { for (int i = 0; i < pops; ++i) c.pop(); return 0; });
-    add(r, 0x801A, "mouse region input (not modelled)", 1, 1, [](Ctx& c) { c.pop(); c.push(0); return 0; });
     add(r, 0x9214, "92:14 wait object (not modelled)", 2, 0, [](Ctx& c) { c.pop(), c.pop(); return 0; });
     add(r, 0x9219, "92:19 (not modelled)", 1, 1, [](Ctx& c) { c.pop(); c.push(0); return 0; });
     // 91:94 / 91:95 (two strings): a text (font name list) registry the original keeps; not modelled. 91:95 pushed 0 in the original.
     add(r, 0x9194, "text registry (not modelled)", 2, 0, [](Ctx& c) { c.pop(), c.pop(); return 0; });
     add(r, 0x9195, "text registry query (not modelled)", 2, 1, [](Ctx& c) { c.pop(), c.pop(); c.push(0); return 0; });
-    add(r, 0x90E5, "90:E5 (not modelled)", 4, 0, [](Ctx& c) { for (int i = 0; i < 4; ++i) c.pop(); return 0; });
-    add(r, 0x90E8, "90:E8 (not modelled)", 4, 0, [](Ctx& c) { for (int i = 0; i < 4; ++i) c.pop(); return 0; });
-    add(r, 0x90E9, "90:E9 (not modelled)", 2, 0, [](Ctx& c) { c.pop(), c.pop(); return 0; });
     // 80:99 (number): removes an 80:98 item; pushes 0, or 1 when there is none
     add(r, 0x8099, "remove item", 1, 1, [s](Ctx& c) {
         const Word id = c.pop();
@@ -880,6 +874,38 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     add(r, 0x8017, "input skip state", 0, 1, [](Ctx& c) { c.push(0); return 0; }); // nothing pressed
     add(r, 0x8014, "set input skip permission", 1, 0, [s](Ctx& c) { const Word v = c.pop(); if (c.ok()) s->values[0x8014] = v; return 0; });
     add(r, 0x800F, "window active", 0, 1, [](Ctx& c) { c.push(1); return 0; });
+    // 92:F0 (6 values, two of them addresses): makes a video window of the movie cluster (analysis/视频.md) and pushes a result;
+    // there is none yet, so it answers 0. 90:F3 (volume 0..0x80) and 90:01 (a value kept in a display global) only take their argument.
+    add(r, 0x92F0, "movie window (not modelled)", 6, 1, [](Ctx& c) { for (int i = 0; i < 6; ++i) c.pop(); c.push(0); return 0; });
+    add(r, 0x90F3, "movie volume", 1, 0, [s](Ctx& c) { const Word v = c.pop(); if (c.ok()) s->values[0x90F3] = v; return 0; });
+    add(r, 0x9001, "display global 90:01", 1, 0, [s](Ctx& c) { const Word v = c.pop(); if (c.ok()) s->values[0x9001] = v; return 0; });
+    // 90:F2: whether a movie is still playing; none is, so 0
+    add(r, 0x90F2, "movie playing", 0, 1, [](Ctx& c) { c.push(0); return 0; });
+    // 91:10..1E (except 91:1C): bitmap effects (stretch, vector graphics, bend, blend by degree, transforms); the pop counts are
+    // known, the effects are not drawn yet
+    for (auto [id, n] : {std::pair{0x9110, 5}, {0x9111, 2}, {0x9112, 6}, {0x9113, 5}, {0x9114, 5}, {0x9115, 5}, {0x9116, 7}, {0x9117, 6},
+                         {0x9118, 11}, {0x9119, 11}, {0x911A, 3}, {0x911B, 5}, {0x911D, 5}, {0x911E, 4}})
+        add(r, static_cast<std::uint16_t>(id), "bitmap effect (not drawn)", n, 0, [n](Ctx& c) { for (int i = 0; i < n; ++i) c.pop(); return 0; });
+    // 80:16 (no arguments): resets the original's key state tables; our input is edge counted, nothing to reset
+    add(r, 0x8016, "input reset", 0, 0, [](Ctx&) { return 0; });
+    // 80:13: a number that changes whenever any input arrives (the original bumps it on window events); the sum of the press counts
+    add(r, 0x8013, "input serial", 0, 1, [s](Ctx& c) {
+        std::uint32_t sum = 0;
+        for (std::uint32_t n : s->input_counts) sum += n;
+        c.push(sum);
+        return 0;
+    });
+    add(r, 0x8015, "skip latch", 1, 0, [s](Ctx& c) { const Word v = c.pop(); if (c.ok()) s->values[0x8015] = v; return 0; });
+    // 80:39 (dir): the alternative game directory (path selector 1 of 80:3D); 1 when the directory exists
+    add(r, 0x8039, "alternative directory", 1, 1, [s](Ctx& c) {
+        const std::string dir = c.cstring(c.pop());
+        if (!c.ok()) return 0;
+        std::error_code ec;
+        const bool ok = !dir.empty() && std::filesystem::is_directory(std::filesystem::path(std::u8string(dir.begin(), dir.end())), ec);
+        if (ok) s->alt_path = dir + (dir.back() == '\\' || dir.back() == '/' ? "" : "\\");
+        c.push(ok ? 1 : 0);
+        return 0;
+    });
     // 80:61: the mode the display was set up with (the argument of the original's Direct3D set-up): 1 full screen, 0 windowed
     add(r, 0x8061, "display set-up mode", 0, 1, [](Ctx& c) { c.push(0); return 0; });
     // 92:15 only calls a flush routine in the original (no arguments, no result); 90:43 / 90:28 take 9 / 12 values for
@@ -986,9 +1012,9 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
             if (!c.ok()) return 0;
             if (std::getenv("OBGI_DBGPANEL")) std::fprintf(stderr, "80:AC control %u msg %X %X %X\n", num, w[0], w[1], w[2]);
             if (w[0] == 0x10000000) {
-                it->second.events.push_back({0x10000006u, w[1], w[2]});
-                if (it->second.basic) it->second.info = {0, w[1] >> 16, w[1] & 0xFFFF, w[2], 0, 0};
-                else it->second.info = {1, 0, w[1], 0, 0, 0};
+                panel_decide(*s, num, static_cast<std::int16_t>(w[1] >> 16), static_cast<std::int16_t>(w[1] & 0xFFFF), w[2]);
+            } else if (w[0] == 0x10000001) {
+                panel_set_group(*s, num, static_cast<int>(w[1]));
             } else if (w[0] == 0x10000002) {
                 panel_select(*s, num, static_cast<int>(w[1]), static_cast<int>(w[2]));
             }
@@ -1000,7 +1026,13 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     add(r, 0x801F, "mouse motion", 6, 0, [](Ctx& c) { for (int i = 0; i < 6; ++i) c.pop(); return 0; });
     // 90:B6 / 90:BA (object, description) and 90:B8 (object): object property lookups, answered "none" until modelled;
     // 90:22 (7 values: priority, skip flag, three timing values, opacity, object): a timed opacity change, not modelled
-    add(r, 0x90B6, "object property (not modelled)", 2, 1, [](Ctx& c) { c.pop(), c.pop(); c.push(0); return 0; });
+    add(r, 0x90B6, "paint plain panel buttons", 2, 1, [s](Ctx& c) {
+        const Word desc = c.pop(), object = c.pop();
+        if (!c.ok()) return 0;
+        if (std::getenv("OBGI_DBGPANEL")) std::fprintf(stderr, "90:B6 object %X desc %X groups %d\n", object, desc, int(c.read(desc, 4, false)));
+        c.push(panel_paint(*s, c, object, desc, true));
+        return 0;
+    });
     // 90:B8 (window) / 90:BA (description, number): the plain panel, registered and started like 91:B8 / 91:BA; a number that does
     // not exist gives 1, a panel that has started 4
     add(r, 0x90B8, "register plain panel", 1, 1, [s](Ctx& c) {
@@ -1021,7 +1053,6 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
         c.push(panel_start(*s, id, c, desc));
         return 0;
     });
-    add(r, 0x9022, "timed opacity (not modelled)", 7, 0, [](Ctx& c) { for (int i = 0; i < 7; ++i) c.pop(); return 0; });
     add(r, 0x8008, "mouse position", 0, 2, [s](Ctx& c) { c.push(static_cast<Word>(s->mouse_x)), c.push(static_cast<Word>(s->mouse_y)); return 0; }); // client x, y
     add(r, 0x810F, "window minimised", 0, 1, [](Ctx& c) { c.push(0); return 0; });
     add(r, 0x8018, "input priority add", 1, 0, [](Ctx& c) { c.pop(); return 0; });
@@ -1066,7 +1097,6 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
         if (c.ok() && (lo > 0xFFFF || hi > 0xFFFF)) c.fail(Errc::Range, "display priority range out of bounds");
         return 0;
     });
-    add(r, 0x9020, "object motion wait", 6, 0, [](Ctx& c) { for (int i = 0; i < 6; ++i) c.pop(); return 0; });
 
     add_setter(r, state, 0x8068, "window close policy");
     add_setter(r, state, 0x8052, "setting 80:52");

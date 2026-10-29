@@ -152,6 +152,7 @@ int main(int argc, char** argv) {
     FontHost fh;
     fh.fonts = fonts->get();
     register_font_subops(registry, fh);
+    th.font_ids = &fh.table.ids;
     register_audio_subops(registry, sh);
     register_movie_subops(registry, mh);
     SystemState system;
@@ -307,6 +308,10 @@ int main(int argc, char** argv) {
                 unsigned vk = 0;
                 if (std::sscanf(tok.c_str(), "%ld:%x", &at, &vk) == 2 && at == f) system.press_input(vk);
             }
+        if (const char* ce = std::getenv("OBGI_CLICK_EVERY")) { // "first:period": a left click every `period` frames from `first` on
+            long first = 0, period = 0;
+            if (std::sscanf(ce, "%ld:%ld", &first, &period) == 2 && period > 0 && f >= first && (f - first) % period == 0) system.press_input(1);
+        }
         if (const char* pm = std::getenv("OBGI_MOUSE")) // "frame:x:y,...": scripted pointer moves for headless runs
             for (std::stringstream ss(pm); ss.good();) {
                 std::string tok;

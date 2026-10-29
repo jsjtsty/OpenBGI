@@ -2,6 +2,7 @@
 // the handle 0xB0000000 + slot. Nothing draws them yet; the state a display object needs later is kept in
 // SystemState::planes. Analysis: analysis/子opcode语义表.md and the handlers FUN_0048cdb0..0048d240.
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 
@@ -150,6 +151,84 @@ void register_object_settings(vm::SubopRegistry& r, SystemState& state, Display*
         sl->moved = false;
         return 0;
     });
+    // Groups (90:E0..E9): up to 8 invisible parent objects, handle 0xF1000000 | index. Members follow the group at their offsets
+    // (the master/slave mechanism), and show / hide / level of the group are applied to them. Group sprites have no image slot.
+    if (display) {
+    constexpr Word group_tag = 0xF1000000u, no_image = 0xFFFFFFFFu;
+    auto group_of = [display](Ctx& c, Word h) -> Sprite* {
+        Sprite* g = (h & 0xFFFFFFF8u) == group_tag ? display->find_sprite(h) : nullptr;
+        if (!g || g->slot != no_image) c.fail(Errc::Range, "no group " + std::to_string(h));
+        return g && g->slot == no_image ? g : nullptr;
+    };
+    auto members = [display](Word group) {
+        std::vector<Word> out;
+        for (auto& [id, sp] : display->sprites())
+            if (sp.has_master && sp.master == group) out.push_back(id);
+        return out;
+    };
+    add(r, 0x90E0, "create group", 0, 1, [display](Ctx& c) {
+        for (Word i = 0; i < 8; ++i)
+            if (!display->find_sprite(group_tag | i)) {
+                Sprite& g = display->sprite(group_tag | i);
+                g = Sprite{};
+                g.slot = no_image, g.visible = false;
+                c.push(group_tag | i);
+                return 0;
+            }
+        c.fail(Errc::Range, "no more groups (the limit is 8)");
+        return 0;
+    });
+    add(r, 0x90E1, "delete group", 1, 0, [display, group_of, members](Ctx& c) {
+        const Word h = c.pop();
+        if (!c.ok() || !group_of(c, h)) return 0;
+        for (Word m : members(h)) display->find_sprite(m)->has_master = false;
+        display->remove_sprite(h);
+        return 0;
+    });
+    add(r, 0x90E4, "show group", 2, 0, [display, group_of](Ctx& c) {
+        const Word on = c.pop(), h = c.pop();
+        if (!c.ok() || !group_of(c, h)) return 0;
+        display->set_visible(h, on != 0);
+        return 0;
+    });
+    add(r, 0x90E5, "set group position and level", 4, 0, [display, group_of, members](Ctx& c) {
+        const Word level = c.pop();
+        const auto y = static_cast<std::int32_t>(c.pop()), x = static_cast<std::int32_t>(c.pop());
+        const Word h = c.pop();
+        if (!c.ok()) return 0;
+        Sprite* g = group_of(c, h);
+        if (!g) return 0;
+        if (level > 0x100) { c.fail(Errc::Range, "alpha out of range"); return 0; }
+        g->x = x, g->y = y, g->alpha = level;
+        for (Word m : members(h)) display->find_sprite(m)->alpha = level;
+        return 0;
+    });
+    add(r, 0x90E8, "add object to group", 4, 0, [display, group_of](Ctx& c) {
+        const auto dy = static_cast<std::int32_t>(c.pop()), dx = static_cast<std::int32_t>(c.pop());
+        const Word obj = c.pop(), h = c.pop();
+        if (!c.ok()) return 0;
+        Sprite* g = group_of(c, h);
+        if (!g) return 0;
+        Sprite* o = display->find_sprite(obj);
+        if (!o) { c.fail(Errc::Range, "no display object " + std::to_string(obj)); return 0; }
+        if (obj == h) { c.fail(Errc::Range, "an object cannot be added to itself"); return 0; }
+        if (std::getenv("OBGI_DBGOBJ")) std::fprintf(stderr, "group %X add %X at %d,%d (visible %d alpha %u slot %u)\n", h, obj, dx, dy, o->visible, o->alpha, o->slot);
+        if (o->has_master) { c.fail(Errc::Range, "the object already has an owner"); return 0; }
+        o->has_master = true, o->master = h, o->master_dx = dx, o->master_dy = dy, o->moved = false;
+        o->x = g->x + dx, o->y = g->y + dy;
+        o->visible = g->visible;
+        return 0;
+    });
+    add(r, 0x90E9, "remove object from group", 2, 0, [display, group_of](Ctx& c) {
+        const Word obj = c.pop(), h = c.pop();
+        if (!c.ok() || !group_of(c, h)) return 0;
+        Sprite* o = display->find_sprite(obj);
+        if (!o) { c.fail(Errc::Range, "no display object " + std::to_string(obj)); return 0; }
+        if (!o->has_master || o->master != h) { c.fail(Errc::Range, "the object is not in the group"); return 0; }
+        o->has_master = false;
+        return 0;
+    });
+    }
     // (slave, ?): detaches a slave object
     add(r, 0x913F, "unbind slave object", 2, 0, [display](Ctx& c) {
         const Word unused = c.pop(), slave = c.pop();
@@ -179,6 +258,53 @@ void add_plane_setting(vm::SubopRegistry& r, SystemState& s, std::uint16_t id, c
     });
 }
 
+// The original's Ease(): progress t (0..0x1000000 = 1.0) to a 16.16 factor. Curve 0 is linear, 1..3 sine easing, 4..15 powers.
+std::int32_t ease(std::int32_t t, int curve) {
+    constexpr double deg16_to_rad = 2.663161090079238e-07;
+    constexpr double powers[6] = {2.0, 2.5, 3.0, 4.0, 5.0, 6.0};
+    switch (curve) {
+    case 1: return static_cast<std::int32_t>((std::cos((0xB40000 - std::int64_t{t} * 180 / 256) * deg16_to_rad) + 1.0) * 32768.0);
+    case 2: return static_cast<std::int32_t>(std::sin((std::int64_t{t} * 90 / 256) * deg16_to_rad) * 65536.0);
+    case 3: return static_cast<std::int32_t>((1.0 - std::sin((0x5A0000 - std::int64_t{t} * 90 / 256) * deg16_to_rad)) * 65536.0);
+    default:
+        if (curve >= 4 && curve <= 15) {
+            const double n = powers[(curve - 4) / 2];
+            if (curve & 1) return static_cast<std::int32_t>((1.0 - std::pow(double(0x1000000 - t), n) / std::pow(16777216.0, n)) * 65536.0);
+            return static_cast<std::int32_t>(std::pow(double(t), n) * 65536.0 / std::pow(16777216.0, n));
+        }
+        return t / 256;
+    }
+}
+
+// Starts a timed change of display object `id`: to (x, y) along `curve` and to alpha `level` along `level_curve`, over
+// `duration` ms. The object becomes visible; scripts wait for the end with 80:5C. `move` = false leaves the position alone.
+void start_motion(SystemState& s, Display& display, Ctx& c, Word id, bool move, std::int32_t x, std::int32_t y, int curve, Word level,
+                  int level_curve, Word duration) {
+    Sprite* sp = display.find_sprite(id);
+    if (!sp && id >= 0x90000000u) return; // filters, effectors, windows and the like are not drawn objects here
+    if (!sp) { c.fail(Errc::Range, "no display object " + std::to_string(id)); return; }
+    SystemState::Motion m;
+    m.object = id;
+    m.start_ms = c.vm.now_ms;
+    m.duration_ms = duration;
+    m.from_x = sp->x, m.from_y = sp->y;
+    m.to_x = move ? x : sp->x, m.to_y = move ? y : sp->y;
+    m.curve = curve;
+    m.from_level = static_cast<std::int32_t>(sp->alpha), m.to_level = static_cast<std::int32_t>(level);
+    m.level_curve = level_curve;
+    sp->visible = true;
+    if (std::getenv("OBGI_DBGOBJ"))
+        std::fprintf(stderr, "motion object %X: %d,%d -> %d,%d level %d -> %d over %u ms\n", id, m.from_x, m.from_y, m.to_x, m.to_y, m.from_level, m.to_level, duration);
+    std::erase_if(s.motions, [&](const auto& o) { return o.object == id; });
+    if (m.duration_ms <= 0) {
+        if (move) sp->move_to(m.to_x, m.to_y);
+        sp->alpha = level;
+        return;
+    }
+    s.motions.push_back(m);
+    c.t.objects_until = std::max(c.t.objects_until, m.start_ms + m.duration_ms);
+}
+
 } // namespace
 
 void advance_motions(SystemState& state, Display& display, std::int64_t now_ms) {
@@ -186,8 +312,15 @@ void advance_motions(SystemState& state, Display& display, std::int64_t now_ms) 
         Sprite* sp = display.find_sprite(it->object);
         const std::int64_t elapsed = std::min(now_ms - it->start_ms, it->duration_ms);
         if (sp && it->duration_ms > 0) {
-            sp->move_to(it->from_x + static_cast<std::int32_t>((std::int64_t{it->to_x} - it->from_x) * elapsed / it->duration_ms),
-                        it->from_y + static_cast<std::int32_t>((std::int64_t{it->to_y} - it->from_y) * elapsed / it->duration_ms));
+            const bool done = elapsed >= it->duration_ms;
+            const auto t = static_cast<std::int32_t>(elapsed * 0x1000000 / it->duration_ms);
+            const std::int64_t fp = done ? 0x10000 : ease(t, it->curve), fl = done ? 0x10000 : ease(t, it->level_curve);
+            sp->move_to(it->from_x + static_cast<std::int32_t>((std::int64_t{it->to_x} - it->from_x) * fp >> 16),
+                        it->from_y + static_cast<std::int32_t>((std::int64_t{it->to_y} - it->from_y) * fp >> 16));
+            sp->alpha = static_cast<std::uint32_t>(it->from_level + static_cast<std::int32_t>((std::int64_t{it->to_level} - it->from_level) * fl >> 16));
+            if (sp->slot == 0xFFFFFFFFu) // a group (90:E0): its members take its level
+                for (auto& [mid, m] : display.sprites())
+                    if (m.has_master && m.master == it->object) m.alpha = sp->alpha;
         }
         it = (!sp || now_ms - it->start_ms >= it->duration_ms) ? state.motions.erase(it) : it + 1;
     }
@@ -220,30 +353,39 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
     // 90:28, popped in this order: priority, input-skip flag, total, rate, step, three more values (alpha-like, not
     // modelled), a value, y, x, object. The object moves to (x, y) linearly over total * 1000 / rate ms; 80:5C waits for it.
     // (analysis: FUN_0048a0e0 -> FUN_004a1070 -> CProcCtrlDspObj FUN_00437d60). A rate of 0 or a missing object is a script error.
+    // Popped in this order: prio, skip, max skip, fps, duration (ms), progress, level curve, level, curve, y, x, object (the
+    // reference engine's layout, docs/vm.md of the other project). A rate of 0 or a missing object is a script error.
     if (display) add(r, 0x9028, "move object over time", 12, 0, [s, display](Ctx& c) {
         Word a[12];
         for (Word& w : a) w = c.pop();
         if (!c.ok()) return 0;
-        const Word total = a[2], rate = a[3], y = a[9], x = a[10], id = a[11];
-        if (rate == 0) { c.fail(Errc::Range, "90:28: rate 0"); return 0; }
-        Sprite* sp = display->find_sprite(id);
-        if (!sp && id != 0) { c.fail(Errc::Range, "no display object " + std::to_string(id)); return 0; }
-        if (!sp) return 0;
-        SystemState::Motion m;
-        m.object = id;
-        m.start_ms = c.vm.now_ms;
-        m.duration_ms = std::int64_t{total} * 1000 / rate;
-        m.from_x = sp->x, m.from_y = sp->y;
-        m.to_x = static_cast<std::int32_t>(x), m.to_y = static_cast<std::int32_t>(y);
-        std::erase_if(s->motions, [&](const auto& o) { return o.object == id; });
-        if (m.duration_ms <= 0) {
-            sp->move_to(m.to_x, m.to_y);
-            return 0;
-        }
-        s->motions.push_back(m);
-        c.t.objects_until = std::max(c.t.objects_until, m.start_ms + m.duration_ms);
+        if (a[3] == 0) { c.fail(Errc::Range, "90:28: rate 0"); return 0; }
+        start_motion(*s, *display, c, a[11], true, static_cast<std::int32_t>(a[10]), static_cast<std::int32_t>(a[9]), static_cast<int>(a[8]), a[7],
+                     static_cast<int>(a[6]), a[4]);
         return 0;
     });
+    // 90:20 fade: prio, skip, fps, duration, level, object. 90:22 adds max skip after skip.
+    // 90:21 move: prio, skip, fps, duration, level, curve, y, x, object. 90:23 adds max skip after skip.
+    if (display) {
+        for (auto [id, n] : {std::pair{0x9020, 6}, {0x9022, 7}, {0x9021, 9}, {0x9023, 10}}) {
+            const bool move = id == 0x9021 || id == 0x9023;
+            const bool has_max = id == 0x9022 || id == 0x9023;
+            add(r, static_cast<std::uint16_t>(id), move ? "move object (timed)" : "fade object (timed)", n, 0, [s, display, n, move, has_max](Ctx& c) {
+                std::vector<Word> a(static_cast<std::size_t>(n));
+                for (Word& w : a) w = c.pop();
+                if (!c.ok()) return 0;
+                const std::size_t i = has_max ? 3 : 2; // index of fps
+                if (a[i] == 0) { c.fail(Errc::Range, "invalid frame rate"); return 0; }
+                if (a[i + 2] > 0x100) { c.fail(Errc::Range, "alpha out of range"); return 0; }
+                if (move)
+                    start_motion(*s, *display, c, a[std::size_t(n) - 1], true, static_cast<std::int32_t>(a[std::size_t(n) - 2]),
+                                 static_cast<std::int32_t>(a[std::size_t(n) - 3]), static_cast<int>(a[std::size_t(n) - 4]), a[i + 2], 0, a[i + 1]);
+                else
+                    start_motion(*s, *display, c, a[std::size_t(n) - 1], false, 0, 0, 0, a[i + 2], 0, a[i + 1]);
+                return 0;
+            });
+        }
+    }
     // 90:29: the same over a path of n points (four 16.16 words each: x, y, z, padding); popped in this order: priority, skip,
     // max skip, fps, duration (frames), progress, level curve, level, curve, point address, n, object. Simplified: the object
     // moves straight to the last point; the intermediate points and the curve are not followed yet.
@@ -253,27 +395,21 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
         if (!c.ok()) return 0;
         const Word id = a[11], n = a[10], points = a[9], duration = a[4], fps = a[3];
         if (fps == 0 || n == 0) { c.fail(Errc::Range, "90:29: bad frame rate or point count"); return 0; }
-        Sprite* sp = display->find_sprite(id);
-        if (!sp) { c.fail(Errc::Range, "no display object " + std::to_string(id)); return 0; }
         const Word last = points + 16 * (n - 1);
-        if (std::getenv("OBGI_DBGMOVE"))
-            std::fprintf(stderr, "90:29 object %X n=%u duration=%u fps=%u from %d,%d to %d,%d\n", id, n, duration, fps, sp->x, sp->y,
-                         static_cast<int>(c.read(last, 4, false)) >> 16, static_cast<int>(c.read(last + 4, 4, false)) >> 16);
-        SystemState::Motion m;
-        m.object = id;
-        m.start_ms = c.vm.now_ms;
-        m.duration_ms = std::int64_t{duration} * 1000 / fps;
-        m.from_x = sp->x, m.from_y = sp->y;
-        m.to_x = static_cast<std::int32_t>(c.read(last, 4, false)) >> 16;
-        m.to_y = static_cast<std::int32_t>(c.read(last + 4, 4, false)) >> 16;
+        const auto to_x = static_cast<std::int32_t>(c.read(last, 4, false)) >> 16;
+        const auto to_y = static_cast<std::int32_t>(c.read(last + 4, 4, false)) >> 16;
         if (!c.ok()) return 0;
-        std::erase_if(s->motions, [&](const auto& o) { return o.object == id; });
-        if (m.duration_ms <= 0) {
-            sp->move_to(m.to_x, m.to_y);
-            return 0;
-        }
-        s->motions.push_back(m);
-        c.t.objects_until = std::max(c.t.objects_until, m.start_ms + m.duration_ms);
+        start_motion(*s, *display, c, id, true, to_x, to_y, static_cast<int>(a[8]), a[7], static_cast<int>(a[6]), duration);
+        return 0;
+    });
+    // 90:24: through a via point; popped: prio, skip, max skip, fps, duration, level, curve, y, x, via y, via x, object.
+    // Simplified: straight to (x, y).
+    if (display) add(r, 0x9024, "move object through a point", 12, 0, [s, display](Ctx& c) {
+        Word a[12];
+        for (Word& w : a) w = c.pop();
+        if (!c.ok()) return 0;
+        if (a[3] == 0) { c.fail(Errc::Range, "invalid frame rate"); return 0; }
+        start_motion(*s, *display, c, a[11], true, static_cast<std::int32_t>(a[8]), static_cast<std::int32_t>(a[7]), static_cast<int>(a[6]), a[5], 0, a[4]);
         return 0;
     });
     // (handle): pushes one number (zero for now)

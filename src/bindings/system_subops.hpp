@@ -24,11 +24,15 @@ struct SystemState {
     std::string game_name = "AmairoChocolate2ML"; // 80:E8
     std::uint32_t frame_ms = 0;            // 90:02: milliseconds per frame, 1000 / fps (0 = unset)
     std::uint32_t code_page = 932;         // 81:00: 932 (CP932) or 65001 (UTF-8) for script strings
-    // 90:28: timed moves of a display object, advanced by advance_motions() once per scheduler frame
+    // 90:20..24, 90:28, 90:29: timed changes of a display object (position along an ease curve, level along another),
+    // advanced by advance_motions() once per scheduler frame
     struct Motion {
         std::uint32_t object = 0;
         std::int64_t start_ms = 0, duration_ms = 0;
         std::int32_t from_x = 0, from_y = 0, to_x = 0, to_y = 0;
+        std::int32_t curve = 0;                  // ease curve of the position
+        std::int32_t from_level = 0, to_level = 0; // the object's alpha (90:32)
+        std::int32_t level_curve = 0;
     };
     std::vector<Motion> motions;
     std::uint32_t last_manager_object = 0;
@@ -51,6 +55,7 @@ struct SystemState {
     // pressed since the start (key repeats count). 80:12 / 80:1C answer with sums of these, scripts watch for changes
     // (analysis/输入.md). The host calls press_input().
     std::array<std::uint32_t, 256> input_counts{};
+    std::map<std::uint32_t, std::array<std::uint32_t, 256>> poll_seen; // 80:1A: the counts at the last poll, per priority
     int mouse_x = 0, mouse_y = 0;                       // pointer in screen coordinates, set by the host
     void press_input(std::uint32_t number) { if (number < input_counts.size()) ++input_counts[number]; }
     // The input numbers behind one logical input mask bit: a script's 80:1B list, else the original's default.
@@ -74,18 +79,28 @@ struct SystemState {
         std::int32_t bmp_normal = -1, bmp_focus = -1, bmp_selected = -1, bmp_selected_focus = -1;
         std::uint32_t flags = 0;
         std::uint32_t sprite = 0;             // display object id of the drawn button, 0 = not drawn
+        std::uint32_t hotkey = 0;             // plain panel: virtual key that decides the button (bit 31: also on repeat)
+        bool no_hit = false;                  // hit mask -2: the pointer cannot hit it
     };
     struct PanelGroup {
         std::int32_t columns = 1, selected = -1;
+        bool selectable = true, hover_selects = false, click_decides = false;
+        std::int32_t link_id = -1;            // groups sharing an id (not -1) are mutually exclusive
         std::vector<PanelButton> buttons;
     };
     struct IconControl {
         std::uint32_t window = 0;                        // 91:B8: the window object the buttons sit on
         bool basic = false;                              // made by 90:B8: the plain panel with the smaller descriptor
+        bool paint_only = false;                         // 90:B6 / 90:B7: buttons painted over a window, no input
         std::vector<PanelGroup> groups;                  // 91:BA: the started panel
         int current_group = -1;
         int hover_group = -1, hover_index = -1;          // the button under the pointer
         std::uint32_t seen_clicks = 0;                   // left-button presses already looked at
+        bool modal = false, select_on_decide = false;    // descriptor: modal panel (reads every key), select on a mouse decision
+        std::uint32_t input_mask = 0;                    // descriptor: input bits the panel ignores
+        std::int32_t key_map = 0;                        // descriptor: built-in key map 0..3 (user maps 4..7 act like 0)
+        std::array<std::uint32_t, 256> seen_input{};     // press counts at the last update, to see what was pressed since
+        int last_mouse_x = -1, last_mouse_y = -1;        // pointer of the last hover selection
         int reads = 0;                                 // 90:BF reads answered so far (the first two give the initial event)
         std::deque<std::array<std::uint32_t, 3>> events; // pending 90:BF records
         std::array<std::uint32_t, 6> info{1, 0x00370038, 0x002E0037, 0x006E0069, 0, 0}; // 90:BC record

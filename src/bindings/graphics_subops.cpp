@@ -263,6 +263,30 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         check(c, d.blit(dst, dx, dy, src, 0, 0, s->width, s->height, mode, alpha));
         return 0;
     });
+    // 90:1E (dst, dx, dy, src, sx, sy, w, h): plain copy of the part of src at (sx, sy) to (dx, dy); an empty size is not an error
+    add(r, 0x901E, "copy rectangle", 8, 0, [&d](Ctx& c) {
+        const Word h = c.pop(), w = c.pop();
+        const auto sy = static_cast<std::int32_t>(c.pop()), sx = static_cast<std::int32_t>(c.pop());
+        const Word src = c.pop();
+        const auto dy = static_cast<std::int32_t>(c.pop()), dx = static_cast<std::int32_t>(c.pop());
+        const Word dst = c.pop();
+        if (!c.ok()) return 0;
+        if (!d.slot(dst)) { c.fail(Errc::Range, "no image slot " + std::to_string(dst)); return 0; }
+        if (!d.slot(src)) { c.fail(Errc::Range, "no image slot " + std::to_string(src)); return 0; }
+        if (w == 0 || h == 0) return 0;
+        check(c, d.blit(dst, dx, dy, src, sx, sy, w, h, 0x80, 0));
+        return 0;
+    });
+    // 90:04 (slot): the slot becomes a screen-sized copy of the composed screen
+    add(r, 0x9004, "snapshot", 1, 0, [&d](Ctx& c) {
+        const Word slot = c.pop();
+        if (!c.ok()) return 0;
+        check(c, d.compose());
+        auto px = d.read_screen();
+        if (!c.ok() || !px) return 0;
+        check(c, d.upload_slot(slot, d.screen_width(), d.screen_height(), SlotFormat::Bgrx, *px));
+        return 0;
+    });
     // 92:17 (out, slot, x, y): copies the pixel at x, y of the slot to the address (a packed pixel in the slot's format) and
     // pushes 0; 1 no such slot, 3 the point lies outside.
     add(r, 0x9217, "read pixel", 4, 1, [&d](Ctx& c) {
@@ -419,6 +443,23 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         }
         Sprite& s = d.sprite(id);
         s.slot = slot, s.x = x, s.y = y, s.blend = blend, s.alpha = alpha, s.priority = priority;
+        return 0;
+    });
+    // 90:5A (object, x, y, bmp, gray, wipe mode, progress, effect, level, prio): a sprite whose appearance is revealed through the
+    // grey filter bitmap `gray` as `progress` (0..0x100) grows. The wipe itself is not drawn: the picture is shown as a plain sprite.
+    add(r, 0x905A, "set wipe sprite", 10, 0, [&d](Ctx& c) {
+        const Word priority = c.pop(), level = c.pop(), effect = c.pop(), progress = c.pop(), wipe_mode = c.pop(), gray = c.pop(), slot = c.pop();
+        const auto y = static_cast<std::int32_t>(c.pop()), x = static_cast<std::int32_t>(c.pop());
+        const Word id = c.pop();
+        (void)wipe_mode, (void)gray;
+        if (!c.ok() || !slot_ok(c, slot)) return 0;
+        if (level > 0x100 || progress > 0x100 || priority > 0xffff || !blend_mode_supported(effect)) {
+            c.fail(Errc::Range, "wipe sprite parameter out of range or unsupported blend mode");
+            return 0;
+        }
+        if (!d.slot(slot)) { c.fail(Errc::Range, "no image slot " + std::to_string(slot)); return 0; }
+        Sprite& s = d.sprite(id);
+        s.slot = slot, s.x = x, s.y = y, s.blend = effect, s.alpha = level, s.priority = priority;
         return 0;
     });
     // 90:5C (17 values, popped top first: priority, alpha, visible, ?, ?, focal distance, 5 unknowns, second slot (-1 = none), image slot,

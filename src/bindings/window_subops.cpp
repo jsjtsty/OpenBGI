@@ -161,6 +161,22 @@ void register_window_subops(vm::SubopRegistry& r, SystemState& state, Display* d
         c.push(sum);
         return 0;
     });
+    // 80:1A (priority): the logical input mask of what was pressed since the last poll at that priority (bits as in 80:1B: the
+    // mouse buttons 1 2 4 0x10 0x20, the standard-key groups above). The input layers are not modelled, every poll sees all input.
+    // The first poll of a priority starts counting from the current state.
+    add(r, 0x801A, "poll input", 1, 1, [s](Ctx& c) {
+        const Word prio = c.pop();
+        if (!c.ok()) return 0;
+        auto [it, fresh] = s->poll_seen.try_emplace(prio, s->input_counts);
+        Word mask = 0;
+        if (!fresh)
+            for (Word bit = 1; bit != 0; bit <<= 1)
+                for (Word n : s->input_numbers(bit))
+                    if (n < s->input_counts.size() && s->input_counts[n] != it->second[n]) mask |= bit;
+        it->second = s->input_counts;
+        c.push(mask);
+        return 0;
+    });
     add(r, 0x8062, "window numbers", 2, 0, [s](Ctx& c) {
         const Word addr = c.pop(), id = c.pop();
         std::vector<Word> list;

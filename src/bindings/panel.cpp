@@ -60,15 +60,20 @@ std::uint32_t panel_start_basic(SystemState& s, SystemState::IconControl& ic, st
         pg.columns = count < wide ? count : (wide != 0 ? wide : count);
         const std::int32_t sel = word(c, ga + 8);
         pg.selected = sel >= 0 && sel < count ? sel : -1;
+        pg.selectable = word(c, ga + 0xC) != 0, pg.hover_selects = word(c, ga + 0x10) != 0;
+        pg.click_decides = word(c, ga + 0x14) != 0, pg.link_id = word(c, ga + 0x18);
         for (std::int32_t i = 0; i < count; ++i) {
             const Word ba = buttons + 0x3C * static_cast<Word>(i);
             SystemState::PanelButton b;
             b.enabled = b.shown = word(c, ba) != 0;
             b.x = word(c, ba + 4), b.y = word(c, ba + 8);
+            // enabled, x, y, normal, selected (-1: the normal one), focus (-1: none), hit mask (-2: cannot be hit), ..., hotkey at 0x38
             b.bmp_normal = word(c, ba + 0xC), b.bmp_selected = word(c, ba + 0x10);
-            const std::int32_t focus = word(c, ba + 0x18);
+            const std::int32_t focus = word(c, ba + 0x14);
             b.bmp_focus = focus < 0 ? -1 : focus;
             b.bmp_selected_focus = b.bmp_focus;
+            b.no_hit = word(c, ba + 0x18) == -2;
+            b.hotkey = static_cast<std::uint32_t>(word(c, ba + 0x38));
             if (!c.ok()) return 3;
             pg.buttons.push_back(b);
         }
@@ -77,6 +82,10 @@ std::uint32_t panel_start_basic(SystemState& s, SystemState::IconControl& ic, st
     const std::int32_t cur = word(c, desc + 8);
     ic.groups = std::move(out);
     ic.current_group = cur >= 0 && cur < group_count ? cur : -1;
+    ic.modal = word(c, desc + 0xC) != 0, ic.input_mask = static_cast<std::uint32_t>(word(c, desc + 0x14));
+    ic.key_map = word(c, desc + 0x18) & 7, ic.select_on_decide = word(c, desc + 0x1C) != 0;
+    ic.seen_input = s.input_counts;
+    ic.info = {1, 0xFFFFFFFFu, 0xFFFFFFFFu, 0, 0, 0};
     std::uint32_t k = 0;
     for (auto& g : ic.groups)
         for (std::size_t i = 0; i < g.buttons.size(); ++i, ++k) {
@@ -112,6 +121,8 @@ std::uint32_t panel_start(SystemState& s, std::uint32_t id, Ctx& c, std::uint32_
         pg.columns = columns < 1 ? 1 : (columns > count ? count : columns);
         const std::int32_t sel = word(c, ga + 0xC);
         pg.selected = sel >= 0 && sel < count ? sel : -1;
+        pg.selectable = word(c, ga + 0x14) != 0, pg.hover_selects = word(c, ga + 0x18) != 0;
+        pg.click_decides = word(c, ga + 0x1C) != 0, pg.link_id = word(c, ga + 0x20);
         for (std::int32_t i = 0; i < count; ++i) {
             const Word ba = buttons + 0xC4 * static_cast<Word>(i);
             SystemState::PanelButton b;
@@ -120,6 +131,7 @@ std::uint32_t panel_start(SystemState& s, std::uint32_t id, Ctx& c, std::uint32_
             b.x = word(c, ba + 8), b.y = word(c, ba + 0xC);
             b.bmp_normal = word(c, ba + 0x20), b.bmp_focus = word(c, ba + 0x24);
             b.bmp_selected = word(c, ba + 0x28), b.bmp_selected_focus = word(c, ba + 0x2C);
+            b.no_hit = word(c, ba + 0x30) == -2;
             b.flags = static_cast<std::uint32_t>(word(c, ba + 0xC0));
             if (!c.ok()) return 3;
             pg.buttons.push_back(b);
@@ -129,6 +141,10 @@ std::uint32_t panel_start(SystemState& s, std::uint32_t id, Ctx& c, std::uint32_
     const std::int32_t cur = word(c, desc + 8);
     ic.groups = std::move(out);
     ic.current_group = cur >= 0 && cur < group_count ? cur : -1;
+    ic.modal = word(c, desc + 0xC) != 0, ic.input_mask = static_cast<std::uint32_t>(word(c, desc + 0x14));
+    ic.key_map = word(c, desc + 0x18) & 7, ic.select_on_decide = word(c, desc + 0x1C) != 0;
+    ic.seen_input = s.input_counts;
+    ic.info = {1, 0xFFFFFFFFu, 0xFFFFFFFFu, 0, 0, 0};
     // from 1.588 on a button is drawn when `shown`, unless its flags say 0x40 (never)
     std::uint32_t k = 0;
     for (auto& g : ic.groups)
@@ -142,32 +158,74 @@ std::uint32_t panel_start(SystemState& s, std::uint32_t id, Ctx& c, std::uint32_
     return 0;
 }
 
-void panel_select(SystemState& s, std::uint32_t id, int group, int index) {
-    auto it = s.icon_controls.find(id);
-    if (it == s.icon_controls.end() || group < 0 || group >= static_cast<int>(it->second.groups.size())) return;
-    auto& ic = it->second;
-    auto& g = ic.groups[static_cast<std::size_t>(group)];
-    if (index >= static_cast<int>(g.buttons.size())) return;
-    const int old = g.selected;
-    g.selected = index;
-    for (int i : {old, index})
-        if (i >= 0) show(s, ic, g.buttons[static_cast<std::size_t>(i)], picture(g, i, hovered(ic, group, i)));
-}
-
 // Pointer handling, once per scheduler frame (analysis: openbgi docs/panel_system.md, ButtonPanel_Update step 3):
 // the button under the pointer changes -> event 0x10000001 (group, index) and the focus picture; a left click on an
 // enabled button -> 0x10000007 (click position inside the button) and 0x10000006 (decision), as a sprite panel reports it.
+namespace {
+
+enum Action { None, Click, Cancel, Decide, CancelKey, Prev, Next, PrevGroup, NextGroup, Left, Right, Up, Down };
+constexpr std::uint32_t kPanelBits[24] = {0x1, 0x2, 0x4, 0x10, 0x20, 0x40, 0x80, 0x100, 0x200, 0x1000, 0x2000, 0x4000,
+                                          0x8000, 0x10000, 0x20000, 0x40000, 0x80000, 0x100000, 0x200000, 0x400000, 0x800000, 0x1000000, 0x2000000, 0x40000000};
+constexpr std::uint32_t kDirPrev = 0xFFFFFFFFu, kDirNext = 1, kDirLeft = 0xFFFF, kDirRight = 1, kDirUp = 0xFFFF0000u, kDirDown = 0x10000;
+
+std::uint32_t pack(int g, int i) { return static_cast<std::uint32_t>(g) << 16 | static_cast<std::uint32_t>(i); }
+
+// the four built-in key maps by key-map number: indexed by the standard-key bit order of kPanelBits
+Action mapped_action(int key_map, int k, bool shift) {
+    if (k == 0) return Click;
+    if (k == 1) return Cancel;
+    if (k == 7) return Decide;
+    if (k == 8) return CancelKey;
+    if (k == 23) return shift ? PrevGroup : NextGroup;
+    if (k < 9 || k > 12) return None;
+    static const Action maps[4][4] = {{PrevGroup, NextGroup, Prev, Next}, {Prev, Next, PrevGroup, NextGroup}, {Up, Down, Left, Right}, {Left, Right, Up, Down}};
+    return maps[key_map & 3][k - 9]; // map 1 and 2 of the original are rows 2 and 3 here (see panel_system.md)
+}
+
+// Selects button `i` of group `g` (-1 clears). A button without a normal picture or (sprite panel) a disabled one cannot be selected.
+// The linked groups lose their selection. Returns whether the selection changed.
+bool select_button(SystemState& s, SystemState::IconControl& ic, std::uint32_t id, int g, int i) {
+    if (g < 0 || g >= int(ic.groups.size())) return false;
+    auto& grp = ic.groups[std::size_t(g)];
+    if (i != -1 && (i < 0 || i >= int(grp.buttons.size()))) return false;
+    if (i == grp.selected) return false;
+    if (i != -1 && !ic.basic && !grp.buttons[std::size_t(i)].enabled) return false;
+    const int old = grp.selected;
+    grp.selected = i;
+    if (old >= 0) show(s, ic, grp.buttons[std::size_t(old)], picture(grp, old, hovered(ic, g, old)));
+    if (i == -1) return true;
+    if (grp.buttons[std::size_t(i)].bmp_normal == -1) return false;
+    show(s, ic, grp.buttons[std::size_t(i)], picture(grp, i, hovered(ic, g, i)));
+    if (grp.link_id != -1)
+        for (int h = 0; h < int(ic.groups.size()); ++h)
+            if (h != g && ic.groups[std::size_t(h)].link_id == grp.link_id) select_button(s, ic, id, h, -1);
+    return true;
+}
+
+// Records a decision (-1, -1 for a cancel). A sprite panel reports it as events and goes on; the plain panel ends (started = 0).
+void decide(SystemState::IconControl& ic, int g, int i, std::uint32_t flag, std::int32_t cx, std::int32_t cy) {
+    if (!ic.basic) {
+        if (g >= 0 && i >= 0 && flag) ic.events.push_back({0x10000007u, pack(g, i), static_cast<std::uint32_t>(cy) << 16 | static_cast<std::uint32_t>(cx & 0xFFFF)});
+        ic.events.push_back({0x10000006u, g >= 0 && i >= 0 ? pack(g, i) : 0xFFFFFFFFu, flag});
+    }
+    ic.info = {ic.basic ? 0u : 1u, static_cast<std::uint32_t>(g), static_cast<std::uint32_t>(i), flag, static_cast<std::uint32_t>(cx), static_cast<std::uint32_t>(cy)};
+}
+
+bool moved_selection(SystemState& s, SystemState::IconControl& ic, std::uint32_t id, int g, int i, std::uint32_t dir) {
+    if (!select_button(s, ic, id, g, i)) return false;
+    ic.events.push_back({0x10000004u, pack(g, i), dir});
+    return true;
+}
+
+} // namespace
+
 void panel_input(SystemState& s) {
     if (!s.display) return;
     for (auto& [id, ic] : s.icon_controls) {
-        if (std::getenv("OBGI_DBGPANEL") && s.input_counts[1] != ic.seen_clicks)
-            std::fprintf(stderr, "panel %u click: groups %zu current %d window %X visible %d\n", id, ic.groups.size(), ic.current_group, ic.window,
-                         s.display->find_sprite(ic.window) ? s.display->find_sprite(ic.window)->visible : -1);
-        // A button anywhere in the panel can be hit (the original registers the enabled buttons of every group); a script that
-        // names a current group only gets the cursor placed there.
-        if (ic.groups.empty()) continue;
+        if (ic.groups.empty() || ic.paint_only || (ic.basic && ic.info[0] == 0)) continue; // not started, painted only, or a plain panel that has decided
         const Sprite* win = s.display->find_sprite(ic.window);
         if (win && !win->visible) continue;
+        // The button under the pointer: the enabled, drawn buttons of the current group (every group while none is current).
         int hg = -1, hi = -1;
         std::int32_t lx = 0, ly = 0;
         const int first = ic.current_group >= 0 ? ic.current_group : 0, last = ic.current_group >= 0 ? ic.current_group : int(ic.groups.size()) - 1;
@@ -175,7 +233,7 @@ void panel_input(SystemState& s) {
             const auto& g = ic.groups[static_cast<std::size_t>(gi)];
             for (std::size_t i = 0; i < g.buttons.size() && hi < 0; ++i) {
                 const auto& b = g.buttons[i];
-                if (!b.enabled || b.sprite == 0) continue;
+                if (!b.enabled || b.no_hit || b.sprite == 0) continue;
                 const Sprite* sp = s.display->find_sprite(b.sprite);
                 const SlotInfo* info = sp ? s.display->slot(sp->slot) : nullptr;
                 if (!sp || !sp->visible || !info) continue;
@@ -186,8 +244,8 @@ void panel_input(SystemState& s) {
                 }
             }
         }
-        if (std::getenv("OBGI_DBGPANEL") && (hg != ic.hover_group || hi != ic.hover_index || s.input_counts[1] != ic.seen_clicks))
-            std::fprintf(stderr, "panel %u pointer %d,%d hover %d/%d clicks %u group %d\n", id, s.mouse_x, s.mouse_y, hg, hi, s.input_counts[1], ic.current_group);
+        if (std::getenv("OBGI_DBGPANEL") && (hg != ic.hover_group || hi != ic.hover_index))
+            std::fprintf(stderr, "panel %u pointer %d,%d hover %d/%d group %d\n", id, s.mouse_x, s.mouse_y, hg, hi, ic.current_group);
         if (hg != ic.hover_group || hi != ic.hover_index) {
             const int og = ic.hover_group, oi = ic.hover_index;
             ic.hover_group = hg, ic.hover_index = hi;
@@ -196,24 +254,147 @@ void panel_input(SystemState& s) {
             if (hi >= 0) {
                 const auto& g = ic.groups[std::size_t(hg)];
                 show(s, ic, g.buttons[std::size_t(hi)], picture(g, hi, true));
-                ic.events.push_back({0x10000002u, static_cast<std::uint32_t>(hg) << 16 | static_cast<std::uint32_t>(hi), g.buttons[std::size_t(hi)].bmp_focus != -1});
+                ic.events.push_back({0x10000002u, pack(hg, hi), g.buttons[std::size_t(hi)].bmp_focus != -1});
             }
         }
-        const std::uint32_t clicks = s.input_counts[1];
-        if (clicks != ic.seen_clicks) {
-            ic.seen_clicks = clicks;
-            if (hi >= 0) {
-                const std::uint32_t item = static_cast<std::uint32_t>(hg) << 16 | static_cast<std::uint32_t>(hi);
-                ic.events.push_back({0x10000007u, item, static_cast<std::uint32_t>(ly) << 16 | static_cast<std::uint32_t>(lx & 0xFFFF)});
-                ic.events.push_back({0x10000006u, item, 0});
-                // 90:BC record: started, group, button, decided with the pointer, where in the button. The plain panel ends at a
-                // decision (started = 0); the other kind reports the packed item (checked for group 0 only).
-                if (ic.basic) ic.info = {0, static_cast<std::uint32_t>(hg), static_cast<std::uint32_t>(hi), 1, static_cast<std::uint32_t>(lx), static_cast<std::uint32_t>(ly)};
-                else ic.info = {1, 0, item, 0, 0, 0};
+        // hover selection: after the pointer moved, the button under it becomes its group's selection
+        if (hi >= 0 && ic.groups[std::size_t(hg)].hover_selects && (s.mouse_x != ic.last_mouse_x || s.mouse_y != ic.last_mouse_y)) {
+            auto& grp = ic.groups[std::size_t(hg)];
+            if (grp.selectable) ic.current_group = hg;
+            if (select_button(s, ic, id, hg, hi)) ic.events.push_back({0x10000004u, pack(hg, hi), 0});
+        }
+        ic.last_mouse_x = s.mouse_x, ic.last_mouse_y = s.mouse_y;
+
+        // what was pressed since the last update, as logical input bits (a non-modal panel only reacts to the mouse buttons,
+        // the wheel and the cancel key)
+        std::uint32_t bits = 0;
+        for (std::uint32_t bit : kPanelBits)
+            for (std::uint32_t n : s.input_numbers(bit))
+                if (n < 256 && s.input_counts[n] != ic.seen_input[n]) bits |= bit;
+        const bool shift = false; // the host does not report modifier keys; Tab goes to the next group
+        const std::array<std::uint32_t, 256> hotkey_seen = ic.seen_input;
+        ic.seen_input = s.input_counts;
+        bits &= ~ic.input_mask;
+        if (!ic.modal) bits &= 0x2C3;
+        auto was_pressed = [&](std::uint32_t vk) { return vk < 256 && s.input_counts[vk] != hotkey_seen[vk]; };
+
+        Action act = None;
+        int k = 0;
+        for (; k < 24; ++k)
+            if (bits & kPanelBits[k]) { act = mapped_action(ic.key_map, k, shift); break; }
+        const int g = ic.current_group;
+        const int sel = g >= 0 ? ic.groups[std::size_t(g)].selected : -1;
+        auto cycle_buttons = [&](int dir) {
+            if (g < 0) return;
+            const int n = int(ic.groups[std::size_t(g)].buttons.size());
+            int idx = sel;
+            for (int t = 0; t < n; ++t) {
+                idx = dir < 0 ? (idx - 1 < 0 || idx - 1 >= n ? n - 1 : idx - 1) : (idx + 1 < 0 || idx + 1 >= n ? 0 : idx + 1);
+                if (moved_selection(s, ic, id, g, idx, dir < 0 ? kDirPrev : kDirNext)) return;
             }
+        };
+        auto cycle_groups = [&](int dir) {
+            const int n = int(ic.groups.size());
+            int gi = g;
+            for (int t = 0; t < n; ++t) {
+                gi = dir < 0 ? (gi - 1 < 0 || gi - 1 >= n ? n - 1 : gi - 1) : (gi + 1 < 0 || gi + 1 >= n ? 0 : gi + 1);
+                if (ic.groups[std::size_t(gi)].selectable) {
+                    ic.current_group = gi;
+                    ic.events.push_back({0x10000003u, static_cast<std::uint32_t>(gi), dir < 0 ? kDirPrev : kDirNext});
+                    return;
+                }
+            }
+        };
+        auto grid_move = [&](bool horizontal, int dir) {
+            if (g < 0) return;
+            const auto& grp = ic.groups[std::size_t(g)];
+            const int n = int(grp.buttons.size()), cols = std::max(grp.columns, 1), rows = (n + cols - 1) / cols;
+            int idx = sel < 0 ? 0 : sel;
+            for (int t = 0, lim = horizontal ? cols : rows; t < lim; ++t) {
+                if (horizontal) {
+                    int col = idx % cols + dir;
+                    col = col < 0 ? cols - 1 : (col >= cols ? 0 : col);
+                    idx = idx / cols * cols + col;
+                } else {
+                    int row = idx / cols + dir;
+                    row = row < 0 ? rows - 1 : (row >= rows ? 0 : row);
+                    idx = row * cols + idx % cols;
+                }
+                const std::uint32_t d = horizontal ? (dir < 0 ? kDirLeft : kDirRight) : (dir < 0 ? kDirUp : kDirDown);
+                if (idx < n && moved_selection(s, ic, id, g, idx, d)) return;
+            }
+        };
+        switch (act) {
+        case Click:
+            if (hi < 0) {
+                if (!ic.basic) ic.events.push_back({0x10000007u, 0xFFFFFFFFu, static_cast<std::uint32_t>(s.mouse_y - (win ? win->y : 0)) << 16 | (static_cast<std::uint32_t>(s.mouse_x - (win ? win->x : 0)) & 0xFFFF)});
+                break;
+            }
+            decide(ic, hg, hi, 1, lx, ly);
+            if (ic.select_on_decide) select_button(s, ic, id, hg, hi);
+            if (!ic.basic && ic.groups[std::size_t(hg)].selectable) ic.current_group = hg;
+            break;
+        case Cancel: decide(ic, -1, -1, 1, 0, 0); break;
+        case CancelKey: decide(ic, -1, -1, 0, 0, 0); break;
+        case Decide:
+            if (g >= 0 && sel >= 0) decide(ic, g, sel, 0, 0, 0);
+            break;
+        case Prev: cycle_buttons(-1); break;
+        case Next: cycle_buttons(1); break;
+        case PrevGroup: cycle_groups(-1); break;
+        case NextGroup: cycle_groups(1); break;
+        case Left: grid_move(true, -1); break;
+        case Right: grid_move(true, 1); break;
+        case Up: grid_move(false, -1); break;
+        case Down: grid_move(false, 1); break;
+        case None:
+            // a pressed hot key decides its button at once (modal panels)
+            if (ic.modal)
+                for (int gi = 0; gi < int(ic.groups.size()); ++gi)
+                    for (int bi = 0; bi < int(ic.groups[std::size_t(gi)].buttons.size()); ++bi) {
+                        const auto& b = ic.groups[std::size_t(gi)].buttons[std::size_t(bi)];
+                        if (b.sprite != 0 && (b.hotkey & 0x7FFFFFFF) != 0 && was_pressed(b.hotkey & 0x7FFFFFFF)) {
+                            decide(ic, gi, bi, 0, 0, 0);
+                            gi = int(ic.groups.size());
+                            break;
+                        }
+                    }
+            break;
         }
         while (ic.events.size() > 256) ic.events.pop_front(); // nobody is draining them
     }
+}
+
+// 90:B6 / 90:B7: paint the buttons of a descriptor over a window without a running panel. The buttons are kept as a panel that
+// takes no input (id 0x80000000 | window), replaced by the next paint of the same window. Returns 0 ok, 1 no such window, 2 / 3 as
+// panel_start.
+std::uint32_t panel_paint(SystemState& s, Ctx& c, std::uint32_t window, std::uint32_t desc, bool basic) {
+    if (!s.display || !s.display->find_sprite(window)) return 1;
+    const std::uint32_t id = 0x80000000u | (window & 0x7FFFFFFFu);
+    panel_stop(s, id);
+    auto& ic = s.icon_controls[id];
+    ic = {};
+    ic.window = window, ic.basic = basic, ic.paint_only = true;
+    return panel_start(s, id, c, desc);
+}
+
+// 80:AC messages to a panel (analysis: openbgi docs/panel_system.md): 0x10000000 decide a button, 0x10000001 set the current group,
+// 0x10000002 select a button.
+void panel_select(SystemState& s, std::uint32_t id, int group, int index) {
+    auto it = s.icon_controls.find(id);
+    if (it != s.icon_controls.end()) select_button(s, it->second, id, group, index);
+}
+
+void panel_decide(SystemState& s, std::uint32_t id, int group, int index, std::uint32_t flag) {
+    auto it = s.icon_controls.find(id);
+    if (it == s.icon_controls.end() || it->second.groups.empty()) return;
+    decide(it->second, group, index, flag, 0, 0);
+}
+
+void panel_set_group(SystemState& s, std::uint32_t id, int group) {
+    auto it = s.icon_controls.find(id);
+    if (it == s.icon_controls.end() || group < 0 || group >= int(it->second.groups.size())) return;
+    if (it->second.groups[std::size_t(group)].selectable) it->second.current_group = group;
 }
 
 void panel_sync(SystemState& s) {
