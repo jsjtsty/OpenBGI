@@ -21,6 +21,7 @@
 #include "bindings/audio_subops.hpp"
 #include "bindings/font_subops.hpp"
 #include "bindings/graphics_subops.hpp"
+#include "bindings/message_subops.hpp"
 #include "bindings/movie_subops.hpp"
 #include "bindings/system_subops.hpp"
 #include "bindings/text_subops.hpp"
@@ -162,10 +163,12 @@ int main(int argc, char** argv) {
     system.message_box = [](const std::string& text) { // script text is UTF-8
         std::fprintf(stderr, "message box: %s\n", text.c_str());
     };
+    th.code_page = &system.code_page;
     register_system_subops(registry, system, finder);
     register_window_subops(registry, system, display->get());
     register_table_subops(registry, system);
     register_plane_subops(registry, system, display->get());
+    register_message_subops(registry, system, th, fh);
     if (!effects_path.empty()) { // id, pops, pushes of every registered sub-opcode (for comparing with the real game)
         std::ofstream ef(effects_path);
         for (unsigned id = 0x8000; id <= 0xFFFF; ++id)

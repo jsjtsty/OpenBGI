@@ -390,6 +390,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         auto x = static_cast<std::int32_t>(c.pop());
         Word id = c.pop();
         if (!c.ok()) return 0;
+        if (std::getenv("OBGI_DBGMOVE")) std::fprintf(stderr, "90:33 object %X to %d,%d\n", id, x, y);
         if (Sprite* s = object(c, d, id)) s->x = x, s->y = y;
         return 0;
     });

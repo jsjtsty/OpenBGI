@@ -58,7 +58,8 @@ void register_text_subops(vm::SubopRegistry& r, TextHost& host) {
                    // a new line starts a column to the left, and a column also ends at the bottom of the image.
                    const std::int32_t cell = static_cast<std::int32_t>(size), col_w = cell + line_gap;
                    std::int32_t col = 0, row = 0;
-                   for (char32_t ch : cp932_to_utf32(text)) {
+                   const bool utf8 = host.code_page && *host.code_page == 65001;
+                   for (char32_t ch : utf8 ? utf8_to_utf32(text) : cp932_to_utf32(text)) {
                        if (ch == char32_t{10} || row * cell + cell > static_cast<std::int32_t>(info->height) - y) {
                            ++col, row = 0;
                            if (ch == char32_t{10}) continue;
@@ -77,7 +78,7 @@ void register_text_subops(vm::SubopRegistry& r, TextHost& host) {
                    return 0;
                }
                const std::int64_t room = std::int64_t{info->width} - x;
-               auto img = render_text(**font, cp932_to_utf32(text), style, room > 0 ? static_cast<std::uint32_t>(room) : 1);
+               auto img = render_text(**font, host.code_page && *host.code_page == 65001 ? utf8_to_utf32(text) : cp932_to_utf32(text), style, room > 0 ? static_cast<std::uint32_t>(room) : 1);
                if (!img) {
                    c.fail(img.error().code, img.error().message);
                    return 0;

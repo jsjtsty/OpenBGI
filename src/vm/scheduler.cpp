@@ -68,6 +68,7 @@ static bool ready(const Thread& t, const Vm& vm) {
     case WaitObject::Kind::None: return true;
     case WaitObject::Kind::Time: return vm.now_ms >= t.wait.until;
     case WaitObject::Kind::Frame: return static_cast<std::int64_t>(vm.frame) >= t.wait.until;
+    case WaitObject::Kind::Poll: return !t.wait.poll || t.wait.poll();
     }
     return true;
 }

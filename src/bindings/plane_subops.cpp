@@ -2,6 +2,8 @@
 // the handle 0xB0000000 + slot. Nothing draws them yet; the state a display object needs later is kept in
 // SystemState::planes. Analysis: analysis/子opcode语义表.md and the handlers FUN_0048cdb0..0048d240.
 #include <algorithm>
+#include <cstdio>
+#include <cstdlib>
 
 #include "bindings/panel.hpp"
 #include "bindings/system_subops.hpp"
@@ -28,6 +30,15 @@ SystemState::Plane* plane_of(SystemState& s, Ctx& c, Word handle) {
     return nullptr;
 }
 
+// OBGI_DBGOBJ=<hex object id>: prints every recorded object op aimed at that object
+void debug_object_op(std::uint16_t id, const std::vector<Word>& a) {
+    static const char* env = std::getenv("OBGI_DBGOBJ");
+    if (!env || a.empty() || a[0] != static_cast<Word>(std::strtoul(env, nullptr, 16))) return;
+    std::fprintf(stderr, "op %04X:", id);
+    for (Word w : a) std::fprintf(stderr, " %d", static_cast<int>(w));
+    std::fprintf(stderr, "\n");
+}
+
 // Display object settings 91:31..4A, 91:55 (FUN_00490810..004912E0): the numbers are kept per op until the compositor
 // reads them; only master/slave binding (91:3E, 91:3F) is modelled and checked.
 void register_object_settings(vm::SubopRegistry& r, SystemState& state, Display* display) {
@@ -44,8 +55,7 @@ void register_object_settings(vm::SubopRegistry& r, SystemState& state, Display*
                                {0x913D, "object query 91:3D", 1, 1}, {0x9138, "object parameter read 91:38", 3, 0}};
     // 90:3x..5x: settings kept per op; those the analysis says take an object first check that it exists
     static const Rec objrecs[] = {{0x9031, "object setting 90:31", 2, 0}, {0x9035, "object setting 90:35", 2, 0},
-                                  {0x9036, "object setting 90:36", 3, 0}, {0x9037, "object setting 90:37", 3, 0},
-                                  {0x903A, "object setting 90:3A", 2, 0}};
+                                  {0x9036, "object setting 90:36", 3, 0}, {0x9037, "object setting 90:37", 3, 0}};
     for (const Rec& rec : objrecs) {
         const std::uint16_t id = rec.id;
         const int pops = rec.pops;
@@ -53,6 +63,7 @@ void register_object_settings(vm::SubopRegistry& r, SystemState& state, Display*
             std::vector<Word> a(static_cast<std::size_t>(pops));
             for (int i = pops - 1; i >= 0; --i) a[std::size_t(i)] = c.pop();
             if (!c.ok()) return 0;
+            debug_object_op(id, a);
             if (a[0] != 0 && display && !display->find_sprite(a[0])) { // id 0 is the root (screen) object, which always exists
                 c.fail(Errc::Range, "no display object " + std::to_string(a[0]));
                 return 0;
@@ -75,6 +86,7 @@ void register_object_settings(vm::SubopRegistry& r, SystemState& state, Display*
             std::vector<Word> a(static_cast<std::size_t>(pops));
             for (int i = pops - 1; i >= 0; --i) a[std::size_t(i)] = c.pop();
             if (!c.ok()) return 0;
+            debug_object_op(id, a);
             s->records[id] = std::move(a);
             for (int i = 0; i < pushes; ++i) c.push(0);
             return 0;
@@ -111,6 +123,7 @@ void register_object_settings(vm::SubopRegistry& r, SystemState& state, Display*
             std::vector<Word> a(static_cast<std::size_t>(pops));
             for (int i = pops - 1; i >= 0; --i) a[std::size_t(i)] = c.pop();
             if (!c.ok()) return 0;
+            debug_object_op(id, a);
             s->records[id] = std::move(a);
             for (int i = 0; i < pushes; ++i) c.push(0);
             return 0;
@@ -156,6 +169,7 @@ void add_plane_setting(vm::SubopRegistry& r, SystemState& s, std::uint16_t id, c
         std::vector<Word> a(static_cast<std::size_t>(n));
         for (int i = n - 1; i >= 0; --i) a[std::size_t(i)] = c.pop();
         if (!c.ok()) return 0;
+        debug_object_op(id, a);
         if (SystemState::Plane* p = plane_of(*st, c, a[0])) p->props[id].assign(a.begin() + 1, a.end());
         return 0;
     });
@@ -236,6 +250,9 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
         Sprite* sp = display->find_sprite(id);
         if (!sp) { c.fail(Errc::Range, "no display object " + std::to_string(id)); return 0; }
         const Word last = points + 16 * (n - 1);
+        if (std::getenv("OBGI_DBGMOVE"))
+            std::fprintf(stderr, "90:29 object %X n=%u duration=%u fps=%u from %d,%d to %d,%d\n", id, n, duration, fps, sp->x, sp->y,
+                         static_cast<int>(c.read(last, 4, false)) >> 16, static_cast<int>(c.read(last + 4, 4, false)) >> 16);
         SystemState::Motion m;
         m.object = id;
         m.start_ms = c.vm.now_ms;
@@ -325,6 +342,7 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
     add(r, 0x9083, "window object bitmap", 2, 0, [s](Ctx& c) {
         const Word handle = c.pop(), image = c.pop();
         if (!c.ok()) return 0;
+        debug_object_op(0x9083, {handle, image});
         if (SystemState::Plane* p = plane_of(*s, c, handle)) p->extra = {image};
         return 0;
     });
@@ -344,6 +362,7 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
             c.fail(Errc::Range, "window object placement: " + std::to_string(a[6]) + " is above 65535");
             return 0;
         }
+        debug_object_op(0x9085, std::vector<Word>(a.begin(), a.end()));
         if (SystemState::Plane* p = plane_of(*s, c, a[0])) {
             p->x = static_cast<std::int32_t>(a[1]);
             p->y = static_cast<std::int32_t>(a[2]);
@@ -377,6 +396,7 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
         const std::int32_t h = std::int32_t(c.pop()), w = std::int32_t(c.pop()), y = std::int32_t(c.pop()), x = std::int32_t(c.pop());
         const Word handle = c.pop();
         if (!c.ok()) return 0;
+        debug_object_op(0x9088, {handle, static_cast<Word>(x), static_cast<Word>(y), static_cast<Word>(w), static_cast<Word>(h)});
         if (SystemState::Plane* p = plane_of(*s, c, handle)) p->area = {x, y, x + w - 1, y + h - 1};
         return 0;
     });

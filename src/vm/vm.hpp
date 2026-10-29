@@ -74,8 +74,9 @@ struct Module {
 };
 
 struct WaitObject {
-    enum class Kind { None, Time, Frame } kind = Kind::None;
+    enum class Kind { None, Time, Frame, Poll } kind = Kind::None; // Poll: the thread resumes once `poll` returns true
     std::int64_t until = 0;
+    std::function<bool()> poll;
 };
 
 struct ThreadConfig {
