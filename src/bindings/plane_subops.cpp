@@ -69,7 +69,7 @@ void register_object_settings(vm::SubopRegistry& r, SystemState& state, Display*
                                {0x9146, "object setting 91:46", 4, 0}, {0x9147, "object setting 91:47", 5, 0},
                                {0x9148, "object layer 91:48", 3, 0}, {0x9149, "object layer 91:49", 3, 0},
                                {0x914A, "object layer 91:4A", 4, 0}, {0x9155, "object query 91:55", 2, 1},
-                               {0x913D, "object query 91:3D", 1, 1}, {0x9138, "object parameter read 91:38", 3, 0}};
+                               {0x913D, "object query 91:3D", 1, 1}};
     static const Rec loose[] = {{0x903C, "object setting 90:3C", 2, 0},
                                 {0x903D, "object query 90:3D", 1, 1},   {0x903F, "object setting 90:3F", 1, 0},
                                 {0x9041, "object setting 90:41", 3, 0},
@@ -380,10 +380,33 @@ std::int32_t ease(std::int32_t t, int curve) {
     }
 }
 
+// The natural cubic spline through `pts` (at least three, knots one apart) at u in 0..1, per axis. Second derivatives m solve
+// m[i-1] + 4 m[i] + m[i+1] = 6 (y[i-1] - 2 y[i] + y[i+1]) with m = 0 at both ends.
+std::array<double, 3> spline_at(const std::vector<std::array<double, 3>>& pts, double u) {
+    const int n = static_cast<int>(pts.size()) - 1;
+    const double x = std::clamp(u, 0.0, 1.0) * n;
+    const int i = std::min(static_cast<int>(x), n - 1);
+    const double t = x - i;
+    std::array<double, 3> out{};
+    for (int axis = 0; axis < 3; ++axis) {
+        std::vector<double> m(static_cast<std::size_t>(n) + 1, 0.0), diag(static_cast<std::size_t>(n) + 1, 4.0), rhs(static_cast<std::size_t>(n) + 1, 0.0);
+        for (int k = 1; k < n; ++k) rhs[k] = 6 * (pts[k - 1][axis] - 2 * pts[k][axis] + pts[k + 1][axis]);
+        for (int k = 2; k < n; ++k) { // forward elimination of the sub-diagonal
+            const double f = 1.0 / diag[k - 1];
+            diag[k] -= f, rhs[k] -= f * rhs[k - 1];
+        }
+        for (int k = n - 1; k >= 1; --k) m[k] = (rhs[k] - (k + 1 < n ? m[k + 1] : 0.0)) / diag[k];
+        const double a = pts[i][axis], b = pts[i + 1][axis];
+        out[axis] = (1 - t) * a + t * b + (((1 - t) * (1 - t) * (1 - t) - (1 - t)) * m[i] + (t * t * t - t) * m[i + 1]) / 6.0;
+    }
+    return out;
+}
+
 // Starts a timed change of display object `id`: to (x, y) along `curve` and to alpha `level` along `level_curve`, over
 // `duration` ms. The object becomes visible; scripts wait for the end with 80:5C. `move` = false leaves the position alone.
+// With a `path` the position follows the object's start followed by those points (90:29).
 void start_motion(SystemState& s, Display& display, Ctx& c, Word id, bool move, std::int32_t x, std::int32_t y, int curve, Word level,
-                  int level_curve, Word duration, std::int32_t progress = -1) {
+                  int level_curve, Word duration, std::int32_t progress = -1, std::vector<std::array<double, 3>> path = {}) {
     Sprite* sp = display.find_sprite(id);
     if (!sp && id >= 0x90000000u) return; // filters, effectors, windows and the like are not drawn objects here
     if (!sp) { c.fail(Errc::Range, "no display object " + std::to_string(id)); return; }
@@ -398,12 +421,18 @@ void start_motion(SystemState& s, Display& display, Ctx& c, Word id, bool move, 
     m.level_curve = level_curve;
     m.from_progress = static_cast<std::int32_t>(sp->progress);
     m.to_progress = progress < 0 ? m.from_progress : progress; // -1 keeps it
+    m.from_z = sp->depth, m.to_z = sp->depth;
+    if (!path.empty()) { // the start plus the points: two points are a straight line, more make a spline
+        m.path.push_back({double(m.from_x), double(m.from_y), m.from_z / 65536.0});
+        m.path.insert(m.path.end(), path.begin(), path.end());
+        m.to_z = static_cast<std::int32_t>(path.back()[2] * 65536.0);
+    }
     sp->visible = true;
     if (std::getenv("OBGI_DBGOBJ"))
         std::fprintf(stderr, "motion object %X: %d,%d -> %d,%d level %d -> %d over %u ms\n", id, m.from_x, m.from_y, m.to_x, m.to_y, m.from_level, m.to_level, duration);
     std::erase_if(s.motions, [&](const auto& o) { return o.object == id; });
     if (m.duration_ms <= 0) {
-        if (move) sp->script_move_to(m.to_x, m.to_y);
+        if (move) sp->script_move_to(m.to_x, m.to_y), sp->depth = m.to_z;
         sp->alpha = level;
         if (m.to_progress != m.from_progress) display.set_progress(id, static_cast<std::uint32_t>(m.to_progress));
         return;
@@ -422,8 +451,18 @@ void advance_motions(SystemState& state, Display& display, std::int64_t now_ms) 
             const bool done = elapsed >= it->duration_ms;
             const auto t = static_cast<std::int32_t>(elapsed * 0x1000000 / it->duration_ms);
             const std::int64_t fp = done ? 0x10000 : ease(t, it->curve), fl = done ? 0x10000 : ease(t, it->level_curve);
-            sp->script_move_to(it->from_x + static_cast<std::int32_t>((std::int64_t{it->to_x} - it->from_x) * fp >> 16),
-                        it->from_y + static_cast<std::int32_t>((std::int64_t{it->to_y} - it->from_y) * fp >> 16));
+            if (it->path.size() >= 3) {
+                const auto p = spline_at(it->path, double(fp) / 65536.0);
+                sp->script_move_to(static_cast<std::int32_t>(p[0]), static_cast<std::int32_t>(p[1]));
+                sp->depth = static_cast<std::int32_t>(p[2] * 65536.0);
+            } else if (it->path.size() == 2) { // one point: a straight line, depth included
+                sp->script_move_to(it->from_x + static_cast<std::int32_t>((std::int64_t{it->to_x} - it->from_x) * fp >> 16),
+                                   it->from_y + static_cast<std::int32_t>((std::int64_t{it->to_y} - it->from_y) * fp >> 16));
+                sp->depth = it->from_z + static_cast<std::int32_t>((std::int64_t{it->to_z} - it->from_z) * fp >> 16);
+            } else {
+                sp->script_move_to(it->from_x + static_cast<std::int32_t>((std::int64_t{it->to_x} - it->from_x) * fp >> 16),
+                            it->from_y + static_cast<std::int32_t>((std::int64_t{it->to_y} - it->from_y) * fp >> 16));
+            }
             sp->alpha = static_cast<std::uint32_t>(it->from_level + static_cast<std::int32_t>((std::int64_t{it->to_level} - it->from_level) * fl >> 16));
             if (it->to_progress != it->from_progress) // linear in time, whatever the curves
                 display.set_progress(it->object, static_cast<std::uint32_t>(it->from_progress + (std::int64_t{it->to_progress} - it->from_progress) * elapsed / it->duration_ms));
@@ -497,19 +536,29 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
         }
     }
     // 90:29: the same over a path of n points (four 16.16 words each: x, y, z, padding); popped in this order: priority, skip,
-    // max skip, fps, duration (frames), progress, level curve, level, curve, point address, n, object. Simplified: the object
-    // moves straight to the last point; the intermediate points and the curve are not followed yet.
+    // max skip, fps, duration (frames), progress, level curve, level, curve, point address, n, object. The path is the object's
+    // position followed by the points; one point is a line, more are a natural cubic spline, walked along the eased time.
     if (display) add(r, 0x9029, "move object along a path", 12, 0, [s, display](Ctx& c) {
         Word a[12];
         for (Word& w : a) w = c.pop();
         if (!c.ok()) return 0;
         const Word id = a[11], n = a[10], points = a[9], duration = a[4], fps = a[3];
         if (fps == 0 || n == 0) { c.fail(Errc::Range, "90:29: bad frame rate or point count"); return 0; }
+        if (std::getenv("OBGI_DBGOBJ"))
+            for (Word i = 0; i < n && i < 8; ++i)
+                std::fprintf(stderr, "90:29 object %X point %u: raw %08X %08X %08X (curve %d, fps %u)\n", id, i, c.read(points + 16 * i, 4, false),
+                             c.read(points + 16 * i + 4, 4, false), c.read(points + 16 * i + 8, 4, false), static_cast<int>(a[8]), fps);
         const Word last = points + 16 * (n - 1);
         const auto to_x = static_cast<std::int32_t>(c.read(last, 4, false)) >> 16;
         const auto to_y = static_cast<std::int32_t>(c.read(last + 4, 4, false)) >> 16;
         if (!c.ok()) return 0;
-        start_motion(*s, *display, c, id, true, to_x, to_y, static_cast<int>(a[8]), a[7], static_cast<int>(a[6]), duration, static_cast<std::int32_t>(a[5]));
+        std::vector<std::array<double, 3>> path;
+        for (Word i = 0; i < n && i < 100; ++i) // the original holds at most 100 points
+            path.push_back({static_cast<std::int32_t>(c.read(points + 16 * i, 4, false)) / 65536.0, static_cast<std::int32_t>(c.read(points + 16 * i + 4, 4, false)) / 65536.0,
+                            static_cast<std::int32_t>(c.read(points + 16 * i + 8, 4, false)) / 65536.0});
+        if (!c.ok()) return 0;
+        start_motion(*s, *display, c, id, true, to_x, to_y, static_cast<int>(a[8]), a[7], static_cast<int>(a[6]), duration, static_cast<std::int32_t>(a[5]),
+                     std::move(path));
         return 0;
     });
     // 90:24: through a via point; popped: prio, skip, max skip, fps, duration, level, curve, y, x, via y, via x, object.

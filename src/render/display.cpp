@@ -51,10 +51,18 @@ struct Display::Impl {
         std::vector<std::uint32_t> src_px, gray_px;
     };
     std::map<std::uint32_t, WipeCache> wipes;
+    // a projected plane's picture as pixels, and the scale (16.16) its shrunk copy in a temporary slot was made for
+    struct ScaleCache {
+        std::uint32_t src = 0;
+        std::int32_t scale = 0;
+        std::vector<std::uint32_t> src_px;
+    };
+    std::map<std::uint32_t, ScaleCache> scales;
     // a slot's pixels changed: the pixels cached from it are stale (the temporary slots 0x7F... are the cache's own)
     void stale(std::uint32_t id) {
         if (id >= 0x7F000000u) return;
         for (auto it = wipes.begin(); it != wipes.end();) it = (it->second.src == id || it->second.gray == id) ? wipes.erase(it) : std::next(it);
+        for (auto it = scales.begin(); it != scales.end();) it = it->second.src == id ? scales.erase(it) : std::next(it);
     }
     GpuSlot screen;
     std::unique_ptr<Texture> screen_tex;
@@ -521,6 +529,54 @@ Result<void> Display::compose() {
                 if (m.slots.count(tmp_id) && wc.progress == sp.progress) draw_id = tmp_id;
             }
         }
+        std::int32_t blit_x = draw_x, blit_y = draw_y;
+        if (sp.projected) { // sprite.c mode 5: the picture's origin lands on the projected position, shrunk by the depth
+            const std::int32_t k = project_scale(sp.depth, sp.dist);
+            const auto scaled = [k](std::int64_t v) { return static_cast<std::int32_t>(v * k >> 16); };
+            blit_x = static_cast<std::int32_t>(m.screen.info.width / 2) + (sp.scale_position ? scaled(sp.x) : sp.x) - scaled(sp.origin_x) / 2 + sp.off_x + sp.off2_x;
+            blit_y = static_cast<std::int32_t>(m.screen.info.height / 2) + (sp.scale_position ? scaled(sp.y) : sp.y) - scaled(sp.origin_y) / 2 + sp.off_y + sp.off2_y;
+            auto s0 = m.slots.find(draw_id);
+            if (k != 0x10000 && k > 0 && s0 != m.slots.end() && (s0->second.info.format == SlotFormat::Bgra || s0->second.info.format == SlotFormat::Bgrx)) {
+                Impl::ScaleCache& sc = m.scales[kv->first];
+                const std::uint32_t sw = s0->second.info.width, sh = s0->second.info.height;
+                const std::uint32_t tw = std::max<std::uint32_t>(1, static_cast<std::uint32_t>(std::int64_t{sw} * k >> 16));
+                const std::uint32_t th = std::max<std::uint32_t>(1, static_cast<std::uint32_t>(std::int64_t{sh} * k >> 16));
+                const std::uint32_t tmp_id = 0x7F300000u | (kv->first & 0xFFFFFu);
+                if (sc.src != draw_id || sc.src_px.empty() || sc.scale != k || !m.slots.count(tmp_id)) {
+                    if (sc.src != draw_id || sc.src_px.empty()) {
+                        if (auto px = m.download(s0->second)) sc.src_px = std::move(*px), sc.src = draw_id;
+                    }
+                    if (!sc.src_px.empty() && sc.src == draw_id) {
+                        const bool has_alpha = s0->second.info.format == SlotFormat::Bgra;
+                        std::vector<std::uint32_t> out(std::size_t{tw} * th);
+                        for (std::uint32_t y = 0; y < th; ++y) {
+                            const double fy = std::clamp((y + 0.5) * sh / th - 0.5, 0.0, sh - 1.0);
+                            const std::uint32_t y0 = static_cast<std::uint32_t>(fy), y1 = std::min(y0 + 1, sh - 1);
+                            const double wy = fy - y0;
+                            for (std::uint32_t x = 0; x < tw; ++x) {
+                                const double fx = std::clamp((x + 0.5) * sw / tw - 0.5, 0.0, sw - 1.0);
+                                const std::uint32_t x0 = static_cast<std::uint32_t>(fx), x1 = std::min(x0 + 1, sw - 1);
+                                const double wx = fx - x0;
+                                const std::uint32_t taps[4] = {sc.src_px[std::size_t{y0} * sw + x0], sc.src_px[std::size_t{y0} * sw + x1], sc.src_px[std::size_t{y1} * sw + x0],
+                                                               sc.src_px[std::size_t{y1} * sw + x1]};
+                                const double wt[4] = {(1 - wx) * (1 - wy), wx * (1 - wy), (1 - wx) * wy, wx * wy};
+                                double a = 0, c[3] = {0, 0, 0};
+                                for (int i = 0; i < 4; ++i) { // colours weighted by their alpha, so a transparent edge does not bleed
+                                    const double ta = has_alpha ? (taps[i] >> 24) : 255.0;
+                                    a += wt[i] * ta;
+                                    for (int ch = 0; ch < 3; ++ch) c[ch] += wt[i] * ta * ((taps[i] >> (8 * ch)) & 0xFF);
+                                }
+                                std::uint32_t px = has_alpha ? static_cast<std::uint32_t>(a + 0.5) << 24 : 0;
+                                for (int ch = 0; ch < 3; ++ch) px |= static_cast<std::uint32_t>(a > 0 ? c[ch] / a + 0.5 : 0) << (8 * ch);
+                                out[std::size_t{y} * tw + x] = px;
+                            }
+                        }
+                        if (upload_slot(tmp_id, tw, th, s0->second.info.format, out)) sc.scale = k;
+                    }
+                }
+                if (m.slots.count(tmp_id) && sc.scale == k) draw_id = tmp_id;
+            }
+        }
         auto it = m.slots.find(draw_id);
         if (it == m.slots.end()) continue; // a sprite whose image was freed draws nothing
         if (!blend_mode_supported(sp.blend)) return fail(Errc::Unsupported, "blend mode " + std::to_string(sp.blend) + " is not implemented");
@@ -533,7 +589,7 @@ Result<void> Display::compose() {
         }
         if (windows_level && sp.blend == 1 && window_parts.count(kv->first))
             alpha = 0x100u - (((0x100u - std::min(alpha, 0x100u)) * (0x100u - std::min(windows_level, 0x100u))) >> 8);
-        if (auto r = m.do_blit(m.screen, sp.x + sp.off_x + sp.off2_x, sp.y + sp.off_y + sp.off2_y, it->second, 0, 0, it->second.info.width, it->second.info.height, sp.blend,
+        if (auto r = m.do_blit(m.screen, blit_x, blit_y, it->second, 0, 0, it->second.info.width, it->second.info.height, sp.blend,
                                alpha);
             !r)
             return r;

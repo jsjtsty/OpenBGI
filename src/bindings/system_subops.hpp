@@ -34,6 +34,8 @@ struct SystemState {
         std::int32_t from_level = 0, to_level = 0; // the object's alpha (90:32)
         std::int32_t level_curve = 0;
         std::int32_t from_progress = 0, to_progress = 0; // 90:28/29: the object's progress (0..0x100), linearly; equal = untouched
+        std::int32_t from_z = 0, to_z = 0;       // the depth of a projected plane (16.16)
+        std::vector<std::array<double, 3>> path;  // 90:29: the start and the control points (x, y pixels, depth in 16.16 / 65536); more than two follow a cubic spline
     };
     std::vector<Motion> motions;
     std::uint32_t last_manager_object = 0;

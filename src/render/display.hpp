@@ -50,6 +50,12 @@ struct Sprite {
     std::int32_t script_x() const { return flip_position ? -x : x; }
     std::int32_t script_y() const { return flip_position ? -y : y; }
     void script_move_to(std::int32_t nx, std::int32_t ny) { move_to(flip_position ? -nx : nx, flip_position ? -ny : ny); }
+    // A projected plane (90:5C, sprite.c mode 5): x, y are the script's position, relative to the screen centre, and `depth`
+    // (16.16, behind the screen plane when positive) shrinks it by dist / (dist + depth). The picture's point (origin_x / 2,
+    // origin_y / 2) lands on the projected position (the game passes the picture's size, which centres it: the reference
+    // engine would put the bottom right corner there); with `scale_position` the position is scaled by the same factor.
+    bool projected = false, scale_position = false;
+    std::int32_t depth = 0, dist = 0, origin_x = 0, origin_y = 0;
     // 91:3E: a slave object follows a master object by an offset. compose() keeps x,y = master + offset; a move
     // of the slave itself (90:33, 90:28/29: move_to) re-reads the offset from the new position, as the original
     // does. 90:56 sets x,y without telling the master.
@@ -60,6 +66,14 @@ struct Sprite {
     void move_to(std::int32_t nx, std::int32_t ny) { x = nx, y = ny, moved = true; }
     bool is_shown() const { return visible && enabled && fade < 0x100 && opacity > 0; }
 };
+
+// The 16.16 perspective factor of a depth (16.16) at a projection distance (pixels): 1.0 on the screen plane or without a
+// distance, dist / (dist + depth) behind it, and growing linearly in front of it (dispobj.c: ProjectScale).
+inline std::int32_t project_scale(std::int32_t depth, std::int32_t dist) {
+    if (depth == 0 || dist == 0) return 0x10000;
+    if (depth > 0) return static_cast<std::int32_t>((std::int64_t{dist} << 32) / ((std::int64_t{dist} << 16) + depth));
+    return static_cast<std::int32_t>(((std::int64_t{dist} << 16) - depth) / dist);
+}
 
 bool blend_mode_supported(std::uint32_t mode);
 

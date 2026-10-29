@@ -488,6 +488,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         }
         Sprite& s = d.sprite(id);
         s.slot = slot, s.x = x, s.y = y, s.blend = blend, s.alpha = alpha, s.priority = priority;
+        s.projected = false;
         return 0;
     });
     // 90:5A (object, x, y, bmp, gray, wipe mode, progress, effect, level, prio): a sprite whose appearance is revealed through the
@@ -504,6 +505,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         if (!d.slot(slot)) { c.fail(Errc::Range, "no image slot " + std::to_string(slot)); return 0; }
         Sprite& s = d.sprite(id);
         s.slot = slot, s.x = x, s.y = y, s.blend = effect, s.alpha = level, s.priority = priority;
+        s.projected = false;
         const SlotInfo* gi = d.slot(gray);
         s.wipe_gray = gi && gi->format == SlotFormat::Gray8 ? gray : 0xFFFFFFFFu; // no pattern: shown whole
         s.wipe_mode = wipe_mode;
@@ -531,6 +533,8 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
             std::fprintf(stderr, "90:5C h=%X fx=%d fy=%d fz=%d bmp1=%d bmp2=%d mix=%u route=%d ox=%d oy=%d angle=%d dist=%d projPos=%d smooth=%d effect=%u level=%u prio=%u\n",
                          v[16], static_cast<int>(v[15]), static_cast<int>(v[14]), static_cast<int>(v[13]), static_cast<int>(v[12]), static_cast<int>(v[11]), v[10], static_cast<int>(v[9]),
                          static_cast<int>(v[8]), static_cast<int>(v[7]), static_cast<int>(v[6]), static_cast<int>(v[5]), static_cast<int>(v[4]), static_cast<int>(v[3]), v[2], v[1], v[0]);
+        if (std::getenv("OBGI_DBG5C"))
+            if (const SlotInfo* si = d.slot(v[12])) std::fprintf(stderr, "90:5C bmp1 %u is %ux%u\n", v[12], si->width, si->height);
         Sprite* s = object(c, d, v[16]);
         if (!s) return 0;
         if (!d.slot(v[12])) {
@@ -542,8 +546,15 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
             return 0;
         }
         s->slot = v[12];
-        s->x = static_cast<std::int32_t>(d.screen_width() / 2) + (static_cast<std::int32_t>(v[15]) >> 16);
-        s->y = static_cast<std::int32_t>(d.screen_height() / 2) + (static_cast<std::int32_t>(v[14]) >> 16);
+        // the script's position stays relative to the centre (90:29 paths and 90:28 tweens are in that space); the compositor
+        // projects it
+        s->projected = true;
+        s->x = static_cast<std::int32_t>(v[15]) >> 16;
+        s->y = static_cast<std::int32_t>(v[14]) >> 16;
+        s->depth = static_cast<std::int32_t>(v[13]);
+        s->dist = static_cast<std::int32_t>(v[5]);
+        s->scale_position = v[4] != 0;
+        s->origin_x = static_cast<std::int32_t>(v[8]), s->origin_y = static_cast<std::int32_t>(v[7]);
         s->alpha = v[1], s->priority = v[0];
         if (blend_mode_supported(v[2])) s->blend = v[2]; // v[2] is the effect, not a visibility flag
         return 0;
@@ -644,6 +655,28 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
             if (Sprite* s = object(c, d, id)) (op == 0x9036 ? s->off2_x : s->off_x) = dx, (op == 0x9036 ? s->off2_y : s->off_y) = dy;
             return 0;
         });
+    // 91:38 (out, object, number): reads a parameter of an object into script memory at `out` (dispobj.c: DispObj_GetParam): 0 the
+    // position (two words), 1 the blend mode, 2 the level, 3 the priority, 0x20 the fixed position (16.16 x, y, z; z is not kept
+    // here). The scripts use it to start a movement from where the object is. Other numbers leave `out` alone.
+    add(r, 0x9138, "read object parameter", 3, 0, [&d](Ctx& c) {
+        const auto no = static_cast<std::int32_t>(c.pop());
+        const Word id = c.pop(), out = c.pop();
+        if (!c.ok()) return 0;
+        Sprite* s = object(c, d, id);
+        if (!s) return 0;
+        switch (no) {
+        case 0: c.write(out, static_cast<Word>(s->script_x()), 4), c.write(out + 4, static_cast<Word>(s->script_y()), 4); break;
+        case 1: c.write(out, s->blend, 4); break;
+        case 2: c.write(out, s->alpha, 4); break;
+        case 3: c.write(out, s->priority, 4); break;
+        case 0x20:
+            c.write(out, static_cast<Word>(s->script_x()) << 16, 4), c.write(out + 4, static_cast<Word>(s->script_y()) << 16, 4);
+            c.write(out + 8, static_cast<Word>(s->depth), 4);
+            break;
+        default: break;
+        }
+        return 0;
+    });
     add(r, 0x9038, "set object property", 4, 0, [&d](Ctx& c) {
         Word b = c.pop(), a = c.pop(), prop = c.pop(), id = c.pop();
         if (!c.ok()) return 0;
