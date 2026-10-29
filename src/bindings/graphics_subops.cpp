@@ -363,7 +363,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         Word value = c.pop(), id = c.pop();
         if (!c.ok()) return 0;
         if (std::getenv("OBGI_SLOTS")) std::fprintf(stderr, "visible %X = %u""\n", id, value);
-        if (Sprite* s = object(c, d, id)) s->visible = value != 0;
+        if (object(c, d, id)) d.set_visible(id, value != 0);
         return 0;
     };
     add(r, 0x9030, "set object visible", 2, 0, visibility);
@@ -391,7 +391,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         Word id = c.pop();
         if (!c.ok()) return 0;
         if (std::getenv("OBGI_DBGMOVE")) std::fprintf(stderr, "90:33 object %X to %d,%d\n", id, x, y);
-        if (Sprite* s = object(c, d, id)) s->x = x, s->y = y;
+        if (Sprite* s = object(c, d, id)) s->move_to(x, y);
         return 0;
     });
     add(r, 0x9034, "set object factor", 2, 0, [&d](Ctx& c) {
@@ -407,7 +407,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         Sprite* s = object(c, d, id);
         if (!s) return 0;
         switch (prop) {
-        case 0: s->x = static_cast<std::int32_t>(a), s->y = static_cast<std::int32_t>(b); break;
+        case 0: s->move_to(static_cast<std::int32_t>(a), static_cast<std::int32_t>(b)); break;
         case 1:
             if (!blend_mode_supported(a)) c.fail(Errc::Unsupported, "blend mode " + std::to_string(a) + " is not implemented");
             else s->blend = a;

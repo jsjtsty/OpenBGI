@@ -313,9 +313,40 @@ Sprite* Display::find_sprite(std::uint32_t id) {
     return it == sprites_.end() ? nullptr : &it->second;
 }
 
+void Display::set_visible(std::uint32_t id, bool on, int depth) {
+    Sprite* sp = find_sprite(id);
+    if (!sp || depth > 16) return;
+    sp->visible = on;
+    for (auto& kv : sprites_)
+        if (kv.second.has_master && kv.second.master == id) set_visible(kv.first, on, depth + 1);
+}
+
+void Display::resolve_masters() {
+    // masters first: a sprite is settled after the one it follows (chains are short; cycles are cut by `done`)
+    std::map<std::uint32_t, bool> done;
+    auto settle = [&](auto&& self, std::uint32_t id, int depth) -> void {
+        Sprite* sp = find_sprite(id);
+        if (!sp || done[id]) return;
+        done[id] = true;
+        if (!sp->has_master || depth > 16) return;
+        self(self, sp->master, depth + 1);
+        Sprite* ms = find_sprite(sp->master);
+        if (!ms) return;
+        if (sp->moved) { // moved by the script itself: remember the new offset
+            sp->master_dx = sp->x - ms->x;
+            sp->master_dy = sp->y - ms->y;
+            sp->moved = false;
+        }
+        sp->x = ms->x + sp->master_dx;
+        sp->y = ms->y + sp->master_dy;
+    };
+    for (auto& kv : sprites_) settle(settle, kv.first, 0);
+}
+
 Result<void> Display::compose() {
     Impl& m = *impl_;
     if (auto r = m.fill(m.screen, 0); !r) return r;
+    resolve_masters();
     std::vector<const std::pair<const std::uint32_t, Sprite>*> order;
     for (const auto& kv : sprites_)
         if (kv.second.visible) order.push_back(&kv);

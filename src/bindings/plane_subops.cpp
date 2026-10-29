@@ -129,10 +129,11 @@ void register_object_settings(vm::SubopRegistry& r, SystemState& state, Display*
             return 0;
         });
     }
-    // (slave, master, dx, dy): both objects must exist and differ
+    // (master, slave, dx, dy): the slave follows the master at (dx, dy); both objects must exist and differ
     add(r, 0x913E, "bind slave object", 4, 0, [display](Ctx& c) {
         const auto dy = static_cast<std::int32_t>(c.pop()), dx = static_cast<std::int32_t>(c.pop());
-        const Word master = c.pop(), slave = c.pop();
+        const Word slave = c.pop(), master = c.pop();
+        if (std::getenv("OBGI_DBGOBJ")) std::fprintf(stderr, "91:3E master %X slave %X at %d,%d\n", master, slave, dx, dy);
         if (!c.ok() || !display) return 0;
         Sprite* sl = display->find_sprite(slave);
         if (!sl) {
@@ -144,6 +145,9 @@ void register_object_settings(vm::SubopRegistry& r, SystemState& state, Display*
             return 0;
         }
         sl->has_master = true, sl->master = master, sl->master_dx = dx, sl->master_dy = dy;
+        const Sprite* ms = display->find_sprite(master);
+        sl->x = ms->x + dx, sl->y = ms->y + dy; // moved there at once
+        sl->moved = false;
         return 0;
     });
     // (slave, ?): detaches a slave object
@@ -182,8 +186,8 @@ void advance_motions(SystemState& state, Display& display, std::int64_t now_ms) 
         Sprite* sp = display.find_sprite(it->object);
         const std::int64_t elapsed = std::min(now_ms - it->start_ms, it->duration_ms);
         if (sp && it->duration_ms > 0) {
-            sp->x = it->from_x + static_cast<std::int32_t>((std::int64_t{it->to_x} - it->from_x) * elapsed / it->duration_ms);
-            sp->y = it->from_y + static_cast<std::int32_t>((std::int64_t{it->to_y} - it->from_y) * elapsed / it->duration_ms);
+            sp->move_to(it->from_x + static_cast<std::int32_t>((std::int64_t{it->to_x} - it->from_x) * elapsed / it->duration_ms),
+                        it->from_y + static_cast<std::int32_t>((std::int64_t{it->to_y} - it->from_y) * elapsed / it->duration_ms));
         }
         it = (!sp || now_ms - it->start_ms >= it->duration_ms) ? state.motions.erase(it) : it + 1;
     }
@@ -231,7 +235,7 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
         m.to_x = static_cast<std::int32_t>(x), m.to_y = static_cast<std::int32_t>(y);
         std::erase_if(s->motions, [&](const auto& o) { return o.object == id; });
         if (m.duration_ms <= 0) {
-            sp->x = m.to_x, sp->y = m.to_y;
+            sp->move_to(m.to_x, m.to_y);
             return 0;
         }
         s->motions.push_back(m);
@@ -263,7 +267,7 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
         if (!c.ok()) return 0;
         std::erase_if(s->motions, [&](const auto& o) { return o.object == id; });
         if (m.duration_ms <= 0) {
-            sp->x = m.to_x, sp->y = m.to_y;
+            sp->move_to(m.to_x, m.to_y);
             return 0;
         }
         s->motions.push_back(m);

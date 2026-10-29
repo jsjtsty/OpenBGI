@@ -30,10 +30,14 @@ struct Sprite {
     std::uint32_t alpha = 0;
     std::uint32_t priority = 0;
     bool visible = true;
-    // 91:3E: a slave object follows a master object by an offset (not applied by compose yet)
+    // 91:3E: a slave object follows a master object by an offset. compose() keeps x,y = master + offset; a move
+    // of the slave itself (90:33, 90:28/29: move_to) re-reads the offset from the new position, as the original
+    // does. 90:56 sets x,y without telling the master.
     bool has_master = false;
     std::uint32_t master = 0;
     std::int32_t master_dx = 0, master_dy = 0;
+    bool moved = false;
+    void move_to(std::int32_t nx, std::int32_t ny) { x = nx, y = ny, moved = true; }
 };
 
 bool blend_mode_supported(std::uint32_t mode);
@@ -64,9 +68,13 @@ class Display {
     Sprite& sprite(std::uint32_t id) { return sprites_[id]; } // creates on first use
     Sprite* find_sprite(std::uint32_t id);
     void remove_sprite(std::uint32_t id) { sprites_.erase(id); }
+    // Shows or hides a sprite and, as the original does, every sprite attached to it by 91:3E.
+    void set_visible(std::uint32_t id, bool on, int depth = 0);
 
     // Composes the sprites (by priority, then id) into the screen slot, which is returned for reading.
     Result<void> compose();
+    // Moves every slave sprite (91:3E) to its master's position plus the stored offset.
+    void resolve_masters();
     // compose() and draw the result as one frame of the renderer.
     Result<void> present();
     Result<std::vector<std::uint32_t>> read_screen();

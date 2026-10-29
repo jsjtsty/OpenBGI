@@ -1,5 +1,8 @@
 #include "bindings/text_subops.hpp"
 
+#include <cstdio>
+#include <cstdlib>
+
 #include "text/encoding.hpp"
 #include "text/layout.hpp"
 
@@ -22,8 +25,8 @@ void register_text_subops(vm::SubopRegistry& r, TextHost& host) {
                Word eff_alpha = c.pop(), eff_color = c.pop(), eff_b = c.pop(), eff_a = c.pop(), eff_mode = c.pop();
                (void)eff_alpha, (void)eff_color, (void)eff_b, (void)eff_a;
                auto line_gap = static_cast<std::int32_t>(c.pop());
-               Word kinsoku = c.pop(), vertical = c.pop();
-               (void)kinsoku;
+               Word hang = c.pop(), prop = c.pop(); // hanging punctuation, proportional glyph widths (not modelled)
+               (void)hang, (void)prop;
                c.pop();
                c.pop(); // font parameters 2 and 3
                Word size = c.pop();
@@ -43,6 +46,8 @@ void register_text_subops(vm::SubopRegistry& r, TextHost& host) {
                    c.fail(Errc::Range, "no image slot " + std::to_string(slot));
                    return 0;
                }
+               if (std::getenv("OBGI_DBGTEXT"))
+                   std::fprintf(stderr, "92:9C slot %u at %d,%d size %u prop %u str=%s\n", slot, x, y, size, prop, text.c_str());
                (void)eff_mode; // outline/shadow effects are not rendered yet
 
                auto font = host.fonts->open(font_name, static_cast<int>(size));
@@ -53,30 +58,6 @@ void register_text_subops(vm::SubopRegistry& r, TextHost& host) {
                TextStyle style;
                style.color = color;
                style.line_gap = line_gap;
-               if (vertical) {
-                   // Simplified vertical writing (not checked against the original): characters run top to bottom from (x, y),
-                   // a new line starts a column to the left, and a column also ends at the bottom of the image.
-                   const std::int32_t cell = static_cast<std::int32_t>(size), col_w = cell + line_gap;
-                   std::int32_t col = 0, row = 0;
-                   const bool utf8 = host.code_page && *host.code_page == 65001;
-                   for (char32_t ch : utf8 ? utf8_to_utf32(text) : cp932_to_utf32(text)) {
-                       if (ch == char32_t{10} || row * cell + cell > static_cast<std::int32_t>(info->height) - y) {
-                           ++col, row = 0;
-                           if (ch == char32_t{10}) continue;
-                       }
-                       if (ch == char32_t{13}) continue;
-                       auto glyph = render_text(**font, std::u32string(1, ch), style, static_cast<std::uint32_t>(cell) * 2);
-                       if (!glyph) continue;
-                       if (glyph->width != 0 && glyph->height != 0 &&
-                           host.display->upload_slot(kTextSlot, glyph->width, glyph->height, SlotFormat::Bgra, glyph->pixels)) {
-                           (void)host.display->blit(slot, x - col * col_w, y + row * cell, kTextSlot, 0, 0, glyph->width, glyph->height, 0, 0x100);
-                           host.display->free_slot(kTextSlot);
-                       }
-                       ++row;
-                   }
-                   c.push(static_cast<Word>(col + 1));
-                   return 0;
-               }
                const std::int64_t room = std::int64_t{info->width} - x;
                auto img = render_text(**font, host.code_page && *host.code_page == 65001 ? utf8_to_utf32(text) : cp932_to_utf32(text), style, room > 0 ? static_cast<std::uint32_t>(room) : 1);
                if (!img) {
