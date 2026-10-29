@@ -66,7 +66,12 @@ struct SystemState {
     bool transition_running = false;                                // B0:05
     std::int64_t transition_end_ms = 0;
     std::uint32_t last_icon_control = 0;
-    std::map<std::uint32_t, int> icon_controls;     // 91:B8 registered control objects -> how many 90:BF reads they have answered
+    struct IconControl {
+        int reads = 0;                                   // 90:BF reads answered so far (the first two give the initial event)
+        std::deque<std::array<std::uint32_t, 3>> events; // pending 90:BF records
+        std::array<std::uint32_t, 6> info{1, 0x00370038, 0x002E0037, 0x006E0069, 0, 0}; // 90:BC record
+    };
+    std::map<std::uint32_t, IconControl> icon_controls; // 91:B8 registered control objects
     std::string replacements;                       // 91:96 text replacement definitions
     std::map<std::uint16_t, std::uint32_t> values; // plain settings by sub-opcode id (80:68, 80:52, ...)
     // Named lists of strings (80:84, 80:85, 80:D8..DC). List 0x80000000 is the global key list kept in BGI.gdb

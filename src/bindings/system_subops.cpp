@@ -762,7 +762,7 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
         if (!c.ok()) return 0;
         const bool found = s->icon_controls.count(num) != 0;
         if (found) {
-            const Word info[6] = {1, 0x00370038, 0x002E0037, 0x006E0069, 0, 0};
+            const auto& info = s->icon_controls[num].info;
             for (int k = 0; k < 6; ++k) c.write(addr + 4 * k, info[k], 4);
         }
         c.push(found);
@@ -773,9 +773,37 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
         if (!c.ok()) return 0;
         auto it = s->icon_controls.find(num);
         if (it != s->icon_controls.end()) {
-            const bool pending = it->second++ < 2;
-            const Word ev[3] = {pending ? 0x10000002u : 0u, pending ? 0xFFFFFFFFu : 0u, 0};
+            auto& ctl = it->second;
+            std::array<Word, 3> ev{};
+            if (!ctl.events.empty()) {
+                ev = ctl.events.front();
+                ctl.events.pop_front();
+            } else if (ctl.reads++ < 2) {
+                ev = {0x10000002u, 0xFFFFFFFFu, 0};
+            }
             for (int k = 0; k < 3; ++k) c.write(addr + 4 * k, ev[k], 4);
+        }
+        c.push(it != s->icon_controls.end());
+        return 0;
+    });
+    // 81:35 (two path strings): a file operation on the user's disk (FUN_00475b50); its pushed value is whatever register
+    // was left over in the original, so scripts cannot depend on it. Not modelled: pops both and pushes 0.
+    add(r, 0x8135, "file operation (not modelled)", 2, 1, [](Ctx& c) { c.pop(), c.pop(); c.push(0); return 0; });
+    // 80:AC (control number, word count, address): sends a message to a control. Messages (0x10000002, ?, item) only move its
+    // cursor; (0x10000000, item, 0) is a decision: the control answers it with the event (0x10000006, item, 0) and its info
+    // record becomes (1, 0, item, 0, 0, 0) (all checked against the original). Pushes 1 when the control exists.
+    add(r, 0x80AC, "send icon control message", 3, 1, [s](Ctx& c) {
+        const Word addr = c.pop(), count = c.pop(), num = c.pop();
+        if (!c.ok()) return 0;
+        auto it = s->icon_controls.find(num);
+        if (it != s->icon_controls.end() && count >= 3 && count <= 256) {
+            Word w[3];
+            for (int k = 0; k < 3; ++k) w[k] = static_cast<Word>(c.read(addr + 4 * k, 4, false));
+            if (!c.ok()) return 0;
+            if (w[0] == 0x10000000) {
+                it->second.events.push_back({0x10000006u, w[1], w[2]});
+                it->second.info = {1, 0, w[1], 0, 0, 0};
+            }
         }
         c.push(it != s->icon_controls.end());
         return 0;
@@ -806,7 +834,7 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
         c.pop();
         if (!c.ok()) return 0;
         const Word id = ++s->last_icon_control;
-        s->icon_controls[id] = 0;
+        s->icon_controls[id] = {};
         c.push(id);
         return 0;
     });
