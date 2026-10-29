@@ -3,6 +3,7 @@
 #include <array>
 #include <cstdio>
 #include <cstdlib>
+#include <functional>
 #include <memory>
 
 #include "text/encoding.hpp"
@@ -63,6 +64,21 @@ Word text_layer(SystemState& s, std::size_t idx) {
         if (d->create_slot(text_slot, s.planes[idx]->width, s.planes[idx]->height, SlotFormat::Bgra)) (void)d->fill_slot(text_slot, 0);
     }
     return text_slot;
+}
+
+// A message being typed out: draw(k) shows its first k characters.
+struct Reveal {
+    std::size_t total = 0;
+    std::function<void(std::size_t)> draw;
+};
+
+// Frames between two characters of a message (OBGI_TEXT_FRAMES overrides; 0 shows messages at once).
+int frames_per_char() {
+    static const int v = [] {
+        const char* e = std::getenv("OBGI_TEXT_FRAMES");
+        return e ? std::atoi(e) : 2;
+    }();
+    return v;
 }
 
 // What the click that ends a message looks like: Enter, Space, the left button.
@@ -144,7 +160,7 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
     });
 
     // Writes `str` at the cursor of window `handle`. Returns false after failing the context.
-    auto write_text = [s, th, fh, shared](Ctx& c, Word handle, const std::string& str, Word colour) {
+    auto write_text = [s, th, fh, shared](Ctx& c, Word handle, const std::string& str, Word colour, Reveal& rv) {
         std::size_t idx = 0;
         SystemState::Plane* p = plane_of(*s, c, handle, &idx);
         if (!p) return false;
@@ -179,10 +195,19 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
             std::fprintf(stderr, "\n");
         }
         if (std::getenv("OBGI_DBGTEXT"))
+            for (Word id : {0x9097u, 0x909Bu, 0x909Cu, 0x909Eu, 0x9099u, 0x909Au, 0x9094u, 0x9198u}) {
+                auto it = s->records.find(id);
+                std::fprintf(stderr, "rec %04X:", id);
+                if (it != s->records.end())
+                    for (Word w : it->second) std::fprintf(stderr, " %d", static_cast<int>(w));
+                std::fprintf(stderr, "\n");
+            }
+        if (std::getenv("OBGI_DBGTEXT"))
             std::fprintf(stderr, "text win=%X font=%s size=%d gap=%d colour=%08X area=%d,%d,%d,%d str=%s\n", handle, name.c_str(), size, gap, colour,
                          p->area[0], p->area[1], p->area[2], p->area[3], str.c_str());
         auto fnt = th->fonts->open(name, size);
         if (!fnt) return true; // no font to draw with: the text just does not show
+        std::shared_ptr<Font> face = *fnt;
         Cursor& cur = shared->cursors[idx];
         if (!cur.placed) cur = {p->area[0], p->area[1], true};
         TextStyle style;
@@ -191,25 +216,60 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         // lay out from the left edge of the text area, the first line indented to where the cursor is
         style.first_indent = cur.x - p->area[0];
         const std::int64_t room = std::int64_t{p->area[2]} - p->area[0] + 1;
-        auto img = render_text(**fnt, s->code_page == 65001 ? utf8_to_utf32(str) : cp932_to_utf32(str), style, room > 0 ? static_cast<std::uint32_t>(room) : 1);
+        const std::uint32_t max_w = room > 0 ? static_cast<std::uint32_t>(room) : 1;
+        const std::u32string text = s->code_page == 65001 ? utf8_to_utf32(str) : cp932_to_utf32(str);
+        auto img = render_text(*face, text, style, max_w);
         if (!img || img->width == 0 || img->height == 0) return true;
         const Word text_slot = text_layer(*s, idx);
-        if (s->display->upload_slot(kTempSlot, img->width, img->height, SlotFormat::Bgra, img->pixels)) {
-            (void)s->display->blit(text_slot, p->area[0], cur.y, kTempSlot, 0, 0, img->width, img->height, 1, 0);
-            s->display->free_slot(kTempSlot);
+        auto snapshot = std::make_shared<std::vector<std::uint32_t>>();
+        std::uint32_t tw = 0, th_ = 0;
+        if (const SlotInfo* si = s->display->slot(text_slot)) {
+            tw = si->width, th_ = si->height;
+            if (auto px = s->display->read_slot(text_slot)) *snapshot = std::move(*px);
         }
+        const std::int32_t x0 = p->area[0], y0 = cur.y;
         const int line_h = img->lines > 0 ? static_cast<int>(img->height) / img->lines : size;
+        rv.total = text.size();
+        rv.draw = [s, idx, text_slot, text, style, max_w, face, snapshot, tw, th_, x0, y0](std::size_t k) {
+            Display* d = s->display;
+            if (!d || !s->planes[idx]) return;
+            if (snapshot->size() == std::size_t{tw} * th_) (void)d->upload_slot(text_slot, tw, th_, SlotFormat::Bgra, *snapshot);
+            auto part = render_text(*face, text.substr(0, k), style, max_w);
+            if (!part || part->width == 0 || part->height == 0) return;
+            if (d->upload_slot(kTempSlot, part->width, part->height, SlotFormat::Bgra, part->pixels)) {
+                (void)d->blit(text_slot, x0, y0, kTempSlot, 0, 0, part->width, part->height, 1, 0);
+                d->free_slot(kTempSlot);
+            }
+            recompose(*s, idx);
+        };
         cur = {p->area[0] + img->last_width, cur.y + line_h * (img->lines - 1), true};
-        recompose(*s, idx);
         return true;
     };
-    // Ends the op: the thread waits (for a click at the end of the message when asked) and receives 1 when the user hurried it.
-    auto finish = [](Ctx& c, bool wait_click, SystemState* st) {
+    // Ends the op: the thread types the message out (a click shows the rest at once), then waits for a click at the end when
+    // asked, and receives 1 when the user ended it that way.
+    auto finish = [](Ctx& c, Reveal rv, bool instant, bool allow_skip, bool wait_click, SystemState* st) {
         vm::Thread* t = &c.t;
-        const std::uint32_t base = decide_count(*st);
+        auto base = std::make_shared<std::uint32_t>(decide_count(*st));
+        auto shown = std::make_shared<std::size_t>(0);
+        auto ticks = std::make_shared<int>(0);
+        const int per_char = frames_per_char();
+        if (rv.draw && (instant || per_char <= 0)) rv.draw(*shown = rv.total);
         c.t.wait.kind = vm::WaitObject::Kind::Poll;
-        c.t.wait.poll = [t, st, base, wait_click]() {
-            if (wait_click && decide_count(*st) == base) return false;
+        c.t.wait.poll = [t, st, base, shown, ticks, per_char, rv, allow_skip, wait_click]() {
+            if (rv.draw && *shown < rv.total) {
+                if (allow_skip && decide_count(*st) != *base) {
+                    *base = decide_count(*st); // this click only hurries the typing
+                    *shown = rv.total;
+                    rv.draw(*shown);
+                } else if (++*ticks >= per_char) {
+                    *ticks = 0;
+                    rv.draw(++*shown);
+                    return false;
+                } else {
+                    return false;
+                }
+            }
+            if (wait_click && decide_count(*st) == *base) return false;
             t->expr[t->depth] = wait_click ? 1u : 0u;
             t->depth = t->depth + 1 < t->expr.size() ? t->depth + 1 : 0;
             return true;
@@ -219,40 +279,45 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
 
     // 90:90 (window, string, colour, instant, wait at end, allow skip)
     add(r, 0x9090, "message text", 6, 0, [write_text, finish, s](Ctx& c) {
-        c.pop();
+        const Word skip = c.pop();
         const Word wait_end = c.pop();
-        c.pop();
+        const Word instant = c.pop();
         const Word colour = c.pop();
         const std::string str = c.cstring(c.pop());
         const Word handle = c.pop();
-        if (!c.ok() || !write_text(c, handle, str, colour)) return 0;
-        return finish(c, wait_end != 0, s);
+        Reveal rv;
+        if (!c.ok() || !write_text(c, handle, str, colour, rv)) return 0;
+        return finish(c, rv, instant != 0, skip != 0, wait_end != 0, s);
     });
     // 91:90 (window, string, colour, instant, wait at end, allow skip, allow keys, ruby on, hang, unused)
     add(r, 0x9190, "message text (rich)", 10, 0, [write_text, finish, s](Ctx& c) {
         c.pop(), c.pop(), c.pop(); // unused, hang, ruby on
-        c.pop(), c.pop();          // allow keys, allow skip
+        c.pop();                   // allow keys
+        const Word skip = c.pop();
         const Word wait_end = c.pop();
-        c.pop();
+        const Word instant = c.pop();
         const Word colour = c.pop();
         const std::string str = c.cstring(c.pop());
         const Word handle = c.pop();
-        if (!c.ok() || !write_text(c, handle, str, colour)) return 0;
-        return finish(c, wait_end != 0, s);
+        Reveal rv;
+        if (!c.ok() || !write_text(c, handle, str, colour, rv)) return 0;
+        return finish(c, rv, instant != 0, skip != 0, wait_end != 0, s);
     });
     // 92:90 (window, string, colour, ruby on, ruby colour, hang, shadow on, dx, dy, shadow colour, shadow level, instant,
     // wait at end, allow skip, allow keys)
     add(r, 0x9290, "message text (styled)", 15, 0, [write_text, finish, s](Ctx& c) {
-        c.pop(), c.pop();            // allow keys, allow skip
+        c.pop();                     // allow keys
+        const Word skip = c.pop();
         const Word wait_end = c.pop();
-        c.pop();                     // instant
+        const Word instant = c.pop();
         for (int i = 0; i < 5; ++i) c.pop(); // shadow level, colour, dy, dx, on
         c.pop(), c.pop(), c.pop();   // hang, ruby colour, ruby on
         const Word colour = c.pop();
         const std::string str = c.cstring(c.pop());
         const Word handle = c.pop();
-        if (!c.ok() || !write_text(c, handle, str, colour)) return 0;
-        return finish(c, wait_end != 0, s);
+        Reveal rv;
+        if (!c.ok() || !write_text(c, handle, str, colour, rv)) return 0;
+        return finish(c, rv, instant != 0, skip != 0, wait_end != 0, s);
     });
 }
 
