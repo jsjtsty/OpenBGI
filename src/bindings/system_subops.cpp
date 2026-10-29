@@ -808,7 +808,6 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     // 92:15 only calls a flush routine in the original (no arguments, no result); 90:43 / 90:28 take 9 / 12 values for
     // grey-bitmap effects and a motion wait object: not modelled yet
     add(r, 0x9215, "flush 92:15", 0, 0, [](Ctx&) { return 0; });
-    add(r, 0x9043, "grey bitmap effect (not modelled)", 9, 0, [](Ctx& c) { for (int i = 0; i < 9; ++i) c.pop(); return 0; });
     // 90:BC / 90:BF (number, address): read an icon control into a record and push 1, or push 0 when the number does not exist
     // (record contents checked against the original). 90:BC: 6 words, 1 followed by the UTF-16 text "877.in". 90:BF: 3 words, the
     // control's first two reads give a pending event (0x10000002, -1, 0), later ones all zeros.

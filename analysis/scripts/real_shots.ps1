@@ -11,6 +11,7 @@ public class W2 { [DllImport("user32.dll")] public static extern bool SetProcess
 function Shot($name) {
   $p = Get-Process ac2_ML -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
   if (-not $p) { "no window"; return }
+  [W2]::SetForegroundWindow($p.MainWindowHandle) | Out-Null; Start-Sleep -Milliseconds 400
   $r = New-Object W2+RECT; [W2]::GetWindowRect($p.MainWindowHandle, [ref]$r) | Out-Null
   $w = $r.R - $r.L; $h = $r.B - $r.T
   $bmp = New-Object System.Drawing.Bitmap $w, $h
@@ -19,10 +20,8 @@ function Shot($name) {
 }
 function Press($vk) { $v=[Convert]::ToByte($vk,16); [W2]::keybd_event($v,0,0,[UIntPtr]::Zero); Start-Sleep -Milliseconds 80; [W2]::keybd_event($v,0,2,[UIntPtr]::Zero) }
 $proc = Start-Process "E:\Games\_ac2_trace\ac2_ML.exe" -WorkingDirectory "E:\Games\_ac2_trace" -PassThru
-Start-Sleep 25
-$p = Get-Process ac2_ML | Where-Object { $_.MainWindowHandle -ne 0 } | Select-Object -First 1
-[W2]::SetForegroundWindow($p.MainWindowHandle) | Out-Null
+Start-Sleep 30
 Shot "title"
-foreach ($k in $Keys) { Press $k; Start-Sleep 3; Shot "after_$k" }
-Start-Sleep 10; Shot "later"
+foreach ($k in $Keys) { Press $k; Start-Sleep 2; Shot "after_$k" }
+foreach ($t in 3, 5, 10) { Start-Sleep $t; Shot "later_$t" }
 Stop-Process -Id $proc.Id -Force

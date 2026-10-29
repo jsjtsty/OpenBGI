@@ -399,7 +399,6 @@ void register_window_subops(vm::SubopRegistry& r, SystemState& state, Display* d
         s->records[0x900C] = {q, p};
         return 0;
     });
-    add_record(r, state, 0x904C, "display setting 90:4C", 2);
     add_record(r, state, 0x9000, "display update flag", 1);
     add_record(r, state, 0x9007, "display setting 90:07", 1);
     add_record(r, state, 0x909B, "typesetting setting 90:9B", 2);

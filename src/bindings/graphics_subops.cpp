@@ -77,6 +77,46 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         check(c, d.create_slot(slot, w, h, static_cast<SlotFormat>(format)));
         return 0;
     });
+    // The background (object 0) of type 4, the only kind the title and scenes use here (analysis/背景.md): a lower picture at
+    // screen position (-x2, -y2), drawn opaque, and an upper picture at (-x1, -y1) over it with transparency `level`
+    // (0 = fully shown). `gray` (a wipe map) is not followed: the two are cross-faded plainly. Numbers 0x7000 / 0x7001 / 0x7FFF / -1
+    // for the lower picture mean black / white / none; the screen is black anyway. 90:4C (visible, mode) shows or hides it.
+    struct Background { bool visible = true; };
+    auto bg = std::make_shared<Background>();
+    constexpr Word kBgLower = 0x7C000000, kBgUpper = 0x7C000001;
+    auto bg_picture = [&d](Word id, std::int32_t bmp, std::int32_t x, std::int32_t y, Word alpha, bool visible) {
+        Sprite& s = d.sprite(id);
+        const bool real = bmp >= 0 && bmp < 0x7000 && d.slot(static_cast<Word>(bmp)) != nullptr;
+        s.slot = real ? static_cast<Word>(bmp) : 0;
+        s.x = -x, s.y = -y;
+        s.priority = 0, s.blend = 1, s.alpha = alpha;
+        s.visible = real && visible;
+    };
+    add(r, 0x9043, "background two pictures", 9, 0, [bg, bg_picture, &d](Ctx& c) {
+        const Word level = c.pop();
+        c.pop(), c.pop(); // wipe parameter, wipe map
+        const auto bmp2 = static_cast<std::int32_t>(c.pop());
+        const auto y2 = static_cast<std::int32_t>(c.pop()), x2 = static_cast<std::int32_t>(c.pop());
+        const auto bmp1 = static_cast<std::int32_t>(c.pop());
+        const auto y1 = static_cast<std::int32_t>(c.pop()), x1 = static_cast<std::int32_t>(c.pop());
+        if (!c.ok()) return 0;
+        if (level > 0x100) { c.fail(Errc::Range, "alpha out of range"); return 0; }
+        if (std::getenv("OBGI_DBGBG")) {
+            const SlotInfo* si = bmp1 >= 0 ? d.slot(static_cast<Word>(bmp1)) : nullptr;
+            std::fprintf(stderr, "90:43 upper %d (%ux%u) at %d,%d lower %d at %d,%d level %u\n", bmp1, si ? si->width : 0, si ? si->height : 0, x1, y1, bmp2, x2, y2, level);
+        }
+        bg_picture(kBgLower, bmp2, x2, y2, 0, bg->visible);
+        bg_picture(kBgUpper, bmp1, x1, y1, level, bg->visible);
+        return 0;
+    });
+    add(r, 0x904C, "background show", 2, 0, [bg, &d](Ctx& c) {
+        c.pop(); // draw mode
+        bg->visible = c.pop() != 0;
+        if (!c.ok()) return 0;
+        for (Word id : {kBgLower, kBgUpper})
+            if (Sprite* s = d.find_sprite(id)) s->visible = bg->visible && s->slot != 0;
+        return 0;
+    });
     // 92:12 (slot, w, h): sets the base size of a slot (the design size of its image); 1 for a valid slot number.
     // 92:16 (out, slot): reads it into two words at out; until set, the size of the image in the slot (0, 0 without one).
     auto base_sizes = std::make_shared<std::map<Word, std::pair<std::int32_t, std::int32_t>>>();
@@ -287,6 +327,10 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         Word v[17];
         for (Word& x : v) x = c.pop();
         if (!c.ok()) return 0;
+        if (std::getenv("OBGI_DBG5C"))
+            std::fprintf(stderr, "90:5C h=%X fx=%d fy=%d fz=%d bmp1=%d bmp2=%d mix=%u route=%d ox=%d oy=%d angle=%d dist=%d projPos=%d smooth=%d effect=%u level=%u prio=%u\n",
+                         v[16], static_cast<int>(v[15]), static_cast<int>(v[14]), static_cast<int>(v[13]), static_cast<int>(v[12]), static_cast<int>(v[11]), v[10], static_cast<int>(v[9]),
+                         static_cast<int>(v[8]), static_cast<int>(v[7]), static_cast<int>(v[6]), static_cast<int>(v[5]), static_cast<int>(v[4]), static_cast<int>(v[3]), v[2], v[1], v[0]);
         Sprite* s = object(c, d, v[16]);
         if (!s) return 0;
         if (!d.slot(v[12])) {
