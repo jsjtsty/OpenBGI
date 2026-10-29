@@ -281,7 +281,16 @@ int main(int argc, char** argv) {
             for (std::uint32_t vk : (*renderer)->take_presses()) system.press_input(vk);
             std::tie(system.mouse_x, system.mouse_y) = (*renderer)->mouse_position();
             system.left_down = (*renderer)->left_button_down();
+            system.wheel += (*renderer)->take_wheel();
         }
+        if (const char* wh = std::getenv("OBGI_WHEEL")) // "frame:notches,...": scripted wheel turns (negative = towards the user)
+            for (std::stringstream ss(wh); ss.good();) {
+                std::string tok;
+                std::getline(ss, tok, ',');
+                long at = 0;
+                int n = 0;
+                if (std::sscanf(tok.c_str(), "%ld:%d", &at, &n) == 2 && at == f) system.wheel += n;
+            }
         if (const char* hold = std::getenv("OBGI_HOLD")) // "frame:1|0,...": scripted left button held (1) or released (0) for headless drags
             for (std::stringstream ss(hold); ss.good();) {
                 std::string tok;

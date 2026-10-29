@@ -154,7 +154,13 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     // on display objects that are not drawn yet, 90:B7 (object, description) -> status 0, 90:E0 creates an object
     add(r, 0x9106, "91:06 (not modelled)", 2, 0, [](Ctx& c) { c.pop(), c.pop(); return 0; });
     add(r, 0x8050, "setting 80:50", 1, 0, [s](Ctx& c) { const Word v = c.pop(); if (c.ok()) s->values[0x8050] = v; return 0; });
-    add(r, 0x90B7, "object method (not modelled)", 2, 1, [](Ctx& c) { c.pop(), c.pop(); c.push(0); return 0; });
+    add(r, 0x90B7, "object method (not modelled)", 2, 1, [](Ctx& c) {
+        const Word desc = c.pop(), object = c.pop();
+        if (std::getenv("OBGI_DBGPANEL") && c.ok())
+            std::fprintf(stderr, "90:B7 object %X desc %X: groups %d current %d\n", object, desc, int(c.read(desc, 4, false)), int(c.read(desc + 8, 4, false)));
+        c.push(0);
+        return 0;
+    });
     add(r, 0x90E0, "create manager object", 0, 1, [s](Ctx& c) { c.push(0xA0000000u + s->last_manager_object++); return 0; });
     add(r, 0x90E1, "90:E1 (not modelled)", 1, 0, [](Ctx& c) { c.pop(); return 0; });
     add(r, 0x90E4, "90:E4 (not modelled)", 2, 0, [](Ctx& c) { c.pop(), c.pop(); return 0; });
@@ -874,6 +880,8 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     add(r, 0x8017, "input skip state", 0, 1, [](Ctx& c) { c.push(0); return 0; }); // nothing pressed
     add(r, 0x8014, "set input skip permission", 1, 0, [s](Ctx& c) { const Word v = c.pop(); if (c.ok()) s->values[0x8014] = v; return 0; });
     add(r, 0x800F, "window active", 0, 1, [](Ctx& c) { c.push(1); return 0; });
+    // 80:61: the mode the display was set up with (the argument of the original's Direct3D set-up): 1 full screen, 0 windowed
+    add(r, 0x8061, "display set-up mode", 0, 1, [](Ctx& c) { c.push(0); return 0; });
     // 92:15 only calls a flush routine in the original (no arguments, no result); 90:43 / 90:28 take 9 / 12 values for
     // grey-bitmap effects and a motion wait object: not modelled yet
     add(r, 0x9215, "flush 92:15", 0, 0, [](Ctx&) { return 0; });
@@ -979,7 +987,8 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
             if (std::getenv("OBGI_DBGPANEL")) std::fprintf(stderr, "80:AC control %u msg %X %X %X\n", num, w[0], w[1], w[2]);
             if (w[0] == 0x10000000) {
                 it->second.events.push_back({0x10000006u, w[1], w[2]});
-                it->second.info = {1, 0, w[1], 0, 0, 0};
+                if (it->second.basic) it->second.info = {0, w[1] >> 16, w[1] & 0xFFFF, w[2], 0, 0};
+                else it->second.info = {1, 0, w[1], 0, 0, 0};
             } else if (w[0] == 0x10000002) {
                 panel_select(*s, num, static_cast<int>(w[1]), static_cast<int>(w[2]));
             }
@@ -992,8 +1001,26 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     // 90:B6 / 90:BA (object, description) and 90:B8 (object): object property lookups, answered "none" until modelled;
     // 90:22 (7 values: priority, skip flag, three timing values, opacity, object): a timed opacity change, not modelled
     add(r, 0x90B6, "object property (not modelled)", 2, 1, [](Ctx& c) { c.pop(), c.pop(); c.push(0); return 0; });
-    add(r, 0x90BA, "object property (not modelled)", 2, 1, [](Ctx& c) { c.pop(), c.pop(); c.push(0); return 0; });
-    add(r, 0x90B8, "object property (not modelled)", 1, 1, [](Ctx& c) { c.pop(); c.push(0); return 0; });
+    // 90:B8 (window) / 90:BA (description, number): the plain panel, registered and started like 91:B8 / 91:BA; a number that does
+    // not exist gives 1, a panel that has started 4
+    add(r, 0x90B8, "register plain panel", 1, 1, [s](Ctx& c) {
+        const Word window = c.pop();
+        if (!c.ok()) return 0;
+        const Word id = ++s->last_icon_control;
+        auto& ic = s->icon_controls[id];
+        ic = {};
+        ic.window = window, ic.basic = true;
+        ic.seen_clicks = s->input_counts[1];
+        c.push(id);
+        return 0;
+    });
+    add(r, 0x90BA, "start plain panel", 2, 1, [s](Ctx& c) {
+        const Word desc = c.pop();
+        const Word id = c.pop();
+        if (!c.ok()) return 0;
+        c.push(panel_start(*s, id, c, desc));
+        return 0;
+    });
     add(r, 0x9022, "timed opacity (not modelled)", 7, 0, [](Ctx& c) { for (int i = 0; i < 7; ++i) c.pop(); return 0; });
     add(r, 0x8008, "mouse position", 0, 2, [s](Ctx& c) { c.push(static_cast<Word>(s->mouse_x)), c.push(static_cast<Word>(s->mouse_y)); return 0; }); // client x, y
     add(r, 0x810F, "window minimised", 0, 1, [](Ctx& c) { c.push(0); return 0; });
@@ -1015,6 +1042,7 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
         const Word id = ++s->last_icon_control;
         s->icon_controls[id] = {};
         s->icon_controls[id].window = window;
+        s->icon_controls[id].seen_clicks = s->input_counts[1]; // clicks before the panel existed are not its clicks
         c.push(id);
         return 0;
     });

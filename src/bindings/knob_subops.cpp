@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
+#include <utility>
 
 #include "bindings/system_subops.hpp"
 
@@ -112,6 +113,23 @@ std::vector<Word> by_priority(const SystemState& s) {
 } // namespace
 
 void knob_input(SystemState& s) {
+    // The wheel scrolls the newest knob on the wheel list by one value unit on the y axis, but only while 90:DD is
+    // non-zero; otherwise (and with an empty list) it presses the pseudo keys 0x0E (away) / 0x0F (towards).
+    for (; s.wheel != 0; s.wheel += s.wheel > 0 ? -1 : 1) {
+        const bool away = s.wheel > 0;
+        auto mode = s.values.find(0x90DD);
+        const bool scrolls = (mode == s.values.end() || mode->second != 0) && !s.knob_wheel.empty();
+        if (!scrolls) {
+            s.press_input(away ? 0x0E : 0x0F);
+            continue;
+        }
+        Knob& k = s.knobs.at(s.knob_wheel.front());
+        const std::int32_t dir = away ? -1 : 1;
+        const std::int32_t h = thumb_size(s, k).second;
+        k.wheel_step = dir;
+        const std::int32_t vy = k.value_y + dir;
+        if (vy >= 0 && vy <= max_value(k.track_h, h, k.steps_y)) set_value(s, k, k.value_x, vy);
+    }
     if (s.knobs.empty()) {
         s.knob_focus = 0;
         s.knob_seen_left = s.input_counts[1], s.knob_seen_right = s.input_counts[2];
@@ -275,12 +293,13 @@ void register_knob_subops(vm::SubopRegistry& r, SystemState& state) {
         if (tw >= w && th >= hh) k->track_w = tw, k->track_h = th;
         return 0;
     });
-    // 90:DA (knob): the wheel step the knob last moved by (0 when none); the wheel is not wired yet
+    // 90:DA (knob): the wheel step the knob was scrolled by since the last call (+1 towards the user, -1 away, 0 none)
     add(r, 0x90DA, "knob wheel step", 1, 1, [s](Ctx& c) {
         const Word h = c.pop();
         if (!c.ok()) return 0;
-        if (!knob_of(*s, c, h)) return 0;
-        c.push(0);
+        Knob* k = knob_of(*s, c, h);
+        if (!k) return 0;
+        c.push(static_cast<Word>(std::exchange(k->wheel_step, 0)));
         return 0;
     });
     // 90:DB: the knob right-clicked since the last call (0 for none); clears the marks

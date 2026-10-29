@@ -55,6 +55,7 @@ struct Renderer::Impl {
     std::vector<std::uint32_t> presses;
     int mouse_x = 0, mouse_y = 0; // pointer in logical canvas coordinates
     bool left_down = false;
+    int wheel = 0;
 
     ~Impl() {
         if (pipeline) SDL_ReleaseGPUGraphicsPipeline(device, pipeline);
@@ -289,6 +290,10 @@ bool Renderer::poll_events() {
             }
         }
         if ((e.type == SDL_EVENT_MOUSE_BUTTON_DOWN || e.type == SDL_EVENT_MOUSE_BUTTON_UP) && e.button.button == 1) impl_->left_down = e.type == SDL_EVENT_MOUSE_BUTTON_DOWN;
+        if (e.type == SDL_EVENT_MOUSE_WHEEL) {
+            // one notch per event, like WM_MOUSEWHEEL (the engine looks only at the sign); precise touchpads send fractions
+            if (e.wheel.y != 0) impl_->wheel += e.wheel.y > 0 ? 1 : -1;
+        }
         if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
             static constexpr std::uint32_t kButtons[] = {0, 1, 4, 2, 5, 6}; // SDL: 1 left, 2 middle, 3 right, 4 X1, 5 X2
             if (e.button.button < 6) impl_->presses.push_back(kButtons[e.button.button]);
@@ -302,6 +307,8 @@ std::vector<std::uint32_t> Renderer::take_presses() { return std::exchange(impl_
 std::pair<int, int> Renderer::mouse_position() const { return {impl_->mouse_x, impl_->mouse_y}; }
 
 bool Renderer::left_button_down() const { return impl_->left_down; }
+
+int Renderer::take_wheel() { return std::exchange(impl_->wheel, 0); }
 
 std::uint32_t Renderer::take_key() { return std::exchange(impl_->key, 0u); }
 

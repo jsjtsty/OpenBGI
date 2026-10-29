@@ -81,6 +81,7 @@ struct SystemState {
     };
     struct IconControl {
         std::uint32_t window = 0;                        // 91:B8: the window object the buttons sit on
+        bool basic = false;                              // made by 90:B8: the plain panel with the smaller descriptor
         std::vector<PanelGroup> groups;                  // 91:BA: the started panel
         int current_group = -1;
         int hover_group = -1, hover_index = -1;          // the button under the pointer
@@ -148,11 +149,13 @@ struct SystemState {
         std::int32_t grab_x = 0, grab_y = 0;      // pointer offset inside the thumb while dragging
         bool enabled = true;                      // 90:DC
         bool flagged = false;                     // set by a right click on the thumb, read and cleared by 90:DB
+        std::int32_t wheel_step = 0;              // the last wheel scroll (+1 / -1), read and cleared by 90:DA
         std::uint32_t priority = 0;
     };
     std::map<std::uint32_t, Knob> knobs;          // by handle
     std::vector<std::uint32_t> knob_wheel;        // 90:DE / 90:DF: knobs the mouse wheel scrolls, newest first
-    std::uint32_t knob_focus = 0;                 // the knob being dragged
+    int wheel = 0;                                // wheel notches not yet looked at (set by the host; positive = away from the user)
+    std::uint32_t knob_focus = 0;                // the knob being dragged
     std::uint32_t knob_seen_left = 0, knob_seen_right = 0; // presses already looked at
     std::map<std::uint32_t, std::uint32_t> typesetting; // 91:9A: key -> value (analysis/排版引擎.md)
 };

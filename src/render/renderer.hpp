@@ -76,6 +76,7 @@ class Renderer {
     // The pointer in logical canvas coordinates (outside the canvas when it is in the letterbox bars).
     std::pair<int, int> mouse_position() const;
     bool left_button_down() const; // the left mouse button is held
+    int take_wheel();              // wheel notches since the last call (positive = away from the user)
 
     Result<void> begin_frame(const float clear_rgba[4]);
     void draw(const Texture& tex, const DrawParams& p);
