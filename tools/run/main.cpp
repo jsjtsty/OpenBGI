@@ -185,6 +185,10 @@ int main(int argc, char** argv) {
                 ef << std::hex << std::uppercase << std::setfill('0') << std::setw(2) << (id >> 8) << ':' << std::setw(2) << (id & 255) << std::dec << '\t' << int(d->pops) << '\t' << int(d->pushes) << '\n';
     }
     std::printf("%zu sub-opcodes registered\n", registry.size());
+    if (const char* dump = std::getenv("OBGI_DUMPOPS")) { // path: one "XXXX name pops pushes" line per registered sub-opcode
+        std::ofstream out(dump);
+        for (const auto& [id, def] : registry.all()) out << std::hex << std::uppercase << id << ' ' << def.name << ' ' << std::dec << int(def.pops) << ' ' << int(def.pushes) << '\n';
+    }
 
     // --survey <subop_effects.tsv>: diagnostic only. Every sub-opcode that is not implemented but has a measured
     // stack effect becomes a stub that pops, pushes zeros and returns Continue; the hits are listed at the end.

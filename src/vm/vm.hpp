@@ -151,6 +151,7 @@ class SubopRegistry {
         return it == defs_.end() ? nullptr : &it->second;
     }
     std::size_t size() const { return defs_.size(); }
+    const std::map<std::uint16_t, SubopDef>& all() const { return defs_; }
 
   private:
     std::map<std::uint16_t, SubopDef> defs_;
