@@ -157,6 +157,16 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     add(r, 0x90E0, "create manager object", 0, 1, [s](Ctx& c) { c.push(0xA0000000u + s->last_manager_object++); return 0; });
     add(r, 0x90E1, "90:E1 (not modelled)", 1, 0, [](Ctx& c) { c.pop(); return 0; });
     add(r, 0x90E4, "90:E4 (not modelled)", 2, 0, [](Ctx& c) { c.pop(), c.pop(); return 0; });
+    // not modelled yet (display object / effect parameters); pop counts measured in the original: 90:3A 2, 90:53 5, 90:58 9,
+    // 91:38 3, 91:9F 2, 92:90 15, 90:90 6 (none pushes anything). 80:1A (mouse region priority) pushes the logical input mask: 0 here
+    for (const auto& [id, pops] : {std::pair{0x903Au, 2}, {0x9053u, 5}, {0x9058u, 9}, {0x9138u, 3}, {0x919Fu, 2}, {0x9290u, 15}, {0x9090u, 6}})
+        add(r, static_cast<std::uint16_t>(id), "effect parameters (not modelled)", pops, 0, [pops](Ctx& c) { for (int i = 0; i < pops; ++i) c.pop(); return 0; });
+    add(r, 0x801A, "mouse region input (not modelled)", 1, 1, [](Ctx& c) { c.pop(); c.push(0); return 0; });
+    add(r, 0x9214, "92:14 wait object (not modelled)", 2, 0, [](Ctx& c) { c.pop(), c.pop(); return 0; });
+    add(r, 0x9219, "92:19 (not modelled)", 1, 1, [](Ctx& c) { c.pop(); c.push(0); return 0; });
+    // 91:94 / 91:95 (two strings): a text (font name list) registry the original keeps; not modelled. 91:95 pushed 0 in the original.
+    add(r, 0x9194, "text registry (not modelled)", 2, 0, [](Ctx& c) { c.pop(), c.pop(); return 0; });
+    add(r, 0x9195, "text registry query (not modelled)", 2, 1, [](Ctx& c) { c.pop(), c.pop(); c.push(0); return 0; });
     add(r, 0x90E5, "90:E5 (not modelled)", 4, 0, [](Ctx& c) { for (int i = 0; i < 4; ++i) c.pop(); return 0; });
     add(r, 0x90E8, "90:E8 (not modelled)", 4, 0, [](Ctx& c) { for (int i = 0; i < 4; ++i) c.pop(); return 0; });
     add(r, 0x90E9, "90:E9 (not modelled)", 2, 0, [](Ctx& c) { c.pop(), c.pop(); return 0; });
@@ -228,6 +238,35 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
         }
         if (!found) found = res->exists(prefix, name);
         c.push(found ? 1 : 0);
+        return 0;
+    });
+    // (destination, SDC block): unpacks an SDC block ("SDC FORMAT 1.00") to the destination and pushes the unpacked size; 0 when
+    // the block is not SDC.
+    add(r, 0x80C1, "unpack SDC", 2, 1, [](Ctx& c) {
+        const Word src = c.pop(), dst = c.pop();
+        if (!c.ok()) return 0;
+        std::vector<std::uint8_t> head;
+        c.read_bytes(src, 0x20, head);
+        if (!c.ok()) return 0;
+        if (!is_sdc(ByteView(head.data(), head.size()))) {
+            c.push(0);
+            return 0;
+        }
+        const std::uint32_t csize = static_cast<std::uint32_t>(head[0x14] | head[0x15] << 8 | head[0x16] << 16 | std::uint32_t(head[0x17]) << 24);
+        if (csize > 0x4000000u) {
+            c.push(0);
+            return 0;
+        }
+        std::vector<std::uint8_t> raw;
+        c.read_bytes(src, std::size_t(0x20) + csize, raw);
+        if (!c.ok()) return 0;
+        auto sdc = sdc_decode(ByteView(raw.data(), raw.size()));
+        if (!sdc) {
+            c.push(0);
+            return 0;
+        }
+        c.write_bytes(dst, sdc->data.data(), sdc->data.size());
+        c.push(static_cast<Word>(sdc->data.size()));
         return 0;
     });
     // (destination, SDC block): unpacks an SDC block that holds a "DCFS FORMAT 1.00" container and expands it at the
@@ -401,6 +440,7 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
         std::string archive = archive_addr ? c.cstring(archive_addr) : std::string();
         const Word dst = c.pop();
         if (!c.ok()) return 0;
+        if (std::getenv("OBGI_DBG34")) std::fprintf(stderr, "81:30 dst=%X [%s] [%s] off=%u size=%u\n", dst, archive.c_str(), name.c_str(), offset, size);
         if (size > 0x4000000u) {
             c.fail(Errc::Range, "resource read of " + std::to_string(size) + " bytes is too large");
             return 0;
@@ -642,6 +682,20 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
         c.push(static_cast<Word>(bytes.size()));
         return 0;
     });
+    // (destination, list id, index): copies one string of a list, NUL terminated. 0 = done, 0x80000001 = no such list,
+    // 0x80000002 = index out of range
+    add(r, 0x80DD, "get string list item", 3, 1, [s](Ctx& c) {
+        const Word index = c.pop(), id = c.pop(), dst = c.pop();
+        if (!c.ok()) return 0;
+        const auto* set = s->string_set(id, false);
+        if (!set) c.push(0x80000001u);
+        else if (index >= set->size()) c.push(0x80000002u);
+        else {
+            c.write_cstring(dst, (*set)[index]);
+            c.push(0);
+        }
+        return 0;
+    });
     // (list id, string): adds the string to a list (creating it) unless it is already there; pushes its index
     add(r, 0x80DC, "add to string list", 2, 1, [s](Ctx& c) {
         const Word str_addr = c.pop(), id = c.pop();
@@ -786,9 +840,24 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
         c.push(it != s->icon_controls.end());
         return 0;
     });
-    // 81:35 (two path strings): a file operation on the user's disk (FUN_00475b50); its pushed value is whatever register
-    // was left over in the original, so scripts cannot depend on it. Not modelled: pops both and pushes 0.
-    add(r, 0x8135, "file operation (not modelled)", 2, 1, [](Ctx& c) { c.pop(), c.pop(); c.push(0); return 0; });
+    // 81:35 (path, 0: pushed first by every script call): the size in bytes of a file, 0 when there is none (checked against the
+    // original: AmairoChocolate2089.sud gives 0x12600B, its length). Loose files are looked up like 80:30 does.
+    add(r, 0x8135, "file size", 2, 1, [s](Ctx& c) {
+        const Word path_addr = c.pop();
+        c.pop();
+        if (!c.ok()) return 0;
+        const std::string name = path_addr ? c.cstring(path_addr) : std::string();
+        std::error_code ec;
+        Word size = 0;
+        for (const std::filesystem::path& p : {host_path(*s, name), s->game_dir / std::filesystem::path(std::u8string(name.begin(), name.end()))}) {
+            if (std::filesystem::is_regular_file(p, ec)) {
+                size = static_cast<Word>(std::filesystem::file_size(p, ec));
+                break;
+            }
+        }
+        c.push(size);
+        return 0;
+    });
     // 80:AC (control number, word count, address): sends a message to a control. Messages (0x10000002, ?, item) only move its
     // cursor; (0x10000000, item, 0) is a decision: the control answers it with the event (0x10000006, item, 0) and its info
     // record becomes (1, 0, item, 0, 0, 0) (all checked against the original). Pushes 1 when the control exists.

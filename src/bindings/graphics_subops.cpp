@@ -74,6 +74,18 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         check(c, d.create_slot(slot, w, h, static_cast<SlotFormat>(format)));
         return 0;
     });
+    // (slot, address): writes the image's width and height there (two words); 1 if the slot exists
+    add(r, 0x9216, "image size", 2, 1, [&d](Ctx& c) {
+        Word addr = c.pop(), slot = c.pop();
+        if (!c.ok()) return 0;
+        const SlotInfo* info = d.slot(slot);
+        if (info) {
+            c.write(addr, info->width, 4);
+            c.write(addr + 4, info->height, 4);
+        }
+        c.push(info ? 1 : 0);
+        return 0;
+    });
     add(r, 0x9012, "free image", 1, 1, [&d](Ctx& c) {
         Word slot = c.pop();
         if (!c.ok()) return 0;

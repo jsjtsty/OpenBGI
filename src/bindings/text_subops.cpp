@@ -43,10 +43,6 @@ void register_text_subops(vm::SubopRegistry& r, TextHost& host) {
                    c.fail(Errc::Range, "no image slot " + std::to_string(slot));
                    return 0;
                }
-               if (vertical) {
-                   c.fail(Errc::Unsupported, "vertical text is not implemented");
-                   return 0;
-               }
                (void)eff_mode; // outline/shadow effects are not rendered yet
 
                auto font = host.fonts->open(font_name, static_cast<int>(size));
@@ -57,6 +53,29 @@ void register_text_subops(vm::SubopRegistry& r, TextHost& host) {
                TextStyle style;
                style.color = color;
                style.line_gap = line_gap;
+               if (vertical) {
+                   // Simplified vertical writing (not checked against the original): characters run top to bottom from (x, y),
+                   // a new line starts a column to the left, and a column also ends at the bottom of the image.
+                   const std::int32_t cell = static_cast<std::int32_t>(size), col_w = cell + line_gap;
+                   std::int32_t col = 0, row = 0;
+                   for (char32_t ch : cp932_to_utf32(text)) {
+                       if (ch == char32_t{10} || row * cell + cell > static_cast<std::int32_t>(info->height) - y) {
+                           ++col, row = 0;
+                           if (ch == char32_t{10}) continue;
+                       }
+                       if (ch == char32_t{13}) continue;
+                       auto glyph = render_text(**font, std::u32string(1, ch), style, static_cast<std::uint32_t>(cell) * 2);
+                       if (!glyph) continue;
+                       if (glyph->width != 0 && glyph->height != 0 &&
+                           host.display->upload_slot(kTextSlot, glyph->width, glyph->height, SlotFormat::Bgra, glyph->pixels)) {
+                           (void)host.display->blit(slot, x - col * col_w, y + row * cell, kTextSlot, 0, 0, glyph->width, glyph->height, 0, 0x100);
+                           host.display->free_slot(kTextSlot);
+                       }
+                       ++row;
+                   }
+                   c.push(static_cast<Word>(col + 1));
+                   return 0;
+               }
                const std::int64_t room = std::int64_t{info->width} - x;
                auto img = render_text(**font, cp932_to_utf32(text), style, room > 0 ? static_cast<std::uint32_t>(room) : 1);
                if (!img) {

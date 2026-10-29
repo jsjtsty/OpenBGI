@@ -134,6 +134,12 @@ void register_window_subops(vm::SubopRegistry& r, SystemState& state, Display* d
         s->input_maps[mask] = std::move(list);
         return 0;
     });
+    // (input number): bit 15 of the key's current state, i.e. whether it is held down. Held state is not tracked; never held.
+    add(r, 0x8011, "input held", 1, 1, [](Ctx& c) {
+        c.pop();
+        c.push(0);
+        return 0;
+    });
     // (list address): the sum of the press counts of the zero-terminated list of input numbers
     add(r, 0x8012, "input state sum by list", 1, 1, [s](Ctx& c) {
         std::vector<Word> list;
@@ -227,6 +233,63 @@ void register_window_subops(vm::SubopRegistry& r, SystemState& state, Display* d
         s->items.insert(s->items.begin(), {id, a, b, 1});
         if (out != 0) c.write(out, id, 4);
         c.push(0);
+        return 0;
+    });
+    // Records kept per item (a history list; the original stores them compressed, which a script cannot see).
+    // 80:9C (item, address): pushes a copy of b bytes at the address on the front and drops the oldest beyond a; 80:9A
+    // (item, out address): writes how many are kept; 80:9D (out address, item, index): copies a record out (2 when there is
+    // none at that index); 80:9E (item, ?, count): drops the count newest. All push 0, or 1 when the item does not exist.
+    const auto find_item = [s](Word id) {
+        return std::find_if(s->items.begin(), s->items.end(), [&](const auto& x) { return x.id == id; });
+    };
+    add(r, 0x809C, "push item record", 2, 1, [s, find_item](Ctx& c) {
+        const Word addr = c.pop(), id = c.pop();
+        if (!c.ok()) return 0;
+        auto it = find_item(id);
+        if (it == s->items.end()) {
+            c.push(1);
+            return 0;
+        }
+        std::vector<std::uint8_t> rec;
+        c.read_bytes(addr, it->b, rec);
+        if (!c.ok()) return 0;
+        it->entries.push_front(std::move(rec));
+        while (it->entries.size() > it->a) it->entries.pop_back();
+        c.push(0);
+        return 0;
+    });
+    add(r, 0x809A, "item record count", 2, 1, [s, find_item](Ctx& c) {
+        const Word id = c.pop(), out = c.pop();
+        if (!c.ok()) return 0;
+        auto it = find_item(id);
+        if (it != s->items.end()) c.write(out, static_cast<Word>(it->entries.size()), 4);
+        c.push(it == s->items.end());
+        return 0;
+    });
+    add(r, 0x809D, "read item record", 3, 1, [s, find_item](Ctx& c) {
+        const Word index = c.pop(), id = c.pop(), out = c.pop();
+        if (!c.ok()) return 0;
+        auto it = find_item(id);
+        if (it == s->items.end()) c.push(1);
+        else if (index >= it->entries.size()) c.push(2);
+        else {
+            c.write_bytes(out, it->entries[index].data(), it->entries[index].size());
+            c.push(0);
+        }
+        return 0;
+    });
+    add(r, 0x809E, "drop item records", 3, 1, [s, find_item](Ctx& c) {
+        const Word count = c.pop();
+        c.pop();
+        const Word id = c.pop();
+        if (!c.ok()) return 0;
+        auto it = find_item(id);
+        if (it == s->items.end()) c.push(1);
+        else if (it->entries.empty()) c.push(2);
+        else {
+            for (Word k = 0; k < count && !it->entries.empty(); ++k) it->entries.pop_front();
+            c.push(0);
+        }
         return 0;
     });
     // 90:60: creates a filter display object (at most 8); pushes its handle, 0x90000000 + slot

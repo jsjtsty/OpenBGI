@@ -13,6 +13,8 @@ Interceptor.attach(ptr(0x4511a0).add(delta), { onEnter(args) {
 function rec(va, key, len) { let last = ''; Interceptor.attach(ptr(va).add(delta), { onEnter(a) { this.p = a[0]; this.o = this.context.ecx; },
   onLeave(rv) { const h = Array.from(new Uint8Array(this.p.readByteArray(len))).map(b => b.toString(16).padStart(2, '0')).join('');
     if (h !== last) { last = h; send({k: key, obj: this.o.toString(), hex: h, ms: Date.now()}); } } }); }
+Interceptor.attach(ptr(0x49a6d0).add(delta), { onEnter(args) { const t = args[0], size = t.add(0x10).readU32(), ring = t.add(0x18).readPointer(), idx = t.add(0x78).readU32();
+  const v = []; for (let i = 1; i <= 5; i++) v.push(ring.add(((idx + size - i) % size) * 4).readU32().toString(16)); send({k: 'r81:30', v: v.join(' '), ms: Date.now()}); } });
 rec(0x451f40, 'bf', 12); rec(0x451ea0, 'bc', 24);
 """
 pid = frida.spawn([GAME + r"\ac2_ML.exe"], cwd=GAME)

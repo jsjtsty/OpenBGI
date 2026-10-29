@@ -111,6 +111,7 @@ struct SystemState {
     // 80:98: registered items (number, two script values, flag 1), newest first in the original list
     struct Item {
         std::uint32_t id = 0, a = 0, b = 0, flag = 1;
+        std::deque<std::vector<std::uint8_t>> entries; // 80:9C records, newest first; a = most kept, b = bytes each
     };
     std::vector<Item> items;
     std::uint32_t last_item_id = 0;
