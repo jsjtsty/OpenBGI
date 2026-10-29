@@ -147,3 +147,37 @@ TEST_CASE("sprites compose by priority and present to the window image") {
         }
     }
 }
+
+TEST_CASE("a wipe sprite is revealed through its gray pattern as progress grows") {
+    for (const char* driver : kDrivers) {
+        Rig rig = make_rig(driver);
+        if (!rig.display) continue;
+        SUBCASE(driver) {
+            Display& d = *rig.display;
+            // a white picture, and a pattern that is 0 on the left half and 0x80 on the right half
+            std::vector<std::uint32_t> white(16 * 4, 0xFFFFFFFFu), gray(16 * 4);
+            for (std::size_t i = 0; i < gray.size(); ++i) gray[i] = (i % 16) < 8 ? 0 : 0x80;
+            REQUIRE(d.upload_slot(1, 16, 4, SlotFormat::Bgra, white).has_value());
+            REQUIRE(d.upload_slot(2, 16, 4, SlotFormat::Gray8, gray).has_value());
+            Sprite& s = d.sprite(5);
+            s.slot = 1, s.blend = 1, s.alpha = 0, s.wipe_gray = 2, s.wipe_mode = 0;
+            auto shot = [&] {
+                REQUIRE(d.present().has_value());
+                auto frame = rig.renderer->read_back();
+                REQUIRE(frame.has_value());
+                return std::array<int, 2>{frame->data()[(1 * 800 + 2) * 4], frame->data()[(1 * 800 + 12) * 4]};
+            };
+            d.set_progress(5, 0);
+            CHECK(shot() == std::array<int, 2>{0, 0}); // nothing revealed
+            d.set_progress(5, 0x80); // threshold 0x100: the left half (pattern 0) is fully in, the right half (pattern 0x80) half way
+            auto half = shot();
+            CHECK(half[0] >= 250);
+            CHECK(half[1] > 100);
+            CHECK(half[1] < 150);
+            d.set_progress(5, 0x100);
+            auto full = shot();
+            CHECK(full[0] >= 250);
+            CHECK(full[1] >= 250); // fully shown (the blend kernel leaves 253 for white)
+        }
+    }
+}

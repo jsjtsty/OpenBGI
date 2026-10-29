@@ -43,6 +43,12 @@ struct Display::Impl {
     SDL_GPUComputePipeline* present_pipeline = nullptr;
     SDL_GPUBuffer* dummy = nullptr; // bound as the unused read-only buffer of fills
     std::map<std::uint32_t, GpuSlot> slots;
+    // a wipe sprite's picture and gray pattern as pixels, and the progress its temporary slot was last made for
+    struct WipeCache {
+        std::uint32_t src = 0, gray = 0, progress = 0xFFFFFFFFu, mode = 0;
+        std::vector<std::uint32_t> src_px, gray_px;
+    };
+    std::map<std::uint32_t, WipeCache> wipes;
     GpuSlot screen;
     std::unique_ptr<Texture> screen_tex;
     SDL_GPUCommandBuffer* cmd = nullptr;
@@ -322,6 +328,14 @@ void Display::set_visible(std::uint32_t id, bool on, int depth) {
         if (kv.second.has_master && kv.second.master == id) set_visible(kv.first, on, depth + 1);
 }
 
+void Display::set_progress(std::uint32_t id, std::uint32_t v, int depth) {
+    Sprite* sp = find_sprite(id);
+    if (!sp || depth > 16) return;
+    sp->progress = v;
+    for (auto& kv : sprites_)
+        if (kv.second.has_master && kv.second.master == id) set_progress(kv.first, v, depth + 1);
+}
+
 void Display::set_fade(std::uint32_t id, std::uint32_t v, int depth) {
     Sprite* sp = find_sprite(id);
     if (!sp || depth > 16) return;
@@ -387,7 +401,44 @@ Result<void> Display::compose() {
     for (const auto* kv : order) {
         const Sprite& sp = kv->second;
         if (std::getenv("OBGI_SPRITES")) std::fprintf(stderr, "sprite %X slot %u at %d,%d blend %u alpha %u prio %u%s""\n", kv->first, sp.slot, sp.x, sp.y, sp.blend, sp.alpha, sp.priority, m.slots.count(sp.slot) ? "" : " (no slot)");
-        auto it = m.slots.find(sp.slot);
+        std::uint32_t draw_id = sp.slot;
+        if (sp.wipe_gray == 0xFFFFFFFFu || sp.progress >= 0x100) {
+            m.wipes.erase(kv->first);
+        } else { // a wipe sprite part-way: the picture's alpha is scaled by how far the gray pattern has been passed (blit_xform.c: GrayWipeTo)
+            if (sp.progress == 0) continue;
+            auto s0 = m.slots.find(sp.slot);
+            auto g0 = m.slots.find(sp.wipe_gray);
+            if (s0 != m.slots.end() && g0 != m.slots.end() && s0->second.info.width == g0->second.info.width &&
+                s0->second.info.height == g0->second.info.height) {
+                Impl::WipeCache& wc = m.wipes[kv->first];
+                bool fresh = wc.src_px.empty() || wc.src != sp.slot || wc.gray != sp.wipe_gray;
+                if (fresh) {
+                    auto a = m.download(s0->second);
+                    auto b = m.download(g0->second);
+                    if (a && b) {
+                        wc.src_px = std::move(*a), wc.gray_px = std::move(*b), wc.src = sp.slot, wc.gray = sp.wipe_gray;
+                        wc.progress = 0xFFFFFFFFu;
+                    }
+                }
+                const std::uint32_t tmp_id = 0x7F100000u | (kv->first & 0xFFFFFu);
+                if (!wc.src_px.empty() && (wc.progress != sp.progress || wc.mode != sp.wipe_mode)) {
+                    const bool has_alpha = s0->second.info.format == SlotFormat::Bgra;
+                    const int mode = static_cast<int>(sp.wipe_mode & 7), thr = ((1 << mode) + 1) * static_cast<int>(sp.progress);
+                    std::vector<std::uint32_t> out(wc.src_px.size());
+                    for (std::size_t i = 0; i < out.size(); ++i) {
+                        int v = thr - (static_cast<int>(wc.gray_px[i] & 0xFF) << mode);
+                        v = std::clamp(v, 0, 0x100);
+                        const std::uint32_t a = has_alpha ? wc.src_px[i] >> 24 : 0xFF;
+                        out[i] = (wc.src_px[i] & 0xFFFFFFu) | (((a * static_cast<std::uint32_t>(v)) >> 8) << 24);
+                    }
+                    if (upload_slot(tmp_id, s0->second.info.width, s0->second.info.height, SlotFormat::Bgra, out)) {
+                        wc.progress = sp.progress, wc.mode = sp.wipe_mode;
+                    }
+                }
+                if (m.slots.count(tmp_id) && wc.progress == sp.progress) draw_id = tmp_id;
+            }
+        }
+        auto it = m.slots.find(draw_id);
         if (it == m.slots.end()) continue; // a sprite whose image was freed draws nothing
         if (!blend_mode_supported(sp.blend)) return fail(Errc::Unsupported, "blend mode " + std::to_string(sp.blend) + " is not implemented");
         std::uint32_t alpha = sp.alpha;

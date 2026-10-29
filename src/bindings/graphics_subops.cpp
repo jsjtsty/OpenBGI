@@ -484,7 +484,6 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         const Word priority = c.pop(), level = c.pop(), effect = c.pop(), progress = c.pop(), wipe_mode = c.pop(), gray = c.pop(), slot = c.pop();
         const auto y = static_cast<std::int32_t>(c.pop()), x = static_cast<std::int32_t>(c.pop());
         const Word id = c.pop();
-        (void)wipe_mode, (void)gray;
         if (!c.ok() || !slot_ok(c, slot)) return 0;
         if (level > 0x100 || progress > 0x100 || priority > 0xffff || !blend_mode_supported(effect)) {
             c.fail(Errc::Range, "wipe sprite parameter out of range or unsupported blend mode");
@@ -493,6 +492,20 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         if (!d.slot(slot)) { c.fail(Errc::Range, "no image slot " + std::to_string(slot)); return 0; }
         Sprite& s = d.sprite(id);
         s.slot = slot, s.x = x, s.y = y, s.blend = effect, s.alpha = level, s.priority = priority;
+        const SlotInfo* gi = d.slot(gray);
+        s.wipe_gray = gi && gi->format == SlotFormat::Gray8 ? gray : 0xFFFFFFFFu; // no pattern: shown whole
+        s.wipe_mode = wipe_mode;
+        d.set_progress(id, progress);
+        return 0;
+    });
+    // 90:35 (object, progress 0..0x100): how far a wipe sprite has been revealed; handed to what hangs on the object
+    add(r, 0x9035, "set object progress", 2, 0, [&d](Ctx& c) {
+        const Word value = c.pop(), id = c.pop();
+        if (!c.ok()) return 0;
+        if (std::getenv("OBGI_SLOTS")) std::fprintf(stderr, "90:35 progress %X = %u\n", id, value);
+        if (!object(c, d, id)) return 0;
+        if (value > 0x100) c.fail(Errc::Range, "progress out of range");
+        else d.set_progress(id, value);
         return 0;
     });
     // 90:5C (17 values, popped top first: priority, alpha, visible, ?, ?, focal distance, 5 unknowns, second slot (-1 = none), image slot,

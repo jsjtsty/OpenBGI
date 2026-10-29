@@ -70,24 +70,6 @@ void register_object_settings(vm::SubopRegistry& r, SystemState& state, Display*
                                {0x9148, "object layer 91:48", 3, 0}, {0x9149, "object layer 91:49", 3, 0},
                                {0x914A, "object layer 91:4A", 4, 0}, {0x9155, "object query 91:55", 2, 1},
                                {0x913D, "object query 91:3D", 1, 1}, {0x9138, "object parameter read 91:38", 3, 0}};
-    // 90:3x..5x: settings kept per op; those the analysis says take an object first check that it exists
-    static const Rec objrecs[] = {{0x9035, "object setting 90:35", 2, 0}};
-    for (const Rec& rec : objrecs) {
-        const std::uint16_t id = rec.id;
-        const int pops = rec.pops;
-        add(r, id, rec.name, pops, 0, [s, display, id, pops](Ctx& c) {
-            std::vector<Word> a(static_cast<std::size_t>(pops));
-            for (int i = pops - 1; i >= 0; --i) a[std::size_t(i)] = c.pop();
-            if (!c.ok()) return 0;
-            debug_object_op(id, a);
-            if (a[0] != 0 && display && !display->find_sprite(a[0])) { // id 0 is the root (screen) object, which always exists
-                c.fail(Errc::Range, "no display object " + std::to_string(a[0]));
-                return 0;
-            }
-            s->records[id] = std::move(a);
-            return 0;
-        });
-    }
     static const Rec loose[] = {{0x903C, "object setting 90:3C", 2, 0},
                                 {0x903D, "object query 90:3D", 1, 1},   {0x903F, "object setting 90:3F", 1, 0},
                                 {0x9041, "object setting 90:41", 3, 0},
