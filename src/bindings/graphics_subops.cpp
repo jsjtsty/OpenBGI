@@ -530,8 +530,8 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
     // reference engine ignores them too (the game's screens call it with all three at 0)
     auto projected = [&d](Ctx& c, const Word (&v)[17]) {
         if (std::getenv("OBGI_DBG5C"))
-            std::fprintf(stderr, "90:5C h=%X fx=%d fy=%d fz=%d bmp1=%d bmp2=%d mix=%u route=%d ox=%d oy=%d angle=%d dist=%d projPos=%d smooth=%d effect=%u level=%u prio=%u\n",
-                         v[16], static_cast<int>(v[15]), static_cast<int>(v[14]), static_cast<int>(v[13]), static_cast<int>(v[12]), static_cast<int>(v[11]), v[10], static_cast<int>(v[9]),
+            std::fprintf(stderr, "[%llu] 90:5C h=%X fx=%d fy=%d fz=%d bmp1=%d bmp2=%d mix=%u route=%d ox=%d oy=%d angle=%d dist=%d projPos=%d smooth=%d effect=%u level=%u prio=%u\n",
+                         static_cast<unsigned long long>(c.vm.frame), v[16], static_cast<int>(v[15]), static_cast<int>(v[14]), static_cast<int>(v[13]), static_cast<int>(v[12]), static_cast<int>(v[11]), v[10], static_cast<int>(v[9]),
                          static_cast<int>(v[8]), static_cast<int>(v[7]), static_cast<int>(v[6]), static_cast<int>(v[5]), static_cast<int>(v[4]), static_cast<int>(v[3]), v[2], v[1], v[0]);
         if (std::getenv("OBGI_DBG5C"))
             if (const SlotInfo* si = d.slot(v[12])) std::fprintf(stderr, "90:5C bmp1 %u is %ux%u\n", v[12], si->width, si->height);
