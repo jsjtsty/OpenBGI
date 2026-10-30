@@ -12,6 +12,10 @@ struct CbgImage {
     std::uint32_t width = 0;
     std::uint32_t height = 0;
     std::uint32_t bits_per_pixel = 0; // 8, 24 or 32
+    // The raw image header's base size (flag word 1 at +0xA, the size at +0xC / +0xE, bmpload.c): for the pictures that have one it is
+    // the point the picture is placed by (a background's centre, a character's anchor), which scripts read back with 92:16.
+    bool has_base = false;
+    std::uint32_t base_width = 0, base_height = 0;
     std::vector<std::uint8_t> pixels; // native layout: gray, or B,G,R[,A] per pixel; no row padding
 
     std::uint32_t channels() const { return bits_per_pixel / 8; }

@@ -51,10 +51,27 @@ struct Sprite {
     std::int32_t script_y() const { return flip_position ? -y : y; }
     void script_move_to(std::int32_t nx, std::int32_t ny) { move_to(flip_position ? -nx : nx, flip_position ? -ny : ny); }
     // A projected plane (90:5C, sprite.c mode 5): x, y are the script's position, relative to the screen centre, and `depth`
-    // (16.16, behind the screen plane when positive) shrinks it by dist / (dist + depth). The picture's point (origin_x / 2,
-    // origin_y / 2) lands on the projected position (the game passes the picture's size, which centres it: the reference
-    // engine would put the bottom right corner there); with `scale_position` the position is scaled by the same factor.
+    // (16.16, behind the screen plane when positive) shrinks it by dist / (dist + depth). The picture's point (origin_x,
+    // origin_y), in its own pixels, lands on the projected position (sprite.c: Sprite_BoundsProjected); scripts pass the picture's
+    // base size (92:16, the one in its file header) as the origin. With `scale_position` the position is scaled by the same factor.
     bool projected = false, scale_position = false;
+    // A second picture of the same size cross-faded in by `mix_ratio` (0 = the first, 0x100 = the second; 90:58, 90:5C), and what a
+    // level change drives (sprite.c: Sprite_SetLevel): -1 / 0 the level, 1 the mix ratio, 2 both, anything else nothing.
+    std::uint32_t slot2 = 0xFFFFFFFFu, mix_ratio = 0;
+    std::int32_t level_route = -1;
+    void set_level(std::uint32_t v) {
+        switch (level_route) {
+        case 2: alpha = v, mix_ratio = v; break;
+        case 1: mix_ratio = v; break;
+        case 0: case -1: alpha = v; break;
+        default: break;
+        }
+    }
+    std::uint32_t level() const { return level_route == 1 ? mix_ratio : alpha; }
+    // The transform mode (90:59): scaled by (sx, sy) and rotated by `angle` about the origin (origin_x, origin_y) of the picture, which
+    // lands on the position; projected planes use the same angle with the scale of their depth.
+    bool xform = false, smooth = false;
+    std::int32_t angle = 0, sx = 0x10000, sy = 0x10000;
     // 90:38 parameters the reference's DispObj_SetParam keeps (dispobj.c): 0x8001 no perspective scaling, 0x8000 snap to whole
     // pixels (with the snap mode), 0xC0 pass 90:31 on to the children, 0xC4 follow the 91:06 offset, 0xC5 a stored switch, 0x8101 the
     // sort mode (1: priority, then depth over its whole range, no class order), 0xFFFF flag bits, 0x7FFFFFFF the 16 script values

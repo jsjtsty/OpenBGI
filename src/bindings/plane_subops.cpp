@@ -424,13 +424,14 @@ void start_motion(SystemState& s, Display& display, Ctx& c, Word id, bool move, 
         m.path.insert(m.path.end(), path.begin(), path.end());
         m.to_z = static_cast<std::int32_t>(path.back()[2] * 65536.0);
     }
+    m.from_level = static_cast<std::int32_t>(sp->level());
     sp->visible = true;
     if (std::getenv("OBGI_DBGOBJ"))
         std::fprintf(stderr, "motion object %X: %d,%d -> %d,%d level %d -> %d over %u ms\n", id, m.from_x, m.from_y, m.to_x, m.to_y, m.from_level, m.to_level, duration);
     std::erase_if(s.motions, [&](const auto& o) { return o.object == id; });
     if (m.duration_ms <= 0) {
         if (move) sp->script_move_to(m.to_x, m.to_y), sp->depth = m.to_z;
-        sp->alpha = level;
+        sp->set_level(level);
         if (m.to_progress != m.from_progress) display.set_progress(id, static_cast<std::uint32_t>(m.to_progress));
         return;
     }
@@ -501,7 +502,7 @@ void start_via_motion(SystemState& s, Display& display, Ctx& c, Word id, std::in
     sp->visible = true;
     std::erase_if(s.motions, [&](const auto& o) { return o.object == id; });
     if (m.duration_ms <= 0) {
-        sp->script_move_to(x, y), sp->alpha = level;
+        sp->script_move_to(x, y), sp->set_level(level);
         return;
     }
     s.motions.push_back(m);
@@ -597,7 +598,7 @@ void advance_motions(SystemState& state, Display& display, std::int64_t now_ms) 
                 sp->script_move_to(it->from_x + static_cast<std::int32_t>((std::int64_t{it->to_x} - it->from_x) * fp >> 16),
                             it->from_y + static_cast<std::int32_t>((std::int64_t{it->to_y} - it->from_y) * fp >> 16));
             }
-            sp->alpha = static_cast<std::uint32_t>(it->from_level + static_cast<std::int32_t>((std::int64_t{it->to_level} - it->from_level) * fl >> 16));
+            sp->set_level(static_cast<std::uint32_t>(it->from_level + static_cast<std::int32_t>((std::int64_t{it->to_level} - it->from_level) * fl >> 16)));
             if (it->to_progress != it->from_progress) // linear in time, whatever the curves
                 display.set_progress(it->object, static_cast<std::uint32_t>(it->from_progress + (std::int64_t{it->to_progress} - it->from_progress) * elapsed / it->duration_ms));
             if (sp->slot == 0xFFFFFFFFu) // a group (90:E0): its members take its level

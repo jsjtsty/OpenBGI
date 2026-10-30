@@ -57,6 +57,29 @@ TEST_CASE("background mosaic: blocks take the top left pixel; amount 0 copies") 
     CHECK(copy.px == src.px);
 }
 
+TEST_CASE("sprite pictures: cross-fade keeps the ends and mixes the alpha-weighted middle") {
+    const Image a = solid(1, 1, 0xFF000000), b = solid(1, 1, 0xFFFFFFFF);
+    CHECK(crossfade_to(a, b, 0, false).px[0] == 0xFF000000);
+    CHECK(crossfade_to(a, b, 0x100, false).px[0] == 0xFFFFFFFF);
+    CHECK((crossfade_to(a, b, 0x80, false).px[0] & 0xFF) == 0x7F); // 0 + (255 * 128 >> 8)
+    CHECK(crossfade_to(a, b, 0, true).px[0] == 0xFF000000); // alpha weights: all a
+    CHECK(crossfade_to(solid(1, 1, 0), b, 0x40, true).px[0] == 0x3FFFFFFF); // a transparent: b's colour, alpha 255 * 64 >> 8
+}
+
+TEST_CASE("sprite pictures: an unrotated unscaled transform keeps the picture and puts the origin at the anchor") {
+    Image src = solid(5, 4, 0);
+    for (std::uint32_t i = 0; i < 20; ++i) src.px[i] = 0xFF000000u | i;
+    const Transformed t = transform(src, 2 << 16, 1 << 16, 0, 0x10000, 0x10000, false);
+    CHECK(t.image.w == 5);
+    CHECK(t.image.h == 4);
+    CHECK(t.anchor_x == 2);
+    CHECK(t.anchor_y == 1);
+    CHECK(t.image.px == src.px);
+    const Transformed half = transform(src, 0, 0, 0, 0x8000, 0x8000, false);
+    CHECK(half.image.w == 3); // 5 * 0.5, widened by the box's floor / ceil
+    CHECK(transform(src, 0, 0, 0, 0, 0x10000, false).image.px.empty()); // a zero scale draws nothing
+}
+
 TEST_CASE("background zoom and view keep an identity transform") {
     Image src = solid(6, 4, 0);
     for (std::uint32_t i = 0; i < 24; ++i) src.px[i] = 0xFF000000u | i;

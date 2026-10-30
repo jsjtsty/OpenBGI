@@ -172,6 +172,66 @@ Image rotate_centred(const Image& src, std::uint32_t w, std::uint32_t h, std::in
     return out;
 }
 
+Image crossfade_to(const Image& a, const Image& b, int ratio, bool has_alpha) {
+    Image out = blank(a.w, a.h);
+    const int inv = 0x100 - ratio;
+    for (std::size_t i = 0; i < out.px.size(); ++i) {
+        const std::uint32_t av = a.px[i], bv = b.px[i];
+        if (!has_alpha) { // CrossfadeTo32: a + ((b - a) * ratio >> 8) on all four bytes
+            std::uint32_t px = 0;
+            for (int sh = 0; sh < 32; sh += 8) {
+                const int ac = (av >> sh) & 0xff, bc = (bv >> sh) & 0xff;
+                px |= static_cast<std::uint32_t>(sat8(ac + (((bc - ac) * ratio) >> 8))) << sh;
+            }
+            out.px[i] = px;
+            continue;
+        }
+        // CrossfadeTo32A: weights by the alphas; the result alpha is the sum of the weights >> 8 (a 16-bit lane)
+        const unsigned wa = (av >> 24) * static_cast<unsigned>(inv), wb = (bv >> 24) * static_cast<unsigned>(ratio);
+        const unsigned sum = (wa + wb) & 0xffffu;
+        if (sum == 0) continue;
+        const int w = static_cast<int>((wa << 7) / sum);
+        std::uint32_t px = ((sum >> 8) & 0xff) << 24;
+        for (int sh = 0; sh < 24; sh += 8) {
+            const int ac = (av >> sh) & 0xff, bc = (bv >> sh) & 0xff;
+            px |= static_cast<std::uint32_t>(sat8(bc + (((ac - bc) * w) >> 7))) << sh;
+        }
+        out.px[i] = px;
+    }
+    return out;
+}
+
+Transformed transform(const Image& src, std::int32_t ox16, std::int32_t oy16, std::int32_t angle, std::int32_t sx, std::int32_t sy, bool smooth) {
+    Transformed t;
+    if (src.px.empty() || sx <= 0 || sy <= 0) return t;
+    const double W = src.w, H = src.h, cx = ox16 * kInv65536, cy = oy16 * kInv65536;
+    const double theta = angle * kDeg16ToRad, c = std::cos(theta), s = std::sin(theta), SX = sx * kInv65536, SY = sy * kInv65536;
+    // the four corners relative to the origin, y pointing up (the 0.0001 keeps a corner on a pixel boundary from adding a pixel)
+    const double X[4] = {-cx, W - cx - 0.0001, -cx, W - cx - 0.0001}, Y[4] = {cy, cy, cy - H + 0.0001, cy - H + 0.0001};
+    double min_x = 1e9, max_x = -1e9, min_y = 1e9, max_y = -1e9;
+    for (int i = 0; i < 4; ++i) {
+        const double xs = SX * X[i], ys = SY * Y[i], rx = xs * c - ys * s, ry = ys * c + xs * s;
+        min_x = std::min(min_x, rx), max_x = std::max(max_x, rx), min_y = std::min(min_y, ry), max_y = std::max(max_y, ry);
+    }
+    const std::int32_t x0 = static_cast<std::int32_t>(std::floor(min_x)), x1 = static_cast<std::int32_t>(std::floor(max_x));
+    const std::int32_t y1 = static_cast<std::int32_t>(std::ceil(max_y)), y0 = static_cast<std::int32_t>(std::ceil(min_y));
+    const std::int32_t out_w = x1 - x0 + 1, out_h = y1 - y0 + 1;
+    if (out_w < 2 || out_h < 2 || std::int64_t{out_w} * out_h > 64'000'000) return t;
+    t.anchor_x = -x0, t.anchor_y = y1;
+    t.image = blank(static_cast<std::uint32_t>(out_w), static_cast<std::uint32_t>(out_h));
+    for (std::int32_t py = 0; py < out_h; ++py)
+        for (std::int32_t px = 0; px < out_w; ++px) {
+            const double rx = px + 0.5 - t.anchor_x, ry = t.anchor_y - (py + 0.5); // relative to the origin, y up
+            const double xs = rx * c + ry * s, ys = -rx * s + ry * c;              // undo the rotation
+            const double u = cx + xs / SX, v = cy - ys / SY;                       // the picture's pixel coordinates
+            if (u < 0 || v < 0 || u >= W || v >= H) continue;
+            std::uint32_t& dst = t.image.px[std::size_t(py) * out_w + px];
+            if (smooth) dst = sample_xy(src, static_cast<std::uint32_t>(std::max(0.0, (u - 0.5) * 65536.0)), static_cast<std::uint32_t>(std::max(0.0, (v - 0.5) * 65536.0)));
+            else dst = src.px[std::size_t(v) * src.w + std::size_t(u)];
+        }
+    return t;
+}
+
 void mosaic(Image& dst, const Image& src, int amount, int extra) {
     if (amount <= 0) { // Blit_Blend: a copy at transparency 0, nothing at 0x100 and above, else the plain blend
         if (extra <= 0) dst = src;

@@ -55,8 +55,11 @@ Sprite* object(Ctx& c, Display& d, Word id) {
 void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
     Display& d = *host.display;
 
+    // The base size of every slot (bmpmgr.c): 0 x 0 until something sets it, -1 x -1 once its bitmap was freed, and the base size
+    // in the header of a loaded picture (90:10); 92:12 sets it, 92:16 reads it. Scripts place pictures by it (90:5C's origin).
+    auto base_sizes = std::make_shared<std::map<Word, std::pair<std::int32_t, std::int32_t>>>();
     // ---- image slots ----
-    add(r, 0x9010, "load image", 3, 0, [&host, &d](Ctx& c) {
+    add(r, 0x9010, "load image", 3, 0, [&host, &d, base_sizes](Ctx& c) {
         std::string name = c.cstring(c.pop());
         std::string prefix = c.cstring(c.pop());
         Word slot = c.pop();
@@ -68,6 +71,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
             return 0;
         }
         check(c, d.upload_slot(slot, img->width, img->height, img->format, img->pixels));
+        if (img->has_base) (*base_sizes)[slot] = {static_cast<std::int32_t>(img->base_width), static_cast<std::int32_t>(img->base_height)};
         return 0; // the original may go asynchronous (rc 2); loading here is always synchronous
     });
     add(r, 0x9011, "create image", 4, 0, [&d](Ctx& c) {
@@ -274,8 +278,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         return 0;
     });
     // 92:12 (slot, w, h): sets the base size of a slot (the design size of its image); 1 for a valid slot number.
-    // 92:16 (out, slot): reads it into two words at out; until set, the size of the image in the slot (0, 0 without one).
-    auto base_sizes = std::make_shared<std::map<Word, std::pair<std::int32_t, std::int32_t>>>();
+    // 92:16 (out, slot): reads it into two words at out (0, 0 until something sets it, -1, -1 after the bitmap was freed).
     add(r, 0x9212, "set image base size", 3, 1, [base_sizes](Ctx& c) {
         const auto h = static_cast<std::int32_t>(c.pop()), w = static_cast<std::int32_t>(c.pop());
         const Word slot = c.pop();
@@ -284,23 +287,24 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         c.push(slot <= kMaxSlot ? 1 : 0);
         return 0;
     });
-    add(r, 0x9216, "image base size", 2, 1, [&d, base_sizes](Ctx& c) {
+    add(r, 0x9216, "image base size", 2, 1, [base_sizes](Ctx& c) {
         const Word slot = c.pop(), out = c.pop();
         if (!c.ok()) return 0;
         if (slot > kMaxSlot) { c.push(0); return 0; }
         std::int32_t w = 0, h = 0;
         if (auto it = base_sizes->find(slot); it != base_sizes->end()) w = it->second.first, h = it->second.second;
-        else if (const SlotInfo* info = d.slot(slot)) w = static_cast<std::int32_t>(info->width), h = static_cast<std::int32_t>(info->height);
         c.write(out, static_cast<Word>(w), 4);
         c.write(out + 4, static_cast<Word>(h), 4);
         c.push(1);
         return 0;
     });
-    add(r, 0x9012, "free image", 1, 1, [&d](Ctx& c) {
+    add(r, 0x9012, "free image", 1, 1, [&d, base_sizes](Ctx& c) {
         Word slot = c.pop();
         if (!c.ok()) return 0;
         if (std::getenv("OBGI_SLOTS")) std::fprintf(stderr, "90:12 free slot %u\n", slot);
-        c.push(d.free_slot(slot) ? 1 : 0); // verified in the real game: 1 freed, 0 no such slot
+        const bool freed = static_cast<bool>(d.free_slot(slot));
+        if (freed) (*base_sizes)[slot] = {-1, -1}; // bmpmgr.c: BmpMgr_FreeSlot marks the base size -1
+        c.push(freed ? 1 : 0); // verified in the real game: 1 freed, 0 no such slot
         return 0;
     });
     add(r, 0x9013, "fill image", 2, 0, [&d](Ctx& c) {
@@ -597,7 +601,48 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         }
         Sprite& s = d.sprite(id);
         s.slot = slot, s.x = x, s.y = y, s.blend = blend, s.alpha = alpha, s.priority = priority;
-        s.projected = false;
+        s.projected = false, s.xform = false, s.slot2 = 0xFFFFFFFFu, s.mix_ratio = 0, s.level_route = -1;
+        return 0;
+    });
+    // 90:58 (object, x, y, bmp1, bmp2, mix ratio, level, priority, level route): two pictures of the same size cross-faded by the mix ratio
+    // (0 = the first, 0x100 = the second); a later level change drives the level (-1, 0), the mix ratio (1) or both (2) as the route says
+    // (sprite.c: Sprite_SetBlendEx; the effect is forced to 1). Pictures of different sizes pass silently, as in the reference build.
+    add(r, 0x9058, "set blend sprite", 9, 0, [&d](Ctx& c) {
+        const auto route = static_cast<std::int32_t>(c.pop());
+        const Word priority = c.pop(), level = c.pop(), mix = c.pop();
+        const auto bmp2 = static_cast<std::int32_t>(c.pop()), bmp1 = static_cast<std::int32_t>(c.pop());
+        const auto y = static_cast<std::int32_t>(c.pop()), x = static_cast<std::int32_t>(c.pop());
+        const Word id = c.pop();
+        if (!c.ok()) return 0;
+        if (mix > 0x100 || level > 0x100 || priority > 0xffff) { c.fail(Errc::Range, "blend sprite parameter out of range"); return 0; }
+        const SlotInfo* i1 = bmp1 >= 0 && bmp1 < 0x4000 ? d.slot(static_cast<Word>(bmp1)) : nullptr;
+        const SlotInfo* i2 = bmp2 >= 0 && bmp2 < 0x4000 ? d.slot(static_cast<Word>(bmp2)) : nullptr;
+        if (!i1 || !i2) { c.fail(Errc::Range, "no image slot " + std::to_string(i1 ? bmp2 : bmp1)); return 0; }
+        Sprite& s = d.sprite(id);
+        if (i1->width != i2->width || i1->height != i2->height || i1->format != i2->format) return 0;
+        s.slot = static_cast<Word>(bmp1), s.slot2 = static_cast<Word>(bmp2), s.mix_ratio = mix, s.level_route = route;
+        s.x = x, s.y = y, s.blend = 1, s.alpha = level, s.priority = priority;
+        s.projected = false, s.xform = false;
+        return 0;
+    });
+    // 90:59 (object, x, y, bmp, ox, oy, angle, sx, sy, smooth, effect, level, priority): one picture rotated by `angle` (16.16 degrees) and scaled by
+    // (sx, sy) (16.16) about the point (ox, oy) of the picture, which lands on (x, y); a box under 2 x 2 is an error (sprite.c: Sprite_SetTransformEx)
+    add(r, 0x9059, "set transform sprite", 13, 0, [&d](Ctx& c) {
+        const Word priority = c.pop(), level = c.pop(), effect = c.pop(), smooth = c.pop();
+        const auto sy = static_cast<std::int32_t>(c.pop()), sx = static_cast<std::int32_t>(c.pop()), angle = static_cast<std::int32_t>(c.pop());
+        const auto oy = static_cast<std::int32_t>(c.pop()), ox = static_cast<std::int32_t>(c.pop());
+        const Word bmp = c.pop();
+        const auto y = static_cast<std::int32_t>(c.pop()), x = static_cast<std::int32_t>(c.pop());
+        const Word id = c.pop();
+        if (!c.ok()) return 0;
+        if (level > 0x100 || priority > 0xffff || !blend_mode_supported(effect)) { c.fail(Errc::Range, "transform sprite parameter out of range or unsupported blend mode"); return 0; }
+        Sprite& s = d.sprite(id);
+        s.x = x, s.y = y, s.blend = effect, s.alpha = level, s.priority = priority; // the common state stays set when the mode is refused
+        if (!d.slot(bmp)) { c.fail(Errc::Range, "no image slot " + std::to_string(bmp)); return 0; }
+        if (sx <= 0 || sy <= 0) { c.fail(Errc::Range, "invalid scale " + std::to_string(sx) + "," + std::to_string(sy)); return 0; }
+        s.slot = bmp, s.slot2 = 0xFFFFFFFFu, s.mix_ratio = 0, s.level_route = -1;
+        s.projected = false, s.xform = true;
+        s.origin_x = ox, s.origin_y = oy, s.angle = angle, s.sx = sx, s.sy = sy, s.smooth = smooth != 0;
         return 0;
     });
     // 90:5A (object, x, y, bmp, gray, wipe mode, progress, effect, level, prio): a sprite whose appearance is revealed through the
@@ -614,7 +659,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         if (!d.slot(slot)) { c.fail(Errc::Range, "no image slot " + std::to_string(slot)); return 0; }
         Sprite& s = d.sprite(id);
         s.slot = slot, s.x = x, s.y = y, s.blend = effect, s.alpha = level, s.priority = priority;
-        s.projected = false;
+        s.projected = false, s.xform = false, s.slot2 = 0xFFFFFFFFu, s.mix_ratio = 0, s.level_route = -1;
         const SlotInfo* gi = d.slot(gray);
         s.wipe_gray = gi && gi->format == SlotFormat::Gray8 ? gray : 0xFFFFFFFFu; // no pattern: shown whole
         s.wipe_mode = wipe_mode;
@@ -654,18 +699,31 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
             c.fail(Errc::Range, "projected plane parameter out of range");
             return 0;
         }
-        s->slot = v[12];
+        if (v[10] > 0x100) { c.fail(Errc::Range, "mix ratio out of range"); return 0; }
+        // sprite.c: Sprite_SetProjectedEx first places the object (depth ordering, the 16.16 position, effect, level through the
+        // route of the previous mode, priority), then sets the mode, which may still refuse the pictures
         // the script's position stays relative to the centre (90:29 paths and 90:28 tweens are in that space); the compositor
         // projects it
-        s->projected = true;
+        s->projected = true, s->xform = false;
         s->x = static_cast<std::int32_t>(v[15]) >> 16;
         s->y = static_cast<std::int32_t>(v[14]) >> 16;
         s->depth = static_cast<std::int32_t>(v[13]);
+        if (blend_mode_supported(v[2])) s->blend = v[2]; // v[2] is the effect, not a visibility flag
+        s->set_level(v[1]);
+        s->priority = v[0];
+        const auto bmp2 = static_cast<std::int32_t>(v[11]);
+        const SlotInfo* i1 = d.slot(v[12]);
+        const SlotInfo* i2 = bmp2 != -1 ? d.slot(static_cast<Word>(bmp2)) : nullptr;
+        if (bmp2 != -1 && !i2) { c.fail(Errc::Range, "no image slot " + std::to_string(bmp2)); return 0; }
+        if (i2 && (i1->width != i2->width || i1->height != i2->height || i1->format != i2->format)) return 0; // passes silently in the reference build
+        s->slot = v[12];
         s->dist = static_cast<std::int32_t>(v[5]);
         s->scale_position = v[4] != 0;
         s->origin_x = static_cast<std::int32_t>(v[8]), s->origin_y = static_cast<std::int32_t>(v[7]);
-        s->alpha = v[1], s->priority = v[0];
-        if (blend_mode_supported(v[2])) s->blend = v[2]; // v[2] is the effect, not a visibility flag
+        s->angle = static_cast<std::int32_t>(v[6]), s->smooth = v[3] != 0;
+        s->slot2 = i2 ? static_cast<Word>(bmp2) : 0xFFFFFFFFu;
+        s->mix_ratio = i2 ? v[10] : 0;
+        s->level_route = i2 ? static_cast<std::int32_t>(v[9]) : -1;
         return 0;
     };
     add(r, 0x905C, "projected plane", 17, 0, [projected](Ctx& c) {
@@ -709,7 +767,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         Sprite* s = object(c, d, id);
         if (!s) return 0;
         if (alpha > 0x100) c.fail(Errc::Range, "alpha out of range");
-        else s->alpha = alpha;
+        else s->set_level(alpha);
         return 0;
     });
     // (object, priority): the draw order of the object (1.69/472 on)
@@ -785,7 +843,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         switch (no) {
         case 0: c.write(out, static_cast<Word>(s->script_x()), 4), c.write(out + 4, static_cast<Word>(s->script_y()), 4); break;
         case 1: c.write(out, s->blend, 4); break;
-        case 2: c.write(out, s->alpha, 4); break;
+        case 2: c.write(out, s->level(), 4); break;
         case 3: c.write(out, s->priority, 4); break;
         case 0x20:
             c.write(out, static_cast<Word>(s->script_x()) << 16, 4), c.write(out + 4, static_cast<Word>(s->script_y()) << 16, 4);
@@ -812,7 +870,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
             break;
         case 2:
             if (a > 0x100) c.fail(Errc::Range, "alpha out of range");
-            else s->alpha = a;
+            else s->set_level(a);
             break;
         // the base class's parameters (dispobj.c: DispObj_SetParam)
         case 0x8100: s->sort_bias = static_cast<std::int32_t>(a); break; // the sort key's bias: equal priorities draw in this order

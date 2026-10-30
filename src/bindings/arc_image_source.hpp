@@ -16,6 +16,8 @@ struct SlotImage {
     std::uint32_t width = 0, height = 0;
     SlotFormat format = SlotFormat::Bgrx;
     std::vector<std::uint32_t> pixels;
+    bool has_base = false; // the file's base size (CBG header), see CbgImage
+    std::uint32_t base_width = 0, base_height = 0;
 };
 
 // Loads pictures (CBG, optionally DSC-wrapped) from the game's archives by (archive prefix, member name).

@@ -70,6 +70,7 @@ Result<CbgImage> cbg_decode(ByteView in) {
     img.width = load_u16le(h + 0x10);
     img.height = load_u16le(h + 0x12);
     img.bits_per_pixel = load_u16le(h + 0x14);
+    if (load_u16le(h + 0x1a) == 1) img.has_base = true, img.base_width = load_u16le(h + 0x1c), img.base_height = load_u16le(h + 0x1e);
     std::uint32_t stream_size = load_u32le(h + 0x20);
     std::uint32_t seed = load_u32le(h + 0x24);
     std::uint32_t table_size = load_u32le(h + 0x28);

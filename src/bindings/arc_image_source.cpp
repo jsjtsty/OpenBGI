@@ -67,6 +67,7 @@ Result<SlotImage> ArcImageSource::load(std::string_view prefix, std::string_view
     SlotImage out;
     out.width = img->width;
     out.height = img->height;
+    out.has_base = img->has_base, out.base_width = img->base_width, out.base_height = img->base_height;
     const std::size_t n = std::size_t{img->width} * img->height;
     out.pixels.resize(n);
     const std::uint8_t* p8 = img->pixels.data();

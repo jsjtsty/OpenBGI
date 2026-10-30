@@ -29,4 +29,16 @@ Image rotate_centred(const Image& src, std::uint32_t w, std::uint32_t h, std::in
 // Type 11 (mosaic.c via Blit_Flip): blocks of `amount` + 1 pixels of `src` over `dst`; `extra` is the blocks' transparency (0 replaces).
 void mosaic(Image& dst, const Image& src, int amount, int extra);
 
+// blit.c: Blit_CrossfadeTo, the two pictures of a sprite (90:58, 90:5C's second bitmap) mixed by `ratio` (0 = a, 0x100 = b): a plain lerp of the
+// four bytes without alpha, weighted by the two alphas with it.
+Image crossfade_to(const Image& a, const Image& b, int ratio, bool has_alpha);
+
+// A picture scaled by (sx, sy) and rotated by `angle` (16.16 degrees) about the point (ox16, oy16) (16.16 pixels of the picture),
+// as the transform sprites draw it (sprite.c: Sprite_BoundsProjected for the box). `anchor` is where the origin lands in the result.
+struct Transformed {
+    Image image;
+    std::int32_t anchor_x = 0, anchor_y = 0;
+};
+Transformed transform(const Image& src, std::int32_t ox16, std::int32_t oy16, std::int32_t angle, std::int32_t sx, std::int32_t sy, bool smooth);
+
 } // namespace obgi::bgfx

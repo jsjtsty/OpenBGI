@@ -164,7 +164,7 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     });
     // not modelled yet (display object / effect parameters); pop counts measured in the original: 90:3A 2, 90:53 5, 90:58 9,
     // 91:38 3, 91:9F 2, 92:90 15, 90:90 6 (none pushes anything). 80:1A (mouse region priority) pushes the logical input mask: 0 here
-    for (const auto& [id, pops] : {std::pair{0x9053u, 5}, {0x9058u, 9}, {0x919Fu, 2}})
+    for (const auto& [id, pops] : {std::pair{0x9053u, 5}, {0x919Fu, 2}})
         add(r, static_cast<std::uint16_t>(id), "effect parameters (not modelled)", pops, 0, [pops](Ctx& c) { for (int i = 0; i < pops; ++i) c.pop(); return 0; });
     add(r, 0x9214, "92:14 wait object (not modelled)", 2, 0, [](Ctx& c) { c.pop(), c.pop(); return 0; });
     // 91:94 / 91:95 (two strings): a text (font name list) registry the original keeps; not modelled. 91:95 pushed 0 in the original.

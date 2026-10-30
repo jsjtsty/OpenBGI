@@ -62,6 +62,12 @@ struct Display::Impl {
         std::vector<std::uint32_t> src_px;
     };
     std::map<std::uint32_t, ScaleCache> scales;
+    // what a sprite's temporary slots (the mix of two pictures, the transformed picture) were last made for, and the anchor of the latter
+    struct TempCache {
+        std::vector<std::int64_t> key;
+        std::int32_t anchor_x = 0, anchor_y = 0;
+    };
+    std::map<std::uint32_t, TempCache> mixes, xforms;
     // the pictures of the background types as pixels, and what the temporary slot of the rendered background was last made for
     std::map<std::uint32_t, bgfx::Image> bg_images;
     std::map<std::uint32_t, std::uint64_t> versions; // how often each slot's pixels changed
@@ -666,11 +672,71 @@ Result<void> Display::compose() {
             }
         }
         std::int32_t blit_x = draw_x, blit_y = draw_y;
-        if (sp.projected) { // sprite.c mode 5: the picture's origin lands on the projected position, shrunk by the depth
+        const auto version_of = [&m](std::uint32_t id) {
+            const auto v = m.versions.find(id);
+            return v == m.versions.end() ? std::int64_t{0} : static_cast<std::int64_t>(v->second);
+        };
+        // sprite.c modes 1 and 5: a second picture is cross-faded in first (Blit_CrossfadeTo)
+        if (sp.slot2 != 0xFFFFFFFFu && sp.mix_ratio > 0 && draw_id == sp.slot) {
+            const auto a0 = m.slots.find(sp.slot), b0 = m.slots.find(sp.slot2);
+            if (a0 != m.slots.end() && b0 != m.slots.end() && a0->second.info.width == b0->second.info.width && a0->second.info.height == b0->second.info.height &&
+                a0->second.info.format == b0->second.info.format && (a0->second.info.format == SlotFormat::Bgra || a0->second.info.format == SlotFormat::Bgrx)) {
+                Impl::TempCache& mc = m.mixes[kv->first];
+                const std::uint32_t tmp_id = 0x7F500000u | (kv->first & 0xFFFFFu);
+                const std::vector<std::int64_t> key = {sp.slot, sp.slot2, sp.mix_ratio, version_of(sp.slot), version_of(sp.slot2)};
+                if (!m.slots.count(tmp_id) || mc.key != key) {
+                    auto pa = m.download(a0->second);
+                    auto pb = m.download(b0->second);
+                    if (pa && pb) {
+                        const bgfx::Image ia{a0->second.info.width, a0->second.info.height, std::move(*pa)}, ib{b0->second.info.width, b0->second.info.height, std::move(*pb)};
+                        const bgfx::Image mixed = bgfx::crossfade_to(ia, ib, static_cast<int>(std::min(sp.mix_ratio, 0x100u)), a0->second.info.format == SlotFormat::Bgra);
+                        if (upload_slot(tmp_id, mixed.w, mixed.h, a0->second.info.format, mixed.px)) mc.key = key, m.scales.erase(kv->first);
+                    }
+                }
+                if (m.slots.count(tmp_id) && mc.key == key) draw_id = tmp_id;
+            }
+        }
+        bool xformed = false;
+        // sprite.c modes 2 and 5 with a rotation or unequal scales: the picture is transformed on the CPU into a temporary slot
+        if (sp.xform || (sp.projected && sp.angle != 0)) {
+            const auto s0 = m.slots.find(draw_id);
+            if (s0 != m.slots.end() && (s0->second.info.format == SlotFormat::Bgra || s0->second.info.format == SlotFormat::Bgrx)) {
+                const std::int32_t k = sp.projected ? project_scale(sp.depth, sp.no_perspective ? 0 : sp.dist) : 0;
+                const std::int32_t kx = sp.projected ? k : sp.sx, ky = sp.projected ? k : sp.sy;
+                const auto scaled = [k](std::int64_t v) { return static_cast<std::int32_t>(v * k >> 16); };
+                std::int32_t pos_x = sp.x, pos_y = sp.y;
+                if (sp.projected) {
+                    pos_x = static_cast<std::int32_t>(m.screen.info.width / 2) + (sp.scale_position ? scaled(sp.x) : sp.x);
+                    pos_y = static_cast<std::int32_t>(m.screen.info.height / 2) + (sp.scale_position ? scaled(sp.y) : sp.y);
+                }
+                Impl::TempCache& xc = m.xforms[kv->first];
+                const std::uint32_t tmp_id = 0x7F600000u | (kv->first & 0xFFFFFu);
+                const std::vector<std::int64_t> key = {draw_id, sp.slot, sp.slot2, sp.mix_ratio, version_of(sp.slot), version_of(sp.slot2), kx, ky, sp.angle,
+                                                       sp.origin_x, sp.origin_y, sp.smooth ? 1 : 0};
+                if (!m.slots.count(tmp_id) || xc.key != key) {
+                    if (auto px_data = m.download(s0->second)) {
+                        const bgfx::Image src{s0->second.info.width, s0->second.info.height, std::move(*px_data)};
+                        const bgfx::Transformed t = bgfx::transform(src, static_cast<std::int32_t>(static_cast<std::uint32_t>(sp.origin_x) << 16),
+                                                                    static_cast<std::int32_t>(static_cast<std::uint32_t>(sp.origin_y) << 16), sp.angle, kx, ky, sp.smooth);
+                        if (!t.image.px.empty() && upload_slot(tmp_id, t.image.w, t.image.h, s0->second.info.format, t.image.px)) {
+                            xc.key = key, xc.anchor_x = t.anchor_x, xc.anchor_y = t.anchor_y;
+                        }
+                    }
+                }
+                if (m.slots.count(tmp_id) && xc.key == key) {
+                    draw_id = tmp_id;
+                    blit_x = pos_x + sp.off_x + sp.off2_x - xc.anchor_x;
+                    blit_y = pos_y + sp.off_y + sp.off2_y - xc.anchor_y;
+                    xformed = true;
+                }
+            }
+        }
+        if (xformed) {
+        } else if (sp.projected) { // sprite.c mode 5: the picture's origin lands on the projected position, shrunk by the depth
             const std::int32_t k = project_scale(sp.depth, sp.no_perspective ? 0 : sp.dist);
             const auto scaled = [k](std::int64_t v) { return static_cast<std::int32_t>(v * k >> 16); };
-            blit_x = static_cast<std::int32_t>(m.screen.info.width / 2) + (sp.scale_position ? scaled(sp.x) : sp.x) - scaled(sp.origin_x) / 2 + sp.off_x + sp.off2_x;
-            blit_y = static_cast<std::int32_t>(m.screen.info.height / 2) + (sp.scale_position ? scaled(sp.y) : sp.y) - scaled(sp.origin_y) / 2 + sp.off_y + sp.off2_y;
+            blit_x = static_cast<std::int32_t>(m.screen.info.width / 2) + (sp.scale_position ? scaled(sp.x) : sp.x) - scaled(sp.origin_x) + sp.off_x + sp.off2_x;
+            blit_y = static_cast<std::int32_t>(m.screen.info.height / 2) + (sp.scale_position ? scaled(sp.y) : sp.y) - scaled(sp.origin_y) + sp.off_y + sp.off2_y;
             auto s0 = m.slots.find(draw_id);
             if (k != 0x10000 && k > 0 && s0 != m.slots.end() && (s0->second.info.format == SlotFormat::Bgra || s0->second.info.format == SlotFormat::Bgrx)) {
                 Impl::ScaleCache& sc = m.scales[kv->first];
