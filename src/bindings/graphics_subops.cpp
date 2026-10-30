@@ -6,7 +6,10 @@
 #include <set>
 #include <cstdlib>
 #include <cstdio>
+#include <functional>
+#include <optional>
 #include "bindings/graphics_subops.hpp"
+#include "render/background_fx.hpp"
 
 #include <string>
 
@@ -936,6 +939,110 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         }
         return 0;
     });
+
+    // ---- bitmap operations on the CPU (gfx/bmpops.c): 90:1B blur, 90:1C stretch, 90:1D rotate, 90:C3 half size ----
+    // a slot's pixels if it is a 32-bit picture (Bgrx / Bgra), the only modes the reference's blitters draw
+    const auto picture = [&d](std::int32_t id) -> std::optional<bgfx::Image> {
+        const SlotInfo* si = id >= 0 && id <= static_cast<std::int32_t>(kMaxSlot) ? d.slot(static_cast<Word>(id)) : nullptr;
+        if (!si || (si->format != SlotFormat::Bgra && si->format != SlotFormat::Bgrx)) return std::nullopt;
+        auto px = d.read_slot(static_cast<Word>(id));
+        if (!px) return std::nullopt;
+        return bgfx::Image{si->width, si->height, std::move(*px)};
+    };
+    const auto exists = [&d](std::int32_t id) { return id >= 0 && id <= static_cast<std::int32_t>(kMaxSlot) && d.slot(static_cast<Word>(id)) != nullptr; };
+    // 90:1B (dst, src, type, level): a horizontal box blur of src into dst (same size and mode); type 0 pads the edges with black, 1 repeats them
+    add(r, 0x901B, "blur image", 4, 0, [=, &d](Ctx& c) {
+        const auto level = static_cast<std::int32_t>(c.pop()), type = static_cast<std::int32_t>(c.pop());
+        const auto src = static_cast<std::int32_t>(c.pop()), dst = static_cast<std::int32_t>(c.pop());
+        if (!c.ok()) return 0;
+        if (!exists(dst)) { c.fail(Errc::Range, "invalid destination bitmap " + std::to_string(dst)); return 0; }
+        if (!exists(src)) { c.fail(Errc::Range, "invalid source bitmap " + std::to_string(src)); return 0; }
+        if (type != 0 && type != 1) { c.fail(Errc::Range, "invalid gradient type " + std::to_string(type)); return 0; }
+        if (static_cast<std::uint32_t>(level) > 0x100) { c.fail(Errc::Range, "invalid effect level " + std::to_string(level)); return 0; }
+        const SlotInfo *di = d.slot(static_cast<Word>(dst)), *si = d.slot(static_cast<Word>(src));
+        if (di->format != si->format || di->width != si->width || di->height != si->height) { c.fail(Errc::Range, "bitmaps " + std::to_string(dst) + " and " + std::to_string(src) + " differ in size or mode"); return 0; }
+        const auto in = picture(src);
+        if (!in) return 0; // other modes are not drawn
+        const bgfx::Image out = bgfx::box_blur(*in, type, level);
+        check(c, d.upload_slot(static_cast<Word>(dst), out.w, out.h, si->format, out.px));
+        return 0;
+    });
+    // 90:1C (dst, x, y, w, h, src, sx, sy, sw, sh): the (sx, sy, sw, sh) part of src scaled smoothly into the (x, y, w, h) rectangle of dst,
+    // clipped to dst; both sizes at least 2. The scale uses 65540 per unit, and the mapping is centred on the clipped rectangle, as in the original.
+    add(r, 0x901C, "stretch image", 10, 0, [=, &d](Ctx& c) {
+        const auto sh = static_cast<std::int32_t>(c.pop()), sw = static_cast<std::int32_t>(c.pop()), sy = static_cast<std::int32_t>(c.pop()), sx = static_cast<std::int32_t>(c.pop());
+        const auto src = static_cast<std::int32_t>(c.pop());
+        const auto h = static_cast<std::int32_t>(c.pop()), w = static_cast<std::int32_t>(c.pop()), y = static_cast<std::int32_t>(c.pop()), x = static_cast<std::int32_t>(c.pop());
+        const auto dst = static_cast<std::int32_t>(c.pop());
+        if (!c.ok()) return 0;
+        if (!exists(dst)) { c.fail(Errc::Range, "invalid destination bitmap " + std::to_string(dst)); return 0; }
+        if (!exists(src)) { c.fail(Errc::Range, "invalid source bitmap " + std::to_string(src)); return 0; }
+        if (static_cast<std::uint32_t>(w) < 2 || static_cast<std::uint32_t>(h) < 2) { c.fail(Errc::Range, "invalid output range " + std::to_string(w) + "x" + std::to_string(h)); return 0; }
+        if (static_cast<std::uint32_t>(sw) < 2 || static_cast<std::uint32_t>(sh) < 2) { c.fail(Errc::Range, "invalid reference range " + std::to_string(sw) + "x" + std::to_string(sh)); return 0; }
+        const SlotInfo *di = d.slot(static_cast<Word>(dst)), *si = d.slot(static_cast<Word>(src));
+        if (di->format != si->format) { c.fail(Errc::Range, "bitmaps " + std::to_string(dst) + " and " + std::to_string(src) + " differ in mode"); return 0; }
+        auto from = picture(src);
+        auto to = picture(dst);
+        if (!from || !to) return 0;
+        const std::int64_t l = std::max<std::int64_t>(x, 0), t = std::max<std::int64_t>(y, 0);
+        const std::int64_t rr = std::min<std::int64_t>(std::int64_t{x} + w, to->w), bb = std::min<std::int64_t>(std::int64_t{y} + h, to->h);
+        if (rr <= l || bb <= t) return 0;
+        const auto cw = static_cast<std::uint32_t>(rr - l), ch = static_cast<std::uint32_t>(bb - t);
+        const auto fy = static_cast<std::int32_t>(static_cast<double>(h) * 65540.0 / sh), fx = static_cast<std::int32_t>(static_cast<double>(w) * 65540.0 / sw);
+        const bgfx::Image part = bgfx::scale2(*from, cw, ch, sx << 16, sy << 16, sw << 16, sh << 16, fx, fy);
+        for (std::uint32_t row = 0; row < ch; ++row)
+            std::copy_n(&part.px[std::size_t{row} * cw], cw, &to->px[std::size_t(t + row) * to->w + std::size_t(l)]);
+        check(c, d.upload_slot(static_cast<Word>(dst), to->w, to->h, di->format, to->px));
+        return 0;
+    });
+    // 90:1D (dst, src, zoom, angle): src zoomed (16.16, above 0) and rotated (16.16 degrees) about its centre into dst, nearest sampling
+    add(r, 0x901D, "rotate image", 4, 0, [=, &d](Ctx& c) {
+        const auto angle = static_cast<std::int32_t>(c.pop()), zoom = static_cast<std::int32_t>(c.pop());
+        const auto src = static_cast<std::int32_t>(c.pop()), dst = static_cast<std::int32_t>(c.pop());
+        if (!c.ok()) return 0;
+        if (!exists(dst)) { c.fail(Errc::Range, "invalid destination bitmap " + std::to_string(dst)); return 0; }
+        if (!exists(src)) { c.fail(Errc::Range, "invalid source bitmap " + std::to_string(src)); return 0; }
+        const SlotInfo *di = d.slot(static_cast<Word>(dst)), *si = d.slot(static_cast<Word>(src));
+        if (di->format != si->format) { c.fail(Errc::Range, "bitmaps " + std::to_string(dst) + " and " + std::to_string(src) + " are incompatible"); return 0; }
+        if (zoom <= 0) { c.fail(Errc::Range, "invalid scale " + std::to_string(zoom)); return 0; }
+        const auto from = picture(src);
+        if (!from) return 0;
+        const bgfx::Image out = bgfx::rotate_centred(*from, di->width, di->height, zoom, angle);
+        check(c, d.upload_slot(static_cast<Word>(dst), out.w, out.h, di->format, out.px));
+        return 0;
+    });
+    // 90:C3 (dst, src): dst made src at half its size, 2 x 2 pixels averaged with rounding up (the save thumbnails)
+    add(r, 0x90C3, "half size image", 2, 0, [=, &d](Ctx& c) {
+        const auto src = static_cast<std::int32_t>(c.pop()), dst = static_cast<std::int32_t>(c.pop());
+        if (!c.ok()) return 0;
+        if (!slot_ok(c, static_cast<Word>(dst)) || !slot_ok(c, static_cast<Word>(src))) return 0;
+        if (!exists(src)) { c.fail(Errc::Range, "invalid source bitmap " + std::to_string(src)); return 0; }
+        const SlotInfo si = *d.slot(static_cast<Word>(src));
+        if (si.width < 2 || si.height < 2) { c.fail(Errc::Range, "source bitmap " + std::to_string(src) + " is too small"); return 0; }
+        const auto from = picture(src);
+        if (!from) return 0;
+        const std::uint32_t ow = (si.width + 1) >> 1, oh = (si.height + 1) >> 1;
+        std::vector<std::uint32_t> out(std::size_t{ow} * oh, 0);
+        const auto avg = [](unsigned a, unsigned b) { return (a + b + 1) >> 1; };
+        const auto at = [&](std::uint32_t x, std::uint32_t y) { return from->px[std::size_t{std::min(y, si.height - 1)} * si.width + std::min(x, si.width - 1)]; };
+        for (std::uint32_t y = 0; y < oh; ++y)
+            for (std::uint32_t x = 0; x < ow; ++x) {
+                const std::uint32_t p[4] = {at(2 * x, 2 * y), at(2 * x + 1, 2 * y), at(2 * x, 2 * y + 1), at(2 * x + 1, 2 * y + 1)};
+                std::uint32_t px = 0;
+                for (int sh = 0; sh < 32; sh += 8)
+                    px |= avg(avg((p[1] >> sh) & 0xff, (p[3] >> sh) & 0xff), avg((p[0] >> sh) & 0xff, (p[2] >> sh) & 0xff)) << sh;
+                out[std::size_t{y} * ow + x] = px;
+            }
+        check(c, d.upload_slot(static_cast<Word>(dst), ow, oh, si.format, out));
+        return 0;
+    });
+    // 90:0A, 0B, 0E, 0F: settings the original stores for its loader and glyph cache (present mode of a wait, the bitmap manager's option,
+    // a glyph cache request, the key colour of 90:14); they change no picture here
+    for (const auto& [id, pops] : {std::pair{0x900Au, 2}, {0x900Bu, 1}, {0x900Eu, 5}, {0x900Fu, 1}})
+        add(r, static_cast<std::uint16_t>(id), "loader setting", pops, 0, [pops](Ctx& c) {
+            for (int i = 0; i < pops; ++i) c.pop();
+            return 0;
+        });
 
     // ---- tile maps (90:70-7A; gfx/map.c, gfx/mgr/maps.c): eight of them, handle 0xA0000000 | index ----
     constexpr Word kMapBase = 0xA0000000u;
