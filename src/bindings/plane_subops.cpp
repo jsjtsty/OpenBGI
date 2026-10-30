@@ -69,9 +69,71 @@ void register_object_settings(vm::SubopRegistry& r, SystemState& state, Display*
                                {0x9148, "object layer 91:48", 3, 0}, {0x9149, "object layer 91:49", 3, 0},
                                {0x914A, "object layer 91:4A", 4, 0}, {0x9155, "object query 91:55", 2, 1},
                                {0x913D, "object query 91:3D", 1, 1}};
-    static const Rec loose[] = {{0x903C, "object setting 90:3C", 2, 0},
-                                {0x903D, "object query 90:3D", 1, 1},   {0x903F, "object setting 90:3F", 1, 0},
-                                {0x9053, "object setting 90:53", 5, 0}, {0x9055, "object setting 90:55", 2, 0}};
+    static const Rec loose[] = {{0x9053, "object setting 90:53", 5, 0}, {0x9055, "object setting 90:55", 2, 0}};
+    // 90:3C (object, bmp): the object's hit-test mask, built from the opaque pixels of bitmap `bmp` (alpha of an ARGB picture, any colour bit of
+    // an RGB one, non-zero gray); -1 removes it (the whole picture hits), -2 installs a mask that never hits (gfx/mgr/generic.c)
+    add(r, 0x903C, "set object hit mask", 2, 0, [display](Ctx& c) {
+        const auto bmp = static_cast<std::int32_t>(c.pop());
+        const Word h = c.pop();
+        if (!c.ok() || !display) return 0;
+        Sprite* sp = display->find_sprite(h);
+        if (!sp) { c.fail(Errc::Range, "no display object " + std::to_string(h)); return 0; }
+        sp->hit_bits.clear(), sp->hit_w = sp->hit_h = 0, sp->has_hit_mask = false;
+        if (bmp == -1) return 0;
+        std::uint32_t w = 0, hh = 0;
+        std::vector<std::uint32_t> px;
+        SlotFormat format = SlotFormat::Bgra;
+        if (bmp == -2) {
+            const SlotInfo* own = display->slot(sp->slot);
+            w = own ? own->width : 0, hh = own ? own->height : 0;
+            px.assign(std::size_t{w} * hh, 0);
+        } else {
+            const SlotInfo* si = bmp >= 0 && bmp < 0x4000 ? display->slot(static_cast<Word>(bmp)) : nullptr;
+            if (!si) { c.fail(Errc::Range, "invalid bitmap " + std::to_string(bmp)); return 0; }
+            w = si->width, hh = si->height, format = si->format;
+            auto data = display->read_slot(static_cast<Word>(bmp));
+            if (!data) { c.fail(data.error().code, data.error().message); return 0; }
+            px = std::move(*data);
+        }
+        sp->hit_w = w, sp->hit_h = hh, sp->has_hit_mask = true;
+        const std::uint32_t pitch = (w + 7) >> 3;
+        sp->hit_bits.assign(std::size_t{pitch} * hh + 1, 0);
+        for (std::uint32_t y = 0; y < hh; ++y)
+            for (std::uint32_t x = 0; x < w; ++x) {
+                const std::uint32_t v = px[std::size_t{y} * w + x];
+                const bool opaque = format == SlotFormat::Bgra ? (v >> 24) != 0 : format == SlotFormat::Bgrx ? (v & 0xFFFFFF) != 0 : (v & 0xFF) != 0;
+                if (opaque) sp->hit_bits[std::size_t{y} * pitch + (x >> 3)] |= static_cast<std::uint8_t>(1u << (x & 7));
+            }
+        return 0;
+    });
+    // 90:3D (object) -> hit: whether the pointer is over the object, through its hit mask (dispobj.c: DispObj_HitTest)
+    add(r, 0x903D, "object hit test", 1, 1, [s, display](Ctx& c) {
+        const Word h = c.pop();
+        if (!c.ok() || !display) return 0;
+        Sprite* sp = display->find_sprite(h);
+        if (!sp) { c.fail(Errc::Range, "no display object " + std::to_string(h)); return 0; }
+        std::int32_t l = 0, t = 0, rr = 0, b = 0;
+        const SlotInfo* own = display->slot(sp->slot);
+        int hit = 0;
+        if (own && display->screen_rect(h, l, t, rr, b)) {
+            const std::int64_t x = s->mouse_x - l, y = s->mouse_y - t;
+            if (x >= 0 && y >= 0 && x < own->width && y < own->height) {
+                if (!sp->has_hit_mask) hit = 1;
+                else if (static_cast<std::uint32_t>(x) < sp->hit_w && static_cast<std::uint32_t>(y) < sp->hit_h)
+                    hit = (sp->hit_bits[std::size_t(y) * ((sp->hit_w + 7) >> 3) + (std::size_t(x) >> 3)] >> (x & 7)) & 1;
+            }
+        }
+        c.push(static_cast<Word>(hit));
+        return 0;
+    });
+    // 90:3F (object): asks the object for its picture cache; no class of the reference overrides the default, so it is always an error
+    add(r, 0x903F, "build object cache", 1, 0, [display](Ctx& c) {
+        const Word h = c.pop();
+        if (!c.ok() || !display) return 0;
+        if (!display->find_sprite(h)) { c.fail(Errc::Range, "no display object " + std::to_string(h)); return 0; }
+        c.fail(Errc::Range, "the object cannot build a picture cache");
+        return 0;
+    });
     for (const Rec& rec : loose) {
         const std::uint16_t id = rec.id;
         const int pops = rec.pops, pushes = rec.pushes;

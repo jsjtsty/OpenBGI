@@ -112,6 +112,11 @@ struct Sprite {
     std::int32_t master_dx = 0, master_dy = 0;
     bool moved = false;
     void move_to(std::int32_t nx, std::int32_t ny) { x = nx, y = ny, moved = true; }
+    // The 1-bit hit mask of 90:3C (dispobj.c: DispObj_BuildHitMask): one bit per pixel of its own size, set where the picture is opaque.
+    // No mask means the whole picture hits.
+    std::vector<std::uint8_t> hit_bits;
+    std::uint32_t hit_w = 0, hit_h = 0;
+    bool has_hit_mask = false;
     bool hidden = false; // 91:31: kept from being drawn without touching the shown, enabled or fade state
     bool is_shown() const { return visible && enabled && !hidden && fade < 0x100 && opacity > 0; }
 };
