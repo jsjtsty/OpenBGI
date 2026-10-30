@@ -372,4 +372,110 @@ void mosaic(Image& dst, const Image& src, int amount, int extra) {
     }
 }
 
+void xform_copy(Image& dst, std::int32_t x16, std::int32_t y16, const Image& src, std::int32_t cx16, std::int32_t cy16, std::int32_t angle,
+                std::int32_t sx, std::int32_t sy, int level, bool smooth) {
+    std::fill(dst.px.begin(), dst.px.end(), 0u);
+    if (level >= 0x100 || sx <= 0 || sy <= 0) return;
+    const Transformed t = transform(src, cx16, cy16, angle, sx, sy, smooth);
+    const std::int32_t ox = (x16 >> 16) - t.anchor_x, oy = (y16 >> 16) - t.anchor_y, inv = 0x100 - std::max(level, 0);
+    for (std::int32_t y = 0; y < static_cast<std::int32_t>(t.image.h); ++y)
+        for (std::int32_t x = 0; x < static_cast<std::int32_t>(t.image.w); ++x) {
+            const std::int32_t dx = ox + x, dy = oy + y;
+            if (dx < 0 || dy < 0 || dx >= static_cast<std::int32_t>(dst.w) || dy >= static_cast<std::int32_t>(dst.h)) continue;
+            std::uint32_t v = t.image.px[std::size_t(y) * t.image.w + std::size_t(x)];
+            if (inv != 0x100)
+                v = (v & 0xff000000u) | (((v & 0xff) * inv) >> 8) | ((((v >> 8) & 0xff) * inv) >> 8) << 8 | ((((v >> 16) & 0xff) * inv) >> 8) << 16;
+            dst.px[std::size_t(dy) * dst.w + std::size_t(dx)] = v;
+        }
+}
+
+Image colour_mode(const Image& src, int mode, std::uint32_t colour, int level) {
+    Image out = src;
+    if (mode == 0) return out;
+    const int inv = 0x100 - level;
+    if (mode == 1) { // Blit_FilterKind3: s + ((s ^ colour) - s) * (level >> 1) >> 7, the top byte kept
+        const int l2 = level >> 1;
+        for (auto& v : out.px) {
+            std::uint32_t r = v & 0xff000000u;
+            for (int i = 0; i < 24; i += 8) {
+                const int sc = (v >> i) & 0xff, cc = (colour >> i) & 0xff;
+                r |= static_cast<std::uint32_t>(sat8(((((sc ^ cc) - sc) * l2) >> 7) + sc)) << i;
+            }
+            v = r;
+        }
+    } else if (mode == 2) { // Blit_FilterKind2: the monochrome tint, the top byte becomes 0
+        int table[0x80][3];
+        for (int i = 0; i < 0x80; ++i) {
+            int v = (i + 1) * level;
+            if (v == 0x8000) v = 0x7fff;
+            for (int c = 0; c < 3; ++c) table[i][c] = (((v * static_cast<int>((colour >> (c * 8)) & 0xff)) >> 16) << 1) & 0xffff;
+        }
+        for (auto& p : out.px) {
+            const int b = p & 0xff, g = (p >> 8) & 0xff, r = (p >> 16) & 0xff, luma = (b * 28 + g * 151 + r * 77) >> 9;
+            p = static_cast<std::uint32_t>(sat8(((b * inv) >> 8) + table[luma][0])) | static_cast<std::uint32_t>(sat8(((g * inv) >> 8) + table[luma][1])) << 8 |
+                static_cast<std::uint32_t>(sat8(((r * inv) >> 8) + table[luma][2])) << 16;
+        }
+    } else { // 3 Blit_TintKeepAlpha: s * inv >> 8 plus the colour * level >> 8; 4 Blit_AddColour: s plus the colour * level >> 8; the alpha kept
+        int add[3];
+        for (int i = 0; i < 3; ++i) add[i] = static_cast<int>(((colour >> (8 * i)) & 0xff) * static_cast<unsigned>(level)) >> 8;
+        for (auto& v : out.px) {
+            std::uint32_t r = v & 0xff000000u;
+            for (int i = 0; i < 3; ++i) {
+                const int sc = (v >> (8 * i)) & 0xff;
+                r |= static_cast<std::uint32_t>(sat8((mode == 3 ? static_cast<int>((static_cast<unsigned>(sc) * static_cast<unsigned>(inv)) >> 8) : sc) + add[i])) << (8 * i);
+            }
+            v = r;
+        }
+    }
+    return out;
+}
+
+void gather_add(Image& dst, const Image& src, std::uint32_t cx, std::uint32_t cy, std::uint32_t level) {
+    std::uint32_t table[128];
+    for (std::uint32_t i = 0; i < 128; ++i) table[i] = ((128 - i) * (256 - level)) >> 8;
+    const std::uint32_t x0 = static_cast<std::uint32_t>(src.w - 1) * cx >> 1, y0 = static_cast<std::uint32_t>(src.h - 1) * cy >> 1;
+    const std::uint32_t step_x = 0x10000 - cx, step_y = 0x10000 - cy;
+    std::uint32_t y = y0;
+    for (std::uint32_t i = 0; i < src.h; ++i, y += step_y) {
+        std::uint32_t x = x0;
+        for (std::uint32_t j = 0; j < src.w; ++j, x += step_x) {
+            const std::int32_t xi = static_cast<std::int32_t>(x) >> 16, yi = static_cast<std::int32_t>(y) >> 16;
+            const std::uint32_t fx = (x & 0xfe00) >> 9, fy = (y & 0xfe00) >> 9; // the top 7 fraction bits
+            const std::uint32_t w00 = ((128 - fx) * (128 - fy)) >> 7, w10 = (fx * (128 - fy)) >> 7;
+            const std::uint32_t w01 = ((128 - fx) * fy) >> 7, w11 = (fx * fy) >> 7;
+            std::uint32_t idx[4];
+            // the packing quirk of the original (PACKSSDW): a row pair saturates when its right-hand share is not zero
+            if (w10) idx[0] = 0x81, idx[1] = 0;
+            else idx[0] = 0x80 - w00, idx[1] = 0x80;
+            if (w11) idx[2] = 0x81, idx[3] = 0;
+            else idx[2] = 0x80 - w01, idx[3] = 0x80;
+            const std::uint32_t pix = src.px[std::size_t{i} * src.w + j];
+            for (std::uint32_t k = 0; k < 4; ++k) {
+                const std::int32_t px = xi + static_cast<std::int32_t>(k & 1), py = yi + static_cast<std::int32_t>(k >> 1);
+                if (idx[k] >= 0x80 || px < 0 || py < 0 || px >= static_cast<std::int32_t>(dst.w) || py >= static_cast<std::int32_t>(dst.h)) continue;
+                const std::uint32_t wgt = table[idx[k]];
+                std::uint32_t& d = dst.px[std::size_t(py) * dst.w + std::size_t(px)];
+                std::uint32_t o = 0;
+                for (std::uint32_t c = 0; c < 32; c += 8) {
+                    std::uint32_t v = (((pix >> c) & 0xff) * wgt) >> 7;
+                    v += (d >> c) & 0xff;
+                    o |= std::min<std::uint32_t>(v, 0xff) << c;
+                }
+                d = o;
+            }
+        }
+    }
+}
+
+void apply_gray(Image& dst, const std::vector<std::uint32_t>& gray, std::uint32_t gw, std::uint32_t gh, int x, int y) {
+    for (std::uint32_t py = 0; py < dst.h; ++py)
+        for (std::uint32_t px = 0; px < dst.w; ++px) {
+            const std::int64_t gx = std::int64_t{px} + x, gy = std::int64_t{py} + y;
+            if (gx < 0 || gy < 0 || gx >= gw || gy >= gh) continue;
+            const std::uint32_t mask = gray[std::size_t(gy) * gw + std::size_t(gx)] & 0xff;
+            std::uint32_t& v = dst.px[std::size_t{py} * dst.w + px];
+            v = (v & 0xffffffu) | ((((v >> 24) * mask) << 16) & 0xff000000u);
+        }
+}
+
 } // namespace obgi::bgfx

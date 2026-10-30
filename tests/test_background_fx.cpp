@@ -119,3 +119,39 @@ TEST_CASE("background zoom and view keep an identity transform") {
     CHECK(v.px[0] == src.px[0]);
     CHECK(v.px[5 + 3 * 6] == src.px[5 + 3 * 6]);
 }
+
+TEST_CASE("colour modes of 91:1D follow the reference formulas") {
+    const Image s = solid(1, 1, 0x80402010);
+    CHECK(colour_mode(s, 0, 0xFFFFFF, 0x100).px[0] == 0x80402010);
+    // mode 4 adds colour * level >> 8 per byte, alpha kept; mode 3 dims then adds
+    CHECK(colour_mode(s, 4, 0x101010, 0x100).px[0] == 0x80503020);
+    CHECK(colour_mode(s, 3, 0x101010, 0x100).px[0] == 0x80101010);
+    // mode 2 turns the top byte to 0, mode 1 keeps it
+    CHECK((colour_mode(s, 2, 0x808080, 0x80).px[0] >> 24) == 0);
+    CHECK((colour_mode(s, 1, 0x000000, 0x100).px[0] >> 24) == 0x80);
+}
+
+TEST_CASE("gathering add and gray as alpha") {
+    Image dst = solid(4, 4, 0), src = solid(4, 4, 0x00808080);
+    gather_add(dst, src, 0, 0, 0);           // no gathering at level 0: the picture lands on itself with weight 128 / 128
+    CHECK(dst.px[5] == 0x00808080);
+    Image argb = solid(2, 1, 0xFF102030);
+    const std::vector<std::uint32_t> gray = {0xFF, 0x80};
+    apply_gray(argb, gray, 2, 1, 0, 0);
+    CHECK(argb.px[0] == 0xFE102030);          // alpha 0xFF * 0xFF >> 8
+    CHECK(argb.px[1] == 0x7F102030);
+    Image shifted = solid(2, 1, 0xFF102030);
+    apply_gray(shifted, gray, 2, 1, 1, 0);    // pixel (0, 0) takes gray pixel (1, 0); (1, 0) is outside the gray bitmap and keeps its alpha
+    CHECK(shifted.px[0] == 0x7F102030);
+    CHECK(shifted.px[1] == 0xFF102030);
+}
+
+TEST_CASE("transform copy places the picture's point on the destination point") {
+    Image dst = solid(8, 8, 0xFFFFFFFF), src = solid(4, 4, 0xFF123456);
+    xform_copy(dst, 4 << 16, 4 << 16, src, 2 << 16, 2 << 16, 0, 0x10000, 0x10000, 0, false);
+    CHECK(dst.px[4 * 8 + 4] == 0xFF123456); // the point (2, 2) of the picture sits on (4, 4)
+    CHECK(dst.px[2 * 8 + 2] == 0xFF123456); // the corner (0, 0) lands on (2, 2)
+    CHECK(dst.px[0] == 0);                  // every pixel is replaced: outside the picture is empty
+    xform_copy(dst, 4 << 16, 4 << 16, src, 2 << 16, 2 << 16, 0, 0x10000, 0x10000, 0x100, false);
+    CHECK(dst.px[4 * 8 + 4] == 0);          // a level of 0x100 clears it
+}

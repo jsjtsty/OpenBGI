@@ -51,4 +51,22 @@ struct Transformed {
 };
 Transformed transform(const Image& src, std::int32_t ox16, std::int32_t oy16, std::int32_t angle, std::int32_t sx, std::int32_t sy, bool smooth);
 
+// blit_xform.c: Blit_XformCopy. `dst` is replaced entirely by `src` scaled by (sx, sy) and rotated by `angle` (16.16) about its point
+// (cx16, cy16), which lands on the dst point (x16, y16); outside the source the result is black / transparent; the colours are then scaled
+// by (0x100 - level) / 256 with the alpha kept, and a level of 0x100 or more clears dst.
+void xform_copy(Image& dst, std::int32_t x16, std::int32_t y16, const Image& src, std::int32_t cx16, std::int32_t cy16, std::int32_t angle,
+                std::int32_t sx, std::int32_t sy, int level, bool smooth);
+
+// blit_filter.c, the colour modes of "91 1D": src through mode 0 copy, 1 (Blit_FilterKind3), 2 (Blit_FilterKind2), 3 (Blit_TintKeepAlpha) or
+// 4 (Blit_AddColour); the mode must be 0..4.
+Image colour_mode(const Image& src, int mode, std::uint32_t colour, int level);
+
+// blit_scale.c: Blit_GatherAdd of the RGB32 `src` into the RGB32 `dst` ("91 1B"): the pixels drawn toward the centre by the 16.16 rates
+// and added with saturation, attenuated by level (0..0x100).
+void gather_add(Image& dst, const Image& src, std::uint32_t cx, std::uint32_t cy, std::uint32_t level);
+
+// blit_xform.c: Blit_ApplyMask over the overlap, in place on an ARGB32 picture ("91 1E"): the alpha becomes alpha * mask >> 8, the mask
+// being the gray bitmap's pixel (px + x, py + y); `gray` holds one pixel per word.
+void apply_gray(Image& dst, const std::vector<std::uint32_t>& gray, std::uint32_t gw, std::uint32_t gh, int x, int y);
+
 } // namespace obgi::bgfx

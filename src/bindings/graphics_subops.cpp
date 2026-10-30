@@ -1228,6 +1228,83 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         check(c, d.upload_slot(static_cast<Word>(dst), out.w, out.h, di->format, out.px));
         return 0;
     });
+    // 91:19 (dst, x, y, src, cx, cy, angle, sx, sy, level, smooth): src scaled by (sx, sy) and rotated about its point (cx, cy) (all 16.16), which
+    // lands on (x, y) of dst; every pixel of dst is replaced, the colours dimmed by the level (blit_xform.c: Blit_XformCopy). Pictures of two modes do nothing.
+    add(r, 0x9119, "transform image copy", 11, 0, [=, &d](Ctx& c) {
+        const auto smooth = static_cast<std::int32_t>(c.pop()), level = static_cast<std::int32_t>(c.pop());
+        const auto sy = static_cast<std::int32_t>(c.pop()), sx = static_cast<std::int32_t>(c.pop()), angle = static_cast<std::int32_t>(c.pop());
+        const auto cy = static_cast<std::int32_t>(c.pop()), cx = static_cast<std::int32_t>(c.pop()), src = static_cast<std::int32_t>(c.pop());
+        const auto y = static_cast<std::int32_t>(c.pop()), x = static_cast<std::int32_t>(c.pop()), dst = static_cast<std::int32_t>(c.pop());
+        if (!c.ok()) return 0;
+        if (static_cast<std::uint32_t>(level) > 0x100) { c.fail(Errc::Range, "alpha out of range"); return 0; }
+        if (!exists(dst)) { c.fail(Errc::Range, "invalid output bitmap " + std::to_string(dst)); return 0; }
+        if (!exists(src)) { c.fail(Errc::Range, "invalid reference bitmap " + std::to_string(src)); return 0; }
+        if (sx == 0 || sy == 0) { c.fail(Errc::Range, "invalid scale " + std::to_string(sx) + "," + std::to_string(sy)); return 0; }
+        const SlotInfo *di = d.slot(static_cast<Word>(dst)), *si = d.slot(static_cast<Word>(src));
+        if (di->format != si->format) return 0;
+        auto from = picture(src);
+        auto to = picture(dst);
+        if (!from || !to) return 0;
+        bgfx::xform_copy(*to, x << 16, y << 16, *from, cx, cy, angle, sx, sy, level, smooth != 0);
+        check(c, d.upload_slot(static_cast<Word>(dst), to->w, to->h, di->format, to->px));
+        return 0;
+    });
+    // 91:1B (dst, src, cx, cy, level): the gathering add of the screen-group transition: the RGB32 src drawn toward its centre by the 16.16 rates
+    // (at most 1.0) and added to dst with saturation, attenuated by the level (blit_scale.c: Blit_GatherAdd)
+    add(r, 0x911B, "gathering add", 5, 0, [=, &d](Ctx& c) {
+        const Word level = c.pop(), cy = c.pop(), cx = c.pop();
+        const auto src = static_cast<std::int32_t>(c.pop()), dst = static_cast<std::int32_t>(c.pop());
+        if (!c.ok()) return 0;
+        if (!exists(dst)) { c.fail(Errc::Range, "invalid output bitmap " + std::to_string(dst)); return 0; }
+        if (!exists(src)) { c.fail(Errc::Range, "invalid reference bitmap " + std::to_string(src)); return 0; }
+        if (cx > 0x10000 || cy > 0x10000) { c.fail(Errc::Range, "invalid gathering rate"); return 0; }
+        if (level > 0x100) { c.fail(Errc::Range, "invalid attenuation " + std::to_string(level)); return 0; }
+        const SlotInfo *di = d.slot(static_cast<Word>(dst)), *si = d.slot(static_cast<Word>(src));
+        if (di->format != SlotFormat::Bgrx || si->format != SlotFormat::Bgrx) return 0; // RGB32 on both sides, else nothing is drawn
+        auto from = picture(src);
+        auto to = picture(dst);
+        if (!from || !to) return 0;
+        bgfx::gather_add(*to, *from, cx, cy, level);
+        check(c, d.upload_slot(static_cast<Word>(dst), to->w, to->h, di->format, to->px));
+        return 0;
+    });
+    // 91:1D (dst, src, mode, colour, level): src into dst through mode 0 copy, 1 blend toward src XOR colour, 2 luminance tint, 3 blend toward
+    // the colour (alpha kept), 4 add the colour (alpha kept), at the level (blit_filter.c); another mode is an error
+    add(r, 0x911D, "colour mode image", 5, 0, [=, &d](Ctx& c) {
+        const auto level = static_cast<std::int32_t>(c.pop());
+        const Word colour = c.pop();
+        const auto mode = static_cast<std::int32_t>(c.pop()), src = static_cast<std::int32_t>(c.pop()), dst = static_cast<std::int32_t>(c.pop());
+        if (!c.ok()) return 0;
+        if (static_cast<std::uint32_t>(level) > 0x100) { c.fail(Errc::Range, "alpha out of range"); return 0; }
+        if (!exists(dst)) { c.fail(Errc::Range, "invalid output bitmap " + std::to_string(dst)); return 0; }
+        if (!exists(src)) { c.fail(Errc::Range, "invalid reference bitmap " + std::to_string(src)); return 0; }
+        if (mode < 0 || mode > 4) { c.fail(Errc::Range, "invalid process type " + std::to_string(mode)); return 0; }
+        const SlotInfo *di = d.slot(static_cast<Word>(dst)), *si = d.slot(static_cast<Word>(src));
+        if (di->format != si->format || di->width != si->width || di->height != si->height) return 0;
+        auto from = picture(src);
+        if (!from) return 0;
+        const bgfx::Image out = bgfx::colour_mode(*from, mode, colour, level);
+        check(c, d.upload_slot(static_cast<Word>(dst), out.w, out.h, di->format, out.px));
+        return 0;
+    });
+    // 91:1E (dst, gray, x, y): the gray bitmap as the alpha of the ARGB32 dst: pixel (px, py) takes gray pixel (px + x, py + y) over the overlap
+    // (blit_xform.c: Blit_ApplyMask); the alpha already there is multiplied by it
+    add(r, 0x911E, "apply gray as alpha", 4, 0, [=, &d](Ctx& c) {
+        const auto y = static_cast<std::int32_t>(c.pop()), x = static_cast<std::int32_t>(c.pop());
+        const auto gray = static_cast<std::int32_t>(c.pop()), dst = static_cast<std::int32_t>(c.pop());
+        if (!c.ok()) return 0;
+        if (!exists(dst)) { c.fail(Errc::Range, "invalid target bitmap " + std::to_string(dst)); return 0; }
+        if (!exists(gray)) { c.fail(Errc::Range, "invalid reference bitmap " + std::to_string(gray)); return 0; }
+        const SlotInfo *di = d.slot(static_cast<Word>(dst)), *gi = d.slot(static_cast<Word>(gray));
+        if (gi->format != SlotFormat::Gray8) { c.fail(Errc::Range, "bitmap " + std::to_string(gray) + " is not grayscale"); return 0; }
+        if (di->format != SlotFormat::Bgra) return 0; // an RGB32 destination is left alone
+        auto to = picture(dst);
+        auto mask = d.read_slot(static_cast<Word>(gray));
+        if (!to || !mask) return 0;
+        bgfx::apply_gray(*to, *mask, gi->width, gi->height, x, y);
+        check(c, d.upload_slot(static_cast<Word>(dst), to->w, to->h, di->format, to->px));
+        return 0;
+    });
     // 90:0A, 0B, 0E, 0F: settings the original stores for its loader and glyph cache (present mode of a wait, the bitmap manager's option,
     // a glyph cache request, the key colour of 90:14); they change no picture here
     for (const auto& [id, pops] : {std::pair{0x900Au, 2}, {0x900Bu, 1}, {0x900Eu, 5}, {0x900Fu, 1}})
