@@ -8,6 +8,7 @@
 #include <cstdlib>
 
 #include "bindings/panel.hpp"
+#include "render/background_fx.hpp"
 #include "bindings/system_subops.hpp"
 
 namespace obgi {
@@ -273,38 +274,122 @@ void register_object_settings(vm::SubopRegistry& r, SystemState& state, Display*
         return 0;
     });
     add(r, 0xB01C, "child window copy text", 2, 0, [child_of](Ctx& c) { const Word h = c.pop(); c.pop(); if (c.ok()) child_of(c, h); return 0; });
-    // Effectors (91:60..66): up to 8 screen effect objects, handle 0x91000000 | index. Only the bookkeeping is modelled; their
-    // displacement / gradient effects on the screen below are not drawn.
+    // Effectors (91:60..68, effector.c): up to 8 screen effect objects, handle 0x91000000 | index. Each is a display object that
+    // Display::compose() draws in its sort position: it snapshots everything drawn below it and writes back a displaced (mode 0, 91:65),
+    // blurred (1, 91:66), rippled (2, 91:67) or rotated and zoomed (3, 91:68) copy. The level is the strength.
     auto effectors = std::make_shared<std::array<bool, 8>>();
-    auto effector_of = [effectors](Ctx& c, Word h) {
-        const bool ok = (h & 0xFFFFFFF8u) == 0x91000000u && (*effectors)[h & 7];
-        if (!ok) c.fail(Errc::Range, "no effector " + std::to_string(h));
-        return ok;
+    auto effector_of = [effectors, display](Ctx& c, Word h) -> Sprite* {
+        const bool ok = display && (h & 0xFFFFFFF8u) == 0x91000000u && (*effectors)[h & 7];
+        if (!ok) {
+            c.fail(Errc::Range, "no effector " + std::to_string(h));
+            return nullptr;
+        }
+        return display->find_sprite(h);
     };
-    add(r, 0x9160, "create effector", 0, 1, [effectors](Ctx& c) {
+    add(r, 0x9160, "create effector", 0, 1, [effectors, display](Ctx& c) {
+        if (!display) { c.push(0); return 0; }
         for (Word i = 0; i < 8; ++i)
-            if (!(*effectors)[i]) { (*effectors)[i] = true; c.push(0x91000000u | i); return 0; }
+            if (!(*effectors)[i]) {
+                (*effectors)[i] = true;
+                Sprite& sp = display->sprite(0x91000000u | i);
+                sp = Sprite{};
+                sp.effector = true, sp.visible = false, sp.priority = 0, sp.alpha = 0;
+                c.push(0x91000000u | i);
+                return 0;
+            }
         c.fail(Errc::Range, "no more effectors (the limit is 8)");
         return 0;
     });
-    add(r, 0x9161, "delete effector", 1, 0, [effectors, effector_of](Ctx& c) {
+    add(r, 0x9161, "delete effector", 1, 0, [effectors, effector_of, display](Ctx& c) {
         const Word h = c.pop();
-        if (c.ok() && effector_of(c, h)) (*effectors)[h & 7] = false;
+        if (c.ok() && effector_of(c, h)) (*effectors)[h & 7] = false, display->remove_sprite(h);
         return 0;
     });
-    add(r, 0x9164, "show effector", 2, 0, [effector_of](Ctx& c) {
-        c.pop();
-        const Word h = c.pop();
-        if (c.ok()) effector_of(c, h);
+    add(r, 0x9164, "show effector", 2, 0, [effector_of, display](Ctx& c) {
+        const Word on = c.pop(), h = c.pop();
+        if (c.ok() && effector_of(c, h)) display->set_visible(h, on != 0);
         return 0;
     });
-    for (auto [id, n] : {std::pair{0x9165, 6}, {0x9166, 4}, {0x9167, 6}, {0x9168, 9}})
-        add(r, static_cast<std::uint16_t>(id), "set effector (not drawn)", n, 0, [effector_of, n](Ctx& c) {
-            std::vector<Word> a(static_cast<std::size_t>(n));
-            for (int i = n - 1; i >= 0; --i) a[std::size_t(i)] = c.pop();
-            if (c.ok()) effector_of(c, a[0]);
+    // 91:65 (h, vec1, vec2, level, amount, priority): mode 0, the screen below displaced through one screen-sized vector map, or two
+    // (vec2 -1 = none) mixed by the level; a non-zero amount samples bilinearly
+    add(r, 0x9165, "set effector displacement", 6, 0, [effector_of, display](Ctx& c) {
+        const Word prio = c.pop();
+        const auto amount = static_cast<std::int32_t>(c.pop());
+        const Word level = c.pop();
+        const auto vec2 = static_cast<std::int32_t>(c.pop()), vec1 = static_cast<std::int32_t>(c.pop());
+        const Word h = c.pop();
+        if (!c.ok()) return 0;
+        if (prio > 0xffff) { c.fail(Errc::Range, "priority out of range"); return 0; }
+        if (level > 0x100) { c.fail(Errc::Range, "alpha out of range"); return 0; }
+        Sprite* sp = effector_of(c, h);
+        if (!sp) return 0;
+        const auto screen_vec = [display](std::int32_t id) {
+            const auto it = display->vecmaps.find(static_cast<std::uint32_t>(id));
+            return it != display->vecmaps.end() && it->second.mode == vecmap::Mode::Vector && it->second.w == display->screen_width() && it->second.h == display->screen_height();
+        };
+        if (!screen_vec(vec1)) { c.fail(Errc::Range, "vector map " + std::to_string(vec1) + " is missing or not screen sized"); return 0; }
+        if (vec2 != -1 && !screen_vec(vec2)) { c.fail(Errc::Range, "vector map " + std::to_string(vec2) + " is missing or not screen sized"); return 0; }
+        sp->fx.mode = 0, sp->fx.vec1 = vec1, sp->fx.vec2 = vec2, sp->fx.amount = amount;
+        sp->alpha = level, sp->priority = prio;
+        return 0;
+    });
+    // 91:66 (h, type, level, priority): mode 1, a horizontal box blur (type 0 pads with black, 1 repeats the edge)
+    add(r, 0x9166, "set effector gradient", 4, 0, [effector_of](Ctx& c) {
+        const Word prio = c.pop(), level = c.pop(), type = c.pop(), h = c.pop();
+        if (!c.ok()) return 0;
+        if (prio > 0xffff) { c.fail(Errc::Range, "priority out of range"); return 0; }
+        if (level > 0x100) { c.fail(Errc::Range, "alpha out of range"); return 0; }
+        Sprite* sp = effector_of(c, h);
+        if (!sp) return 0;
+        if (type > 1) { c.fail(Errc::Range, "invalid gradient type " + std::to_string(type)); return 0; }
+        sp->fx.mode = 1, sp->fx.grad_type = static_cast<std::int32_t>(type);
+        sp->alpha = level, sp->priority = prio;
+        return 0;
+    });
+    // 91:67 (h, map, rings, ripple, level, priority): mode 2, the screen below read through a screen-sized vector + distance map and the
+    // ring table of ripple definition `ripple` (92:00); the level is the amplitude
+    add(r, 0x9167, "set effector ripple", 6, 0, [effector_of, display](Ctx& c) {
+        const Word prio = c.pop(), level = c.pop();
+        const auto ripple = static_cast<std::int32_t>(c.pop()), rings = static_cast<std::int32_t>(c.pop()), map = static_cast<std::int32_t>(c.pop());
+        const Word h = c.pop();
+        if (!c.ok()) return 0;
+        if (prio > 0xffff) { c.fail(Errc::Range, "priority out of range"); return 0; }
+        if (level > 0x100) { c.fail(Errc::Range, "alpha out of range"); return 0; }
+        Sprite* sp = effector_of(c, h);
+        if (!sp) return 0;
+        const auto it = display->vecmaps.find(static_cast<std::uint32_t>(map));
+        if (it == display->vecmaps.end() || it->second.mode != vecmap::Mode::VecDist || it->second.w != display->screen_width() || it->second.h != display->screen_height()) {
+            c.fail(Errc::Range, "vector + distance map " + std::to_string(map) + " is missing or not screen sized");
             return 0;
-        });
+        }
+        if (rings == 0) { c.fail(Errc::Range, "invalid maximum distance 0"); return 0; }
+        bool ok = false;
+        if (vecmap::ripple_check(display->ripples, ok, ripple, 0, rings) != 0) { c.fail(Errc::Range, "ripple " + std::to_string(ripple) + " is not registered"); return 0; }
+        if (!ok) { c.fail(Errc::Range, "ripple " + std::to_string(ripple) + " does not fit the map " + std::to_string(map)); return 0; }
+        sp->fx.mode = 2, sp->fx.map = map, sp->fx.rings = rings, sp->fx.ripple_no = ripple, sp->fx.ripple_sel = 0;
+        sp->alpha = level, sp->priority = prio;
+        return 0;
+    });
+    // 91:68 (h, cx, cy, angle, sx, sy, smooth, level, priority): mode 3, rotation by `angle` and zoom by (sx, sy) (16.16) about the screen
+    // point (cx, cy); the level blends from the identity, the progress (90:35) and 90:38's 0x80-0x82/0x8F animate it. A zero scale is the
+    // only error; an unknown handle is ignored, as in the original
+    add(r, 0x9168, "set effector zoom", 9, 0, [effectors, display](Ctx& c) {
+        const Word prio = c.pop(), level = c.pop(), smooth = c.pop();
+        const auto sy = static_cast<std::int32_t>(c.pop()), sx = static_cast<std::int32_t>(c.pop()), angle = static_cast<std::int32_t>(c.pop());
+        const auto cy = static_cast<std::int32_t>(c.pop()), cx = static_cast<std::int32_t>(c.pop());
+        const Word h = c.pop();
+        if (!c.ok()) return 0;
+        if (prio > 0xffff) { c.fail(Errc::Range, "priority out of range"); return 0; }
+        if (level > 0x100) { c.fail(Errc::Range, "alpha out of range"); return 0; }
+        if (sx == 0 || sy == 0) { c.fail(Errc::Range, "invalid scale " + std::to_string(sx) + "," + std::to_string(sy)); return 0; }
+        Sprite* sp = display && (h & 0xFFFFFFF8u) == 0x91000000u && (*effectors)[h & 7] ? display->find_sprite(h) : nullptr;
+        if (!sp) return 0;
+        sp->fx.mode = 3, sp->fx.cx = cx, sp->fx.cy = cy, sp->fx.angle = angle, sp->fx.sx = sx, sp->fx.sy = sy, sp->fx.smooth = static_cast<std::int32_t>(smooth);
+        sp->fx.d_cx = sp->fx.d_cy = sp->fx.d_angle = sp->fx.d_sx = sp->fx.d_sy = sp->fx.curve = 0;
+        sp->alpha = level, sp->priority = prio;
+        display->set_progress(h, 0);
+        return 0;
+    });
     // 91:DB: the knob being dragged, 0 when none
     add(r, 0x91DB, "dragged knob", 0, 1, [s](Ctx& c) { c.push(s->knob_focus); return 0; });
     // Video textures (91:F0..F7): not modelled; they answer as the reference engine does without a player: 1 when the bitmap slot
@@ -359,22 +444,7 @@ void add_plane_setting(vm::SubopRegistry& r, SystemState& s, std::uint16_t id, c
 }
 
 // The original's Ease(): progress t (0..0x1000000 = 1.0) to a 16.16 factor. Curve 0 is linear, 1..3 sine easing, 4..15 powers.
-std::int32_t ease(std::int32_t t, int curve) {
-    constexpr double deg16_to_rad = 2.663161090079238e-07;
-    constexpr double powers[6] = {2.0, 2.5, 3.0, 4.0, 5.0, 6.0};
-    switch (curve) {
-    case 1: return static_cast<std::int32_t>((std::cos((0xB40000 - std::int64_t{t} * 180 / 256) * deg16_to_rad) + 1.0) * 32768.0);
-    case 2: return static_cast<std::int32_t>(std::sin((std::int64_t{t} * 90 / 256) * deg16_to_rad) * 65536.0);
-    case 3: return static_cast<std::int32_t>((1.0 - std::sin((0x5A0000 - std::int64_t{t} * 90 / 256) * deg16_to_rad)) * 65536.0);
-    default:
-        if (curve >= 4 && curve <= 15) {
-            const double n = powers[(curve - 4) / 2];
-            if (curve & 1) return static_cast<std::int32_t>((1.0 - std::pow(double(0x1000000 - t), n) / std::pow(16777216.0, n)) * 65536.0);
-            return static_cast<std::int32_t>(std::pow(double(t), n) * 65536.0 / std::pow(16777216.0, n));
-        }
-        return t / 256;
-    }
-}
+std::int32_t ease(std::int32_t t, int curve) { return bgfx::ease(t, curve); }
 
 // The natural cubic spline through `pts` (at least three, knots one apart) at u in 0..1, per axis. Second derivatives m solve
 // m[i-1] + 4 m[i] + m[i+1] = 6 (y[i-1] - 2 y[i] + y[i+1]) with m = 0 at both ends.

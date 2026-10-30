@@ -4,6 +4,7 @@
 #include <cstring>
 
 #include "bindings/graphics_subops.hpp"
+#include "bindings/system_subops.hpp"
 #include "support.hpp"
 #include "vm/vm.hpp"
 
@@ -262,4 +263,48 @@ TEST_CASE("ripple sprite 90:5B and ripple definitions run through the display") 
     provider.set(bad);
     REQUIRE(vm.spawn(cfg, "x.arc", "main").has_value());
     CHECK_FALSE(vm.run_frame(0).has_value());
+}
+
+TEST_CASE("an effector displaces everything drawn below it") {
+    RendererOptions ro;
+    ro.headless = true;
+    auto renderer = Renderer::create(ro);
+    if (!renderer) return;
+    auto display = Display::create(**renderer);
+    REQUIRE(display.has_value());
+    ArcResourceFinder finder(obgi_test::game_dir());
+    ArcImageSource images(finder);
+    GraphicsHost host{display->get(), &images};
+    SubopRegistry registry;
+    register_core_subops(registry);
+    register_graphics_subops(registry, host);
+    SystemState state;
+    register_plane_subops(registry, state, display->get()); // the effectors live with the plane settings
+    MemProvider provider;
+    Vm vm(provider, registry);
+
+    const Word sw = (*display)->screen_width(), sh = (*display)->screen_height();
+    constexpr Word eff = 0x91000000u;
+    Asm a;
+    a.i32(1).i32(8).i32(8).i32(1).sub(0x90, 0x11); // a red 8 x 8 picture drawn at (10, 20)
+    a.i32(1).i32(0x00FF0000).sub(0x90, 0x13);
+    a.i32(0x80000001u).i32(10).i32(20).i32(1).i32(1).i32(0).i32(1).sub(0x90, 0x56);
+    a.i32(3).i32(sw).i32(sh).i32(4).sub(0x90, 0x11); // a screen-sized vector map reading 5 pixels to the right
+    a.i32(3).i32(5).i32(0).i32(sw).i32(sh).sub(0x91, 0x10);
+    a.sub(0x91, 0x60);                                // the handle stays on the stack
+    a.i32(eff).i32(3).i32(0xFFFFFFFFu).i32(0x100).i32(0).i32(100).sub(0x91, 0x65);
+    a.i32(eff).i32(1).sub(0x91, 0x64);
+    a.ret();
+    provider.set(a);
+    ThreadConfig cfg;
+    cfg.stack_size = 0x1000;
+    cfg.program_capacity = 0x10000;
+    REQUIRE(vm.spawn(cfg, "x.arc", "main").has_value());
+    auto st = vm.run_frame(0);
+    REQUIRE_MESSAGE(st.has_value(), std::string(st ? "" : st.error().message));
+    REQUIRE((*display)->present().has_value());
+    auto screen = (*display)->read_screen();
+    REQUIRE(screen.has_value());
+    CHECK(((*screen)[22 * sw + 7] & 0xFFFFFF) == 0xFF0000);  // the picture moved from x 10..17 to x 5..12
+    CHECK(((*screen)[22 * sw + 14] & 0xFFFFFF) != 0xFF0000);
 }

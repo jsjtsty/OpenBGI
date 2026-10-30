@@ -77,6 +77,18 @@ struct Sprite {
     // The ripple mode (90:5B, sprite.c mode 4): the picture read through the vector + distance map `ripple_map` (-1 = not a ripple) and the
     // ring table of ripple definition `ripple_no` from phase `ripple_sel`; the level is the amplitude, the fade the only transparency.
     std::int32_t ripple_map = -1, rings = 0, ripple_no = 0, ripple_sel = 0;
+    // An effector (91:60, effector.c): a full-screen object that takes everything drawn below it and writes back a distorted version:
+    // mode 0 a displacement through vector maps, 1 a horizontal blur, 2 a ripple, 3 a rotation / zoom about a point.
+    struct EffectorState {
+        int mode = 1;                                        // Effector_Ctor starts as a gradient of type 0
+        std::int32_t vec1 = -1, vec2 = -1, amount = 0;       // mode 0
+        std::int32_t grad_type = 0;                          // mode 1
+        std::int32_t map = -1, rings = 0, ripple_no = 0, ripple_sel = 0; // mode 2 (the level is the amplitude)
+        std::int32_t cx = 0, cy = 0, angle = 0, sx = 0x10000, sy = 0x10000, smooth = 0;                    // mode 3 (16.16)
+        std::int32_t d_cx = 0, d_cy = 0, d_angle = 0, d_sx = 0, d_sy = 0, curve = 0;                      // mode 3: changes reached at progress 1
+    };
+    bool effector = false;
+    EffectorState fx;
     std::int32_t angle = 0, sx = 0x10000, sy = 0x10000;
     // 90:38 parameters the reference's DispObj_SetParam keeps (dispobj.c): 0x8001 no perspective scaling, 0x8000 snap to whole
     // pixels (with the snap mode), 0xC0 pass 90:31 on to the children, 0xC4 follow the 91:06 offset, 0xC5 a stored switch, 0x8101 the

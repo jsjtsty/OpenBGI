@@ -900,6 +900,12 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         // parameters of the effect object types (0x41 and 0x80..0x83 apply to types 2, 5 and 6; 0x8F to all): the original only
         // stores them for the effect; the scripts so far reset them to 0 (analysis/显示对象属性.md)
         case 0x41: case 0x81: case 0x82: case 0x83: case 0x8F:
+            // the effector's own (effector.c: Effector_SetParam): the angle delta, the scale delta and the easing curve of the zoom mode
+            if (s->effector) {
+                if (prop == 0x81 && s->fx.mode == 3) s->fx.d_angle = static_cast<std::int32_t>(a);
+                else if (prop == 0x82 && s->fx.mode == 3) s->fx.d_sx = static_cast<std::int32_t>(a), s->fx.d_sy = static_cast<std::int32_t>(b);
+                else if (prop == 0x8F) s->fx.curve = static_cast<std::int32_t>(a);
+            }
             break;
         // the background types' own parameters on handle 0 (zoom.c, stretch.c): 0x80 the zoom and angle change reached at level 0x100,
         // 0x101 a new zoom and angle, 0x102 the target view (x | y << 16, w | h << 16)
@@ -907,6 +913,8 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
             if (id == 0 && d.bg_fx.type == 10) {
                 if (d.bg_fx.scale + static_cast<std::int32_t>(a) == 0) c.fail(Errc::Range, "invalid zoom change");
                 else d.bg_fx.scale_delta = static_cast<std::int32_t>(a), d.bg_fx.angle_delta = static_cast<std::int32_t>(b), ++d.bg_fx.revision;
+            } else if (s->effector && s->fx.mode == 3) {
+                s->fx.d_cx = static_cast<std::int32_t>(a), s->fx.d_cy = static_cast<std::int32_t>(b);
             }
             break;
         case 0x101:
@@ -924,6 +932,16 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
                     d.bg_fx.selector = static_cast<std::int32_t>(a);
                     if (b <= 0x100) s->set_level(b);
                     ++d.bg_fx.revision;
+                }
+            } else if (s->effector) { // effector.c: Effector_SelectRipple, mode 2 only
+                if (s->fx.mode == 2) {
+                    bool ok = false;
+                    if (vecmap::ripple_check(d.ripples, ok, s->fx.ripple_no, static_cast<std::int32_t>(a), s->fx.rings) != 0 || !ok) {
+                        c.fail(Errc::Range, "ripple phase " + std::to_string(static_cast<std::int32_t>(a)) + " is not available");
+                    } else {
+                        s->fx.ripple_sel = static_cast<std::int32_t>(a);
+                        s->alpha = b;
+                    }
                 }
             } else if (s->ripple_map != -1) { // sprite.c: Sprite_SelectRipple, the same for the ripple sprite (90:5B)
                 bool ok = false;

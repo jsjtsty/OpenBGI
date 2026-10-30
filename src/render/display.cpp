@@ -697,6 +697,66 @@ Result<void> Display::compose() {
             if (auto up_r = m.upload(m.screen.buffer, *px); !up_r) return up_r;
             continue;
         }
+        if (sp.effector) {
+            // effector.c: Effector_Draw, a snapshot of everything drawn so far written back distorted; the strength is the effective level
+            // (the ripple amplitude and the zoom blend use the raw level)
+            const Sprite::EffectorState& e = sp.fx;
+            const std::int32_t eff = 0x100 - static_cast<std::int32_t>(((0x100u - std::min(sp.fade, 0x100u)) * (0x100u - std::min(sp.alpha, 0x100u)) * sp.opacity) >> 16);
+            auto px_data = m.download(m.screen);
+            if (!px_data) return std::unexpected(px_data.error());
+            const std::uint32_t sw = m.screen.info.width, sh = m.screen.info.height;
+            const bgfx::Image snap{sw, sh, std::move(*px_data)};
+            bgfx::Image out;
+            bool drawn = false;
+            switch (e.mode) {
+            case 0: {
+                const auto v1 = vecmaps.find(static_cast<std::uint32_t>(e.vec1));
+                const auto v2 = e.vec2 != -1 ? vecmaps.find(static_cast<std::uint32_t>(e.vec2)) : vecmaps.end();
+                if (v1 == vecmaps.end() || (e.vec2 != -1 && v2 == vecmaps.end())) break; // a freed map leaves the screen as it is
+                drawn = vecmap::displace(out, snap, v1->second, e.vec2 != -1 ? &v2->second : nullptr, eff, e.amount) == 0;
+                break;
+            }
+            case 1:
+                if (e.grad_type > 1 || eff > 0x100) break;
+                out = bgfx::box_blur(snap, e.grad_type, eff);
+                drawn = true;
+                break;
+            case 2: {
+                const auto vd = vecmaps.find(static_cast<std::uint32_t>(e.map));
+                std::vector<std::uint32_t> table;
+                if (vd == vecmaps.end() || vecmap::ripple_fill(ripples, table, e.ripple_no, e.ripple_sel, static_cast<std::int32_t>(sp.alpha), e.rings) != 0) break;
+                drawn = vecmap::ripple_blit(out, snap, vd->second, table) == 0;
+                break;
+            }
+            case 3: { // Effector_RecalcZoom: the deltas scaled by the progress, the level blending toward that transform from the identity
+                const auto mul_shr = [](std::int64_t a, std::uint32_t b, int s) { return static_cast<std::int64_t>(static_cast<std::uint64_t>(a) * b) >> s; };
+                const std::uint32_t t = std::min(sp.progress, 0x100u) << 16, level = std::min(sp.alpha, 0x100u);
+                const std::int32_t cur_cx = e.cx + static_cast<std::int32_t>(mul_shr(e.d_cx, t, 24)), cur_cy = e.cy + static_cast<std::int32_t>(mul_shr(e.d_cy, t, 24));
+                const std::int64_t a = ((std::int64_t{bgfx::ease(static_cast<std::int32_t>(t), e.curve)} * e.d_angle) >> 16) + e.angle;
+                const std::int32_t cur_angle = static_cast<std::int32_t>(mul_shr(a, level, 8));
+                std::int64_t s = mul_shr(e.d_sx, t, 24) + std::int64_t{static_cast<std::uint32_t>(e.sx)} - 0x10000;
+                const std::int32_t cur_sx = 0x10000 + static_cast<std::int32_t>(mul_shr(s, level, 8));
+                s = mul_shr(e.d_sy, t, 24) + std::int64_t{static_cast<std::uint32_t>(e.sy)} - 0x10000;
+                const std::int32_t cur_sy = 0x10000 + static_cast<std::int32_t>(mul_shr(s, level, 8));
+                // the snapshot point (cur_cx, cur_cy) lands on the screen centre; every pixel is replaced
+                const bgfx::Transformed tr = bgfx::transform(snap, cur_cx, cur_cy, cur_angle, cur_sx, cur_sy, e.smooth != 0);
+                out = bgfx::Image{sw, sh, std::vector<std::uint32_t>(std::size_t{sw} * sh, 0)};
+                const std::int32_t ax = static_cast<std::int32_t>(sw & ~1u) / 2 - tr.anchor_x, ay = static_cast<std::int32_t>(sh & ~1u) / 2 - tr.anchor_y;
+                for (std::int32_t y = 0; y < static_cast<std::int32_t>(tr.image.h); ++y)
+                    for (std::int32_t x = 0; x < static_cast<std::int32_t>(tr.image.w); ++x) {
+                        const std::int32_t dx = ax + x, dy = ay + y;
+                        if (dx >= 0 && dy >= 0 && dx < static_cast<std::int32_t>(sw) && dy < static_cast<std::int32_t>(sh))
+                            out.px[std::size_t(dy) * sw + std::size_t(dx)] = tr.image.px[std::size_t(y) * tr.image.w + std::size_t(x)];
+                    }
+                drawn = true;
+                break;
+            }
+            default: break;
+            }
+            if (drawn)
+                if (auto up_r = m.upload(m.screen.buffer, out.px); !up_r) return up_r;
+            continue;
+        }
         std::uint32_t draw_id = sp.slot;
         const std::int32_t draw_x = sp.x + sp.off_x + sp.off2_x, draw_y = sp.y + sp.off_y + sp.off2_y;
         if (sp.wipe_gray == 0xFFFFFFFFu || (sp.through_gray ? sp.progress == 0 : sp.progress >= 0x100)) {

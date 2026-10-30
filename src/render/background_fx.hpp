@@ -40,6 +40,9 @@ void filter_kind(std::vector<std::uint32_t>& px, int kind, std::uint32_t colour,
 // Kind 0 modulated per pixel by a gray bitmap of the screen's size (Blit_TintByGray); `param` is the transition curve.
 void filter_by_gray(std::vector<std::uint32_t>& px, std::uint32_t colour, const std::vector<std::uint32_t>& gray, int param, int level);
 
+// The original's Ease(): progress t (0..0x1000000 = 1.0) to a 16.16 factor. Curve 0 is linear, 1..3 sine easing, 4..15 powers.
+std::int32_t ease(std::int32_t t, int curve);
+
 // A picture scaled by (sx, sy) and rotated by `angle` (16.16 degrees) about the point (ox16, oy16) (16.16 pixels of the picture),
 // as the transform sprites draw it (sprite.c: Sprite_BoundsProjected for the box). `anchor` is where the origin lands in the result.
 struct Transformed {

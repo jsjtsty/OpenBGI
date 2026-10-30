@@ -324,6 +324,23 @@ Transformed transform(const Image& src, std::int32_t ox16, std::int32_t oy16, st
     return t;
 }
 
+std::int32_t ease(std::int32_t t, int curve) {
+    constexpr double deg16_to_rad = 2.663161090079238e-07;
+    constexpr double powers[6] = {2.0, 2.5, 3.0, 4.0, 5.0, 6.0};
+    switch (curve) {
+    case 1: return static_cast<std::int32_t>((std::cos((0xB40000 - std::int64_t{t} * 180 / 256) * deg16_to_rad) + 1.0) * 32768.0);
+    case 2: return static_cast<std::int32_t>(std::sin((std::int64_t{t} * 90 / 256) * deg16_to_rad) * 65536.0);
+    case 3: return static_cast<std::int32_t>((1.0 - std::sin((0x5A0000 - std::int64_t{t} * 90 / 256) * deg16_to_rad)) * 65536.0);
+    default:
+        if (curve >= 4 && curve <= 15) {
+            const double n = powers[(curve - 4) / 2];
+            if (curve & 1) return static_cast<std::int32_t>((1.0 - std::pow(double(0x1000000 - t), n) / std::pow(16777216.0, n)) * 65536.0);
+            return static_cast<std::int32_t>(std::pow(double(t), n) * 65536.0 / std::pow(16777216.0, n));
+        }
+        return t / 256;
+    }
+}
+
 void mosaic(Image& dst, const Image& src, int amount, int extra) {
     if (amount <= 0) { // Blit_Blend: a copy at transparency 0, nothing at 0x100 and above, else the plain blend
         if (extra <= 0) dst = src;
