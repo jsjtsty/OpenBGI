@@ -441,13 +441,150 @@ void start_motion(SystemState& s, Display& display, Ctx& c, Word id, bool move, 
     c.t.objects_until = std::max(c.t.objects_until, m.start_ms + m.duration_ms);
 }
 
+// Round half away from zero (wait_tween.c: RoundToInt); a non-finite value (a via point with the same x as the start) gives 0.
+std::int32_t round_away(double v) {
+    if (!std::isfinite(v)) return 0;
+    return static_cast<std::int32_t>(v < 0.0 ? v - 0.5 : v + 0.5);
+}
+
+// The natural cubic spline through the three knots (X[i], Y[i]) at t, in the original's operation order (wait_tween.c: Spline3).
+double spline3(const double* X, const double* Y, double t) {
+    const int seg = t < X[1] ? 0 : 1;
+    const double h[2] = {X[1] - X[0], X[2] - X[1]};
+    const double F[3] = {0.0, ((Y[2] - Y[1]) / h[1] - (Y[1] - Y[0]) / h[0]) * 3.0 / ((h[0] + h[1]) * 2.0), 0.0};
+    const double dx = t - X[seg];
+    const double b = (Y[seg + 1] - Y[seg]) / h[seg] - (F[seg] + F[seg] + F[seg + 1]) * h[seg] * 0.3333333333333333;
+    const double d = (F[seg + 1] - F[seg]) / (h[seg] * 3.0);
+    return ((d * dx + F[seg]) * dx + b) * dx + Y[seg];
+}
+
+// `count` points of the curve from (x0, y0) through (x1, y1) to (x2, y2): y a spline of x, equally spaced in x. False when the
+// x values are not monotonic. A decreasing run is mirrored so the spline sees increasing x (wait_tween.c: Curve_Build).
+bool build_via_curve(std::vector<std::array<std::int32_t, 2>>& out, std::int32_t x0, std::int32_t y0, std::int32_t x1, std::int32_t y1,
+                     std::int32_t x2, std::int32_t y2, std::uint32_t count) {
+    if (x0 < x1 ? x1 > x2 : (x0 > x1 && x1 < x2)) return false;
+    bool increasing = true;
+    if (!(x0 < x1 && x1 < x2)) {
+        x0 = -x0, x1 = -x1, x2 = -x2;
+        increasing = false;
+    }
+    const double X[3] = {0.0, double(x1 - x0), double(x2 - x0)}, Y[3] = {0.0, double(y1 - y0), double(y2 - y0)};
+    double cur = X[0];
+    const double step = (X[2] - X[0]) / double(count - 1);
+    out.resize(count);
+    for (std::uint32_t i = 0; i < count; ++i) {
+        const std::int32_t xi = round_away(cur);
+        out[i] = {increasing ? xi + x0 : -(xi + x0), round_away(spline3(X, Y, cur)) + y0};
+        cur += step;
+    }
+    return true;
+}
+
+// 90:24 (wait_tween.c: WaitMove2_Start): frames = duration * fps / 1000 (at least 1), one point of the curve per frame plus one,
+// the alpha going linearly to `level`. A script error for a rate below 1 and for x values that are not monotonic.
+void start_via_motion(SystemState& s, Display& display, Ctx& c, Word id, std::int32_t via_x, std::int32_t via_y, std::int32_t x, std::int32_t y, int curve,
+                      Word level, Word duration, Word fps) {
+    if (fps < 1) { c.fail(Errc::Range, "invalid frame rate"); return; }
+    Sprite* sp = display.find_sprite(id);
+    if (!sp && id >= 0x90000000u) return;
+    if (!sp) { c.fail(Errc::Range, "no display object " + std::to_string(id)); return; }
+    SystemState::Motion m;
+    m.kind = SystemState::Motion::Kind::Via;
+    m.object = id, m.start_ms = c.vm.now_ms;
+    m.frames = std::max<std::int32_t>(1, static_cast<std::int32_t>(static_cast<std::uint32_t>(duration * fps) / 1000u));
+    m.frame_ms = m.frames > 1 ? static_cast<std::int32_t>(1000u / fps) : static_cast<std::int32_t>(duration); // one frame takes the whole duration
+    m.duration_ms = std::int64_t{m.frames} * m.frame_ms;
+    m.from_x = sp->script_x(), m.from_y = sp->script_y(), m.to_x = x, m.to_y = y;
+    if (!build_via_curve(m.via_points, m.from_x, m.from_y, via_x, via_y, x, y, static_cast<std::uint32_t>(m.frames) + 1)) {
+        c.fail(Errc::Range, "90:24: the x values of the start, via point and end must advance in one direction");
+        return;
+    }
+    m.curve = curve;
+    m.from_level = static_cast<std::int32_t>(sp->alpha), m.to_level = static_cast<std::int32_t>(level);
+    sp->visible = true;
+    std::erase_if(s.motions, [&](const auto& o) { return o.object == id; });
+    if (m.duration_ms <= 0) {
+        sp->script_move_to(x, y), sp->alpha = level;
+        return;
+    }
+    s.motions.push_back(m);
+    c.t.objects_until = std::max(c.t.objects_until, m.start_ms + m.duration_ms);
+}
+
+// 90:2C (wait_tween.c: WaitObjQuake_Start): shakes the object about where it is. Pattern 0..5 (0, 1, 4 vertical, 2, 3, 5 horizontal;
+// 0 and 2 start towards the negative side, 4 and 5 half a cycle in); the amplitude loses `decay` percent per cycle. An object that
+// does not exist is not reported.
+void start_quake(SystemState& s, Display& display, Ctx& c, Word id, Word pattern, std::int32_t amplitude, Word frequency, Word repeat, std::int32_t decay, Word fps) {
+    Sprite* sp = display.find_sprite(id);
+    if (!sp && id < 0x90000000u) return;
+    if (pattern >= 6) { c.fail(Errc::Range, "invalid shake pattern " + std::to_string(pattern)); return; }
+    if (frequency < 1) { c.fail(Errc::Range, "invalid shake frequency " + std::to_string(frequency)); return; }
+    if (repeat < 1) { c.fail(Errc::Range, "invalid shake repeat count " + std::to_string(repeat)); return; }
+    if (fps < 1 || fps < frequency) { c.fail(Errc::Range, "invalid frame rate " + std::to_string(fps)); return; }
+    if (!sp) return;
+    SystemState::Motion m;
+    m.kind = SystemState::Motion::Kind::Quake;
+    m.object = id, m.start_ms = c.vm.now_ms;
+    m.frame_ms = static_cast<std::int32_t>(1000u / fps);
+    m.cycle_frames = std::max<std::int32_t>(1, static_cast<std::int32_t>(1000u / std::uint32_t(std::max<std::int32_t>(1, m.frame_ms * std::int32_t(frequency)))));
+    m.frames = m.cycle_frames * static_cast<std::int32_t>(repeat);
+    m.duration_ms = std::int64_t{m.frames} * m.frame_ms;
+    m.quake_pattern = static_cast<std::int32_t>(pattern);
+    m.from_x = sp->script_x(), m.from_y = sp->script_y();
+    std::int64_t amp = static_cast<std::int64_t>(static_cast<std::uint32_t>(amplitude)) << 16; // zero-extended, as the original's pair
+    for (Word i = 0; i < repeat && i < 0x10000; ++i) {
+        m.quake_amps.push_back(static_cast<std::int32_t>(amp >> 16));
+        amp = amp * (100 - decay) / 100;
+    }
+    std::int32_t step = static_cast<std::int32_t>(0x20000u / static_cast<std::uint32_t>(m.cycle_frames));
+    const std::int32_t phase0 = pattern < 4 ? 0 : 0x8000;
+    std::int32_t phase = phase0;
+    for (std::int32_t i = 0; i < m.cycle_frames; ++i) { // one cycle of a triangle wave
+        phase += step;
+        if (phase >= 0x10000) step = -step, phase = 0x20000 - phase;
+        if (phase <= 0) step = -step, phase = -phase;
+        m.quake_wave.push_back(pattern == 0 || pattern == 2 ? phase0 - phase : phase - phase0);
+    }
+    sp->visible = true;
+    std::erase_if(s.motions, [&](const auto& o) { return o.object == id; });
+    s.motions.push_back(m);
+    c.t.objects_until = std::max(c.t.objects_until, m.start_ms + m.duration_ms);
+}
+
+// One step of the frame-stepped motions: the frame is the time elapsed over the frame interval, at most the last one.
+void step_framed(const SystemState::Motion& m, Sprite& sp, std::int64_t elapsed) {
+    const std::int32_t cur = m.frame_ms > 0 ? static_cast<std::int32_t>(std::min<std::int64_t>(elapsed / m.frame_ms, m.frames)) : m.frames;
+    const bool done = cur >= m.frames;
+    if (m.kind == SystemState::Motion::Kind::Via) {
+        std::int32_t x = m.to_x, y = m.to_y, level = m.to_level;
+        if (!done) {
+            const std::int32_t f = ease(static_cast<std::int32_t>(std::int64_t{cur} * 0x1000000 / m.frames), m.curve);
+            const auto idx = std::min<std::int64_t>((std::int64_t{m.frames} + 1) * f >> 16, std::int64_t(m.via_points.size()) - 1);
+            x = m.via_points[std::size_t(idx)][0], y = m.via_points[std::size_t(idx)][1];
+            level = (m.to_level - m.from_level) * cur / m.frames + m.from_level;
+        }
+        sp.script_move_to(x, y);
+        sp.alpha = static_cast<std::uint32_t>(level);
+        return;
+    }
+    std::int32_t x = m.from_x, y = m.from_y;
+    if (!done) {
+        const auto cycle = static_cast<std::size_t>(cur / m.cycle_frames), frame = static_cast<std::size_t>(cur % m.cycle_frames);
+        const auto off = static_cast<std::int32_t>((std::int64_t{static_cast<std::uint32_t>(m.quake_amps[cycle])} * m.quake_wave[frame]) >> 16);
+        (m.quake_pattern == 2 || m.quake_pattern == 3 || m.quake_pattern == 5 ? x : y) += off;
+    }
+    sp.script_move_to(x, y);
+}
+
 } // namespace
 
 void advance_motions(SystemState& state, Display& display, std::int64_t now_ms) {
     for (auto it = state.motions.begin(); it != state.motions.end();) {
         Sprite* sp = display.find_sprite(it->object);
         const std::int64_t elapsed = std::min(now_ms - it->start_ms, it->duration_ms);
-        if (sp && it->duration_ms > 0) {
+        if (sp && it->duration_ms > 0 && it->kind != SystemState::Motion::Kind::Tween) {
+            step_framed(*it, *sp, elapsed);
+        } else if (sp && it->duration_ms > 0) {
             const bool done = elapsed >= it->duration_ms;
             const auto t = static_cast<std::int32_t>(elapsed * 0x1000000 / it->duration_ms);
             const std::int64_t fp = done ? 0x10000 : ease(t, it->curve), fl = done ? 0x10000 : ease(t, it->level_curve);
@@ -561,14 +698,21 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
                      std::move(path));
         return 0;
     });
-    // 90:24: through a via point; popped: prio, skip, max skip, fps, duration, level, curve, y, x, via y, via x, object.
-    // Simplified: straight to (x, y).
+    // 90:24: through a via point on a cubic curve; popped: prio, skip, max skip, fps, duration, level, curve, y, x, via y, via x, object.
     if (display) add(r, 0x9024, "move object through a point", 12, 0, [s, display](Ctx& c) {
         Word a[12];
         for (Word& w : a) w = c.pop();
         if (!c.ok()) return 0;
-        if (a[3] == 0) { c.fail(Errc::Range, "invalid frame rate"); return 0; }
-        start_motion(*s, *display, c, a[11], true, static_cast<std::int32_t>(a[8]), static_cast<std::int32_t>(a[7]), static_cast<int>(a[6]), a[5], 0, a[4]);
+        start_via_motion(*s, *display, c, a[11], static_cast<std::int32_t>(a[10]), static_cast<std::int32_t>(a[9]), static_cast<std::int32_t>(a[8]),
+                         static_cast<std::int32_t>(a[7]), static_cast<int>(a[6]), a[5], a[4], a[3]);
+        return 0;
+    });
+    // 90:2C: shake an object; popped: prio, skip, fps, decay, repeat, frequency, amplitude, pattern, object.
+    if (display) add(r, 0x902C, "shake object", 9, 0, [s, display](Ctx& c) {
+        Word a[9];
+        for (Word& w : a) w = c.pop();
+        if (!c.ok()) return 0;
+        start_quake(*s, *display, c, a[8], a[7], static_cast<std::int32_t>(a[6]), a[5], a[4], static_cast<std::int32_t>(a[3]), a[2]);
         return 0;
     });
     // (handle): pushes one number (zero for now)

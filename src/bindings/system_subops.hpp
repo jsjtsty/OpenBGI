@@ -36,6 +36,12 @@ struct SystemState {
         std::int32_t from_progress = 0, to_progress = 0; // 90:28/29: the object's progress (0..0x100), linearly; equal = untouched
         std::int32_t from_z = 0, to_z = 0;       // the depth of a projected plane (16.16)
         std::vector<std::array<double, 3>> path;  // 90:29: the start and the control points (x, y pixels, depth in 16.16 / 65536); more than two follow a cubic spline
+        // The frame-stepped kinds (wait_tween.c: WaitMove2, WaitObjQuake): time counts in frames of `frame_ms`, `frames` in all.
+        enum class Kind : std::uint8_t { Tween, Via, Quake } kind = Kind::Tween;
+        std::int32_t frames = 0, frame_ms = 0;
+        std::vector<std::array<std::int32_t, 2>> via_points; // 90:24: one point of the curve per frame plus one
+        std::int32_t quake_pattern = 0, cycle_frames = 1;    // 90:2C: 0, 1, 4 vertical, 2, 3, 5 horizontal
+        std::vector<std::int32_t> quake_amps, quake_wave;    // the amplitude of every cycle, one cycle of the wave (16.16 of the amplitude)
     };
     std::vector<Motion> motions;
     std::uint32_t last_manager_object = 0;
