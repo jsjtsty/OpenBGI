@@ -62,9 +62,7 @@ void debug_object_op(std::uint16_t id, const std::vector<Word>& a) {
 void register_object_settings(vm::SubopRegistry& r, SystemState& state, Display* display) {
     SystemState* s = &state;
     struct Rec { std::uint16_t id; const char* name; int pops, pushes; };
-    static const Rec recs[] = {{0x9131, "object setting 91:31", 2, 0}, {0x9133, "object setting 91:33", 4, 0},
-                               {0x9136, "object setting 91:36", 4, 0}, {0x9137, "object setting 91:37", 4, 0},
-                               {0x9140, "object stretch 91:40", 9, 0}, {0x9141, "object setting 91:41", 1, 0},
+    static const Rec recs[] = {{0x9140, "object stretch 91:40", 9, 0}, {0x9141, "object setting 91:41", 1, 0},
                                {0x9142, "object setting 91:42", 2, 0}, {0x9143, "object setting 91:43", 3, 0},
                                {0x9144, "object setting 91:44", 2, 0}, {0x9145, "object setting 91:45", 2, 0},
                                {0x9146, "object setting 91:46", 4, 0}, {0x9147, "object setting 91:47", 5, 0},

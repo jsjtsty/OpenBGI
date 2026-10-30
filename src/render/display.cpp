@@ -667,7 +667,7 @@ Result<void> Display::compose() {
         if (sp.sort_mode == 1) return (std::int64_t{sp.priority} << 16) + static_cast<std::uint32_t>(sp.sort_bias - (sp.depth >> 16) + 0x7fff);
         const std::int64_t hi = (std::int64_t{sp.priority} * 16 + class_order(kv->first, sp)) * 65536 + sp.sort_bias;
         // a projected plane is ordered by depth, a larger z (farther away) sorting lower; the others by creation order
-        if (sp.projected) return hi + ((0xffff8000u - static_cast<std::uint32_t>(static_cast<std::uint16_t>(sp.depth >> 16))) & 0xffffu);
+        if (sp.projected) return hi + ((0xffff8000u - static_cast<std::uint32_t>(static_cast<std::uint16_t>(sp.proj_depth() >> 16))) & 0xffffu);
         const auto cr = created_.find(kv->first);
         return hi + (cr == created_.end() ? 0 : cr->second & 0x7FFF);
     };
@@ -880,13 +880,13 @@ Result<void> Display::compose() {
         if (sp.xform || (sp.projected && sp.angle != 0)) {
             const auto s0 = m.slots.find(draw_id);
             if (s0 != m.slots.end() && (s0->second.info.format == SlotFormat::Bgra || s0->second.info.format == SlotFormat::Bgrx)) {
-                const std::int32_t k = sp.projected ? project_scale(sp.depth, sp.no_perspective ? 0 : sp.dist) : 0;
+                const std::int32_t k = sp.projected ? project_scale(sp.proj_depth(), sp.no_perspective ? 0 : sp.dist) : 0;
                 const std::int32_t kx = sp.projected ? k : sp.sx, ky = sp.projected ? k : sp.sy;
                 const auto scaled = [k](std::int64_t v) { return static_cast<std::int32_t>(v * k >> 16); };
                 std::int32_t pos_x = sp.x, pos_y = sp.y;
                 if (sp.projected) {
-                    pos_x = static_cast<std::int32_t>(m.screen.info.width / 2) + (sp.scale_position ? scaled(sp.x) : sp.x);
-                    pos_y = static_cast<std::int32_t>(m.screen.info.height / 2) + (sp.scale_position ? scaled(sp.y) : sp.y);
+                    pos_x = static_cast<std::int32_t>(m.screen.info.width / 2) + (sp.scale_position ? scaled(sp.proj_x()) : sp.proj_x());
+                    pos_y = static_cast<std::int32_t>(m.screen.info.height / 2) + (sp.scale_position ? scaled(sp.proj_y()) : sp.proj_y());
                 }
                 Impl::TempCache& xc = m.xforms[kv->first];
                 const std::uint32_t tmp_id = 0x7F600000u | (kv->first & 0xFFFFFu);
@@ -912,10 +912,10 @@ Result<void> Display::compose() {
         }
         if (xformed) {
         } else if (sp.projected) { // sprite.c mode 5: the picture's origin lands on the projected position, shrunk by the depth
-            const std::int32_t k = project_scale(sp.depth, sp.no_perspective ? 0 : sp.dist);
+            const std::int32_t k = project_scale(sp.proj_depth(), sp.no_perspective ? 0 : sp.dist);
             const auto scaled = [k](std::int64_t v) { return static_cast<std::int32_t>(v * k >> 16); };
-            blit_x = static_cast<std::int32_t>(m.screen.info.width / 2) + (sp.scale_position ? scaled(sp.x) : sp.x) - scaled(sp.origin_x) + sp.off_x + sp.off2_x;
-            blit_y = static_cast<std::int32_t>(m.screen.info.height / 2) + (sp.scale_position ? scaled(sp.y) : sp.y) - scaled(sp.origin_y) + sp.off_y + sp.off2_y;
+            blit_x = static_cast<std::int32_t>(m.screen.info.width / 2) + (sp.scale_position ? scaled(sp.proj_x()) : sp.proj_x()) - scaled(sp.origin_x) + sp.off_x + sp.off2_x;
+            blit_y = static_cast<std::int32_t>(m.screen.info.height / 2) + (sp.scale_position ? scaled(sp.proj_y()) : sp.proj_y()) - scaled(sp.origin_y) + sp.off_y + sp.off2_y;
             auto s0 = m.slots.find(draw_id);
             if (k != 0x10000 && k > 0 && s0 != m.slots.end() && (s0->second.info.format == SlotFormat::Bgra || s0->second.info.format == SlotFormat::Bgrx)) {
                 Impl::ScaleCache& sc = m.scales[kv->first];

@@ -1166,6 +1166,43 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         s.x = x, s.y = y, s.blend = 1, s.fade = fade, s.priority = priority;
         return 0;
     });
+    // 91:31 (object, hidden): any non-zero value keeps the object from being drawn (gfx/mgr/generic.c: Gfx_ObjSetHidden); an unknown handle is an error
+    add(r, 0x9131, "set object hidden", 2, 0, [&d](Ctx& c) {
+        const Word v = c.pop(), h = c.pop();
+        if (!c.ok()) return 0;
+        Sprite* s = d.find_sprite(h);
+        if (!s) { c.fail(Errc::Range, "no display object " + std::to_string(h)); return 0; }
+        s->hidden = v != 0;
+        return 0;
+    });
+    // 91:33 (object, fx, fy, fz): the 16.16 position and depth; with the snap switch (90:38 0x8000) x and y are first rounded to whole pixels
+    // (only at depth 0 unless the snap mode is 1); the plane is placed at the integer position and scaled by the depth
+    add(r, 0x9133, "set object fixed position", 4, 0, [&d](Ctx& c) {
+        auto fz = static_cast<std::int32_t>(c.pop()), fy = static_cast<std::int32_t>(c.pop()), fx = static_cast<std::int32_t>(c.pop());
+        const Word h = c.pop();
+        if (!c.ok()) return 0;
+        Sprite* s = d.find_sprite(h);
+        if (!s) { c.fail(Errc::Range, "no display object " + std::to_string(h)); return 0; }
+        if (s->snap && (fz == 0 || s->snap_mode == 1)) {
+            fx = static_cast<std::int32_t>((static_cast<std::uint32_t>(fx) + 0x8000u) & 0xffff0000u);
+            fy = static_cast<std::int32_t>((static_cast<std::uint32_t>(fy) + 0x8000u) & 0xffff0000u);
+        }
+        s->depth = fz;
+        s->script_move_to(fx >> 16, fy >> 16);
+        return 0;
+    });
+    // 91:37 (object, x, y, z) and 91:36 (object, x, y, z): the first and the second 16.16 offset added to the fixed position
+    for (auto [id, which] : {std::pair{0x9137, 1}, {0x9136, 2}})
+        add(r, static_cast<std::uint16_t>(id), "set object fixed position offset", 4, 0, [&d, which](Ctx& c) {
+            const auto z = static_cast<std::int32_t>(c.pop()), y = static_cast<std::int32_t>(c.pop()), x = static_cast<std::int32_t>(c.pop());
+            const Word h = c.pop();
+            if (!c.ok()) return 0;
+            Sprite* s = d.find_sprite(h);
+            if (!s) { c.fail(Errc::Range, "no display object " + std::to_string(h)); return 0; }
+            std::int32_t* v = which == 2 ? s->fix_off2 : s->fix_off1;
+            v[0] = x, v[1] = y, v[2] = z;
+            return 0;
+        });
     // 90:45 (bmp, vec1, vec2, level, amount): type 6, a screen-sized picture displaced by one vector map, or two (vec2 -1 = none) mixed by the level
     const auto screen_map = [&d, find_vec](std::int32_t id, vecmap::Mode mode) {
         const vecmap::Map* m = find_vec(id);

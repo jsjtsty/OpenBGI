@@ -98,6 +98,12 @@ struct Sprite {
     std::uint32_t sort_mode = 0, flag_bits = 0;
     std::int32_t user_values[16] = {};
     std::int32_t depth = 0, dist = 0, origin_x = 0, origin_y = 0;
+    // The two 16.16 offsets added to the fixed position (91:37 and 91:36, dispobj.c: DispObj_EffFixedPos); a projected plane is placed and
+    // scaled by the sum.
+    std::int32_t fix_off1[3] = {}, fix_off2[3] = {};
+    std::int32_t proj_x() const { return x + ((fix_off1[0] + fix_off2[0]) >> 16); }
+    std::int32_t proj_y() const { return y + ((fix_off1[1] + fix_off2[1]) >> 16); }
+    std::int32_t proj_depth() const { return depth + fix_off1[2] + fix_off2[2]; }
     // 91:3E: a slave object follows a master object by an offset. compose() keeps x,y = master + offset; a move
     // of the slave itself (90:33, 90:28/29: move_to) re-reads the offset from the new position, as the original
     // does. 90:56 sets x,y without telling the master.
@@ -106,7 +112,8 @@ struct Sprite {
     std::int32_t master_dx = 0, master_dy = 0;
     bool moved = false;
     void move_to(std::int32_t nx, std::int32_t ny) { x = nx, y = ny, moved = true; }
-    bool is_shown() const { return visible && enabled && fade < 0x100 && opacity > 0; }
+    bool hidden = false; // 91:31: kept from being drawn without touching the shown, enabled or fade state
+    bool is_shown() const { return visible && enabled && !hidden && fade < 0x100 && opacity > 0; }
 };
 
 // The 16.16 perspective factor of a depth (16.16) at a projection distance (pixels): 1.0 on the screen plane or without a
