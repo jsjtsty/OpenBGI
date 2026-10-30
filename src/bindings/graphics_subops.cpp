@@ -642,7 +642,16 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
     add(r, 0x9031, "set object enabled", 2, 0, [&d](Ctx& c) {
         Word value = c.pop(), id = c.pop();
         if (!c.ok()) return 0;
-        if (Sprite* s = object(c, d, id)) s->enabled = value != 0;
+        // dispobj.c: DispObj_SetEnabled passes the flag on to the children when 90:38 0xC0 asked for it
+        std::function<void(std::uint32_t)> set = [&](std::uint32_t oid) {
+            Sprite* s = d.find_sprite(oid);
+            if (!s) return;
+            s->enabled = value != 0;
+            if (s->enabled_to_children)
+                for (auto& [mid, m] : d.sprites())
+                    if (m.has_master && m.master == oid) set(mid);
+        };
+        if (object(c, d, id)) set(id);
         return 0;
     });
     // (object, dx, dy): the draw offsets 90:36 (second) and 90:37, added to the position
@@ -696,10 +705,28 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
             if (a > 0x100) c.fail(Errc::Range, "alpha out of range");
             else s->alpha = a;
             break;
-        // properties the engine stores without any effect we render yet (analysis/显示对象属性.md)
+        // the base class's parameters (dispobj.c: DispObj_SetParam)
         case 0x8100: s->sort_bias = static_cast<std::int32_t>(a); break; // the sort key's bias: equal priorities draw in this order
-        case 0xC0: case 0xC1: case 0xC4: case 0xC5: case 0x8000: case 0x8001: case 0xFFFF:
-        case 0x7FFF0000: case 0x7FFFFFFF:
+        case 0x8101:
+            if (a > 1) c.fail(Errc::Range, "property 0x8101 takes 0 or 1");
+            else s->sort_mode = a;
+            break;
+        case 0x8000: s->snap = a != 0, s->snap_mode = static_cast<std::int32_t>(b); break;
+        case 0x8001: s->no_perspective = a != 0; break;
+        case 0xC0: s->enabled_to_children = a != 0; break;
+        case 0xC4: s->follow_offset = a != 0; break;
+        case 0xC5: s->param_c5 = static_cast<std::int32_t>(a); break;
+        case 0xFFFF: { // a = the bits (0: all), b = set or clear them
+            const std::uint32_t mask = a ? a : 0xFFFFFFFFu;
+            s->flag_bits = b ? (s->flag_bits | mask) : (s->flag_bits & ~mask);
+            break;
+        }
+        case 0x7FFFFFFF:
+            if (a >= 16) c.fail(Errc::Range, "script value slot out of range");
+            else s->user_values[a] = static_cast<std::int32_t>(b);
+            break;
+        // not modelled: 0xC1 passes 91:31 on to the children, 0x7FFF0000 redraws every frame (the screen is composed every frame here)
+        case 0xC1: case 0x7FFF0000:
             break;
         // parameters of the effect object types (0x41 and 0x80..0x83 apply to types 2, 5 and 6; 0x8F to all): the original only
         // stores them for the effect; the scripts so far reset them to 0 (analysis/显示对象属性.md)
@@ -712,15 +739,9 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
             if (!identity && shown.insert(prop).second) std::fprintf(stderr, "90:38: property 0x%X (a=%u b=%u) is stored but not drawn\n", prop, a, b);
             break;
         }
-        case 0x8101:
-            if (a > 1) c.fail(Errc::Range, "property 0x8101 takes 0 or 1");
+        default: // the reference raises "invalid parameter number" for a number no class supports
+            c.fail(Errc::Range, "object parameter 0x" + [&] { char t[16]; std::snprintf(t, sizeof t, "%X", prop); return std::string(t); }() + " is not supported");
             break;
-        default: { // subclasses override the extension hook; not modelled yet, so the value is dropped (noted once per id)
-            static std::set<Word> noted;
-            if (std::getenv("OBGI_DBGOBJ")) std::fprintf(stderr, "90:38 object %X slot %u prop 0x%X a=%u b=%u\n", id, s->slot, prop, a, b);
-            if (noted.insert(prop).second) std::fprintf(stderr, "90:38: object property 0x%X (a=%u b=%u) is not modelled\n", prop, a, b);
-            break;
-        }
         }
         return 0;
     });

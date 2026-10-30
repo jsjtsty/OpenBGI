@@ -55,6 +55,13 @@ struct Sprite {
     // origin_y / 2) lands on the projected position (the game passes the picture's size, which centres it: the reference
     // engine would put the bottom right corner there); with `scale_position` the position is scaled by the same factor.
     bool projected = false, scale_position = false;
+    // 90:38 parameters the reference's DispObj_SetParam keeps (dispobj.c): 0x8001 no perspective scaling, 0x8000 snap to whole
+    // pixels (with the snap mode), 0xC0 pass 90:31 on to the children, 0xC4 follow the 91:06 offset, 0xC5 a stored switch, 0x8101 the
+    // sort mode (1: priority, then depth over its whole range, no class order), 0xFFFF flag bits, 0x7FFFFFFF the 16 script values
+    bool no_perspective = false, snap = false, enabled_to_children = false, follow_offset = true;
+    std::int32_t snap_mode = 0, param_c5 = 0;
+    std::uint32_t sort_mode = 0, flag_bits = 0;
+    std::int32_t user_values[16] = {};
     std::int32_t depth = 0, dist = 0, origin_x = 0, origin_y = 0;
     // 91:3E: a slave object follows a master object by an offset. compose() keeps x,y = master + offset; a move
     // of the slave itself (90:33, 90:28/29: move_to) re-reads the offset from the new position, as the original

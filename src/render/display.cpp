@@ -435,9 +435,14 @@ Result<void> Display::compose() {
         }
     };
     auto sort_key = [&](const std::pair<const std::uint32_t, Sprite>* kv) -> std::int64_t {
+        const Sprite& sp = kv->second;
+        // sort mode 1 (dispobj.c: DispObj_SortKey): the priority, then the depth over its whole range, no class order
+        if (sp.sort_mode == 1) return (std::int64_t{sp.priority} << 16) + static_cast<std::uint32_t>(sp.sort_bias - (sp.depth >> 16) + 0x7fff);
+        const std::int64_t hi = (std::int64_t{sp.priority} * 16 + class_order(kv->first, sp)) * 65536 + sp.sort_bias;
+        // a projected plane is ordered by depth, a larger z (farther away) sorting lower; the others by creation order
+        if (sp.projected) return hi + ((0xffff8000u - static_cast<std::uint32_t>(static_cast<std::uint16_t>(sp.depth >> 16))) & 0xffffu);
         const auto cr = created_.find(kv->first);
-        return (std::int64_t{kv->second.priority} * 16 + class_order(kv->first, kv->second)) * 65536 + kv->second.sort_bias +
-               (cr == created_.end() ? 0 : cr->second & 0x7FFF);
+        return hi + (cr == created_.end() ? 0 : cr->second & 0x7FFF);
     };
     std::stable_sort(order.begin(), order.end(), [&](auto* a, auto* b) { return sort_key(a) < sort_key(b); });
     for (const auto* kv : order) {
@@ -531,7 +536,7 @@ Result<void> Display::compose() {
         }
         std::int32_t blit_x = draw_x, blit_y = draw_y;
         if (sp.projected) { // sprite.c mode 5: the picture's origin lands on the projected position, shrunk by the depth
-            const std::int32_t k = project_scale(sp.depth, sp.dist);
+            const std::int32_t k = project_scale(sp.depth, sp.no_perspective ? 0 : sp.dist);
             const auto scaled = [k](std::int64_t v) { return static_cast<std::int32_t>(v * k >> 16); };
             blit_x = static_cast<std::int32_t>(m.screen.info.width / 2) + (sp.scale_position ? scaled(sp.x) : sp.x) - scaled(sp.origin_x) / 2 + sp.off_x + sp.off2_x;
             blit_y = static_cast<std::int32_t>(m.screen.info.height / 2) + (sp.scale_position ? scaled(sp.y) : sp.y) - scaled(sp.origin_y) / 2 + sp.off_y + sp.off2_y;
