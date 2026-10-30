@@ -532,11 +532,55 @@ Result<void> Display::render_background_fx() {
     return {};
 }
 
+// Renders every tile map's window on the CPU (map.c: Map_Refresh + Map_Draw): the cell under each pixel shows its tile of the chipset,
+// an empty or out-of-range tile clears the cell; with `wrap` the terrain repeats past its edges, otherwise the cells beyond it are empty.
+Result<void> Display::render_maps() {
+    Impl& m = *impl_;
+    for (auto& [id, md] : maps) {
+        Sprite* sp = find_sprite(id);
+        if (!sp) continue;
+        const auto chip_it = md.chipset >= 0 ? m.slots.find(static_cast<std::uint32_t>(md.chipset)) : m.slots.end();
+        if (!md.sized || !md.view_valid || chip_it == m.slots.end() ||
+            (chip_it->second.info.format != SlotFormat::Bgra && chip_it->second.info.format != SlotFormat::Bgrx)) {
+            sp->slot = 0xFFFFFFFFu; // nothing to draw from yet (map.c: Map_Draw returns early)
+            continue;
+        }
+        const std::uint32_t tmp_id = 0x7F700000u | (id & 0xFFu);
+        const auto version = m.versions.find(static_cast<std::uint32_t>(md.chipset));
+        const std::vector<std::int64_t> key = {static_cast<std::int64_t>(md.revision), version == m.versions.end() ? 0 : static_cast<std::int64_t>(version->second)};
+        if (!m.slots.count(tmp_id) || md.key != key) {
+            auto sheet = m.download(chip_it->second);
+            if (!sheet) return std::unexpected(sheet.error());
+            const std::uint32_t sw = chip_it->second.info.width, per_row = sw / static_cast<std::uint32_t>(md.chip_w);
+            const std::uint32_t chips = per_row * (chip_it->second.info.height / static_cast<std::uint32_t>(md.chip_h));
+            const std::uint32_t vw = static_cast<std::uint32_t>(md.cols * md.chip_w), vh = static_cast<std::uint32_t>(md.rows * md.chip_h);
+            std::vector<std::uint32_t> out(std::size_t{vw} * vh, 0);
+            for (std::uint32_t y = 0; y < vh; ++y)
+                for (std::uint32_t x = 0; x < vw; ++x) {
+                    const std::int32_t px = static_cast<std::int32_t>(x) + md.off_x, py = static_cast<std::int32_t>(y) + md.off_y;
+                    std::int64_t tx = std::int64_t{md.col} + px / md.chip_w, ty = std::int64_t{md.row} + py / md.chip_h;
+                    if (md.wrap) tx %= md.terr_w, ty %= md.terr_h;
+                    else if (tx >= md.terr_w || ty >= md.terr_h) continue;
+                    const std::uint32_t tile = md.terrain[static_cast<std::size_t>(ty * md.terr_w + tx)];
+                    if (tile == 0xFFFFu || tile >= chips) continue;
+                    const std::uint32_t sx = (tile % per_row) * static_cast<std::uint32_t>(md.chip_w) + static_cast<std::uint32_t>(px % md.chip_w);
+                    const std::uint32_t sy = (tile / per_row) * static_cast<std::uint32_t>(md.chip_h) + static_cast<std::uint32_t>(py % md.chip_h);
+                    out[std::size_t{y} * vw + x] = (*sheet)[std::size_t{sy} * sw + sx];
+                }
+            if (auto r = upload_slot(tmp_id, vw, vh, chip_it->second.info.format, out); !r) return r;
+            md.key = key;
+        }
+        sp->slot = tmp_id;
+    }
+    return {};
+}
+
 Result<void> Display::compose() {
     Impl& m = *impl_;
     if (auto r = m.fill(m.screen, 0); !r) return r;
     resolve_masters();
     if (auto r = render_background_fx(); !r) return r;
+    if (auto r = render_maps(); !r) return r;
     std::vector<const std::pair<const std::uint32_t, Sprite>*> order;
     // 90:0C: a switch and a transparency for every window, and for what is attached to one
     auto in_window = [this](std::uint32_t id) {

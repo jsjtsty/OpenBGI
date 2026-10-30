@@ -156,6 +156,18 @@ class Display {
         std::int32_t scale = 0x10000, angle = 0, scale_delta = 0, angle_delta = 0;                    // type 10
         std::int32_t style = 0, link = 0;                        // type 11
     } bg_fx;
+    // A scrolling tile map (90:70-7A, map.c): a window of cols x rows tiles of chip_w x chip_h pixels onto a terrain of 16-bit tile
+    // numbers (0xFFFF = empty), the tiles being cut row by row from the chipset picture. compose() renders the window on the CPU
+    // into a temporary slot that the map's sprite (handle 0xA0000000 | index) shows.
+    struct MapData {
+        bool sized = false, has_terrain = false, view_valid = false, wrap = false;
+        std::int32_t cols = 0, rows = 0, chip_w = 0, chip_h = 0, chipset = -1;
+        std::int32_t terr_w = 0, terr_h = 0, col = -1, row = -1, off_x = -1, off_y = -1;
+        std::vector<std::uint16_t> terrain;
+        std::uint64_t revision = 0;
+        std::vector<std::int64_t> key; // what the picture in the temporary slot was last made for
+    };
+    std::map<std::uint32_t, MapData> maps;
     bool bg_visible = true;  // 90:4C
     std::int32_t bg_mode = 1; // 90:4C: 0 paints black, anything else the type's picture
     std::uint32_t draw_limit = 0;       // 90:09: objects below this priority are not drawn
@@ -174,6 +186,7 @@ class Display {
 
   private:
     Result<void> render_background_fx();
+    Result<void> render_maps();
     Display() = default;
     struct Impl;
     std::unique_ptr<Impl> impl_;

@@ -133,3 +133,47 @@ TEST_CASE("graphics sub-opcodes reject bad arguments") {
     CHECK_FALSE(run(Asm().i32(7).i32(1).i32(1).i32(1).i32(1).i32(1).i32(1).sub(0x90, 0x56).ret()).has_value()); // no slot 1
     CHECK_FALSE(run(Asm().i32(9).i32(1).i32(1).sub(0x90, 0x33).ret()).has_value());              // no object
 }
+
+TEST_CASE("tile maps show the tiles of their terrain and leave empty cells clear") {
+    RendererOptions ro;
+    ro.headless = true;
+    auto renderer = Renderer::create(ro);
+    if (!renderer) return;
+    auto display = Display::create(**renderer);
+    REQUIRE(display.has_value());
+    ArcResourceFinder finder(obgi_test::game_dir());
+    ArcImageSource images(finder);
+    GraphicsHost host{display->get(), &images};
+    SubopRegistry registry;
+    register_core_subops(registry);
+    register_graphics_subops(registry, host);
+    MemProvider provider;
+    Vm vm(provider, registry);
+
+    // a 32 x 16 chipset of two 16 x 16 tiles, the first red; terrain [tile 0, empty]; the view is 2 x 1 tiles
+    const std::uint8_t terrain[4] = {0x00, 0x00, 0xFF, 0xFF};
+    REQUIRE(vm.global.write(0x200, 4, terrain));
+    constexpr Word h = 0xA0000000u; // the first map
+    Asm a;
+    a.i32(5).i32(32).i32(16).i32(1).sub(0x90, 0x11);
+    a.i32(5).i32(0x00FF0000).sub(0x90, 0x13);
+    a.sub(0x90, 0x70);                                                          // pushes the handle (left on the stack)
+    a.i32(h).i32(2).i32(1).i32(16).i32(16).sub(0x90, 0x76);                     // 2 x 1 tiles of 16 x 16
+    a.i32(h).i32(2).i32(1).i32(0x200).sub(0x90, 0x78);                          // terrain
+    a.i32(h).i32(10).i32(20).i32(5).i32(1).i32(0).i32(1).sub(0x90, 0x75);       // chipset, at (10, 20)
+    a.i32(h).i32(0).i32(0).i32(0).i32(0).i32(0).sub(0x90, 0x79);                // view at the terrain's corner
+    a.i32(h).i32(1).sub(0x90, 0x74);                                            // shown
+    a.ret();
+    provider.set(a);
+    ThreadConfig cfg;
+    cfg.stack_size = 0x1000;
+    cfg.program_capacity = 0x10000;
+    REQUIRE(vm.spawn(cfg, "x.arc", "main").has_value());
+    auto st = vm.run_frame(0);
+    REQUIRE_MESSAGE(st.has_value(), std::string(st ? "" : st.error().message));
+    REQUIRE((*display)->present().has_value());
+    auto screen = (*display)->read_screen();
+    REQUIRE(screen.has_value());
+    CHECK((*screen)[25 * 800 + 15] == 0x00FF0000u); // inside the first tile
+    CHECK((*screen)[25 * 800 + 35] != 0x00FF0000u); // the second cell is empty
+}

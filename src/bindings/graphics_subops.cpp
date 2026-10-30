@@ -936,6 +936,118 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         }
         return 0;
     });
+
+    // ---- tile maps (90:70-7A; gfx/map.c, gfx/mgr/maps.c): eight of them, handle 0xA0000000 | index ----
+    constexpr Word kMapBase = 0xA0000000u;
+    const auto map_of = [&d](Ctx& c, Word h) -> Display::MapData* {
+        const auto it = d.maps.find(h);
+        if (it == d.maps.end()) { c.fail(Errc::Range, "invalid map handle " + std::to_string(h)); return nullptr; }
+        return &it->second;
+    };
+    add(r, 0x9070, "create map", 0, 1, [&d](Ctx& c) {
+        for (Word i = 0; i < 8; ++i)
+            if (!d.maps.count(kMapBase | i)) {
+                Sprite& s = d.sprite(kMapBase | i);
+                s = Sprite{};
+                s.visible = false, s.slot = 0xFFFFFFFFu;
+                d.maps[kMapBase | i] = {};
+                c.push(kMapBase | i);
+                return 0;
+            }
+        c.fail(Errc::Range, "too many maps (the limit is 8)");
+        return 0;
+    });
+    add(r, 0x9071, "delete map", 1, 0, [&d, map_of](Ctx& c) {
+        const Word h = c.pop();
+        if (!c.ok() || !map_of(c, h)) return 0;
+        d.maps.erase(h);
+        d.remove_sprite(h);
+        return 0;
+    });
+    add(r, 0x9074, "show map", 2, 0, [&d, map_of](Ctx& c) {
+        const Word f = c.pop(), h = c.pop();
+        if (!c.ok() || !map_of(c, h)) return 0;
+        d.set_visible(h, f != 0);
+        return 0;
+    });
+    // 90:75 (map, x, y, chipset, effect, level, priority): the chipset, which must hold at least one tile each way; then the placement
+    add(r, 0x9075, "set map", 7, 0, [&d, map_of](Ctx& c) {
+        const Word prio = c.pop(), level = c.pop(), effect = c.pop();
+        const auto bmp = static_cast<std::int32_t>(c.pop()), y = static_cast<std::int32_t>(c.pop()), x = static_cast<std::int32_t>(c.pop());
+        const Word h = c.pop();
+        if (!c.ok()) return 0;
+        if (prio > 0xffff || level > 0x100 || !blend_mode_supported(effect)) { c.fail(Errc::Range, "map parameter out of range or unsupported blend mode"); return 0; }
+        Display::MapData* md = map_of(c, h);
+        if (!md) return 0;
+        const SlotInfo* si = bmp >= 0 && bmp < 0x4000 ? d.slot(static_cast<Word>(bmp)) : nullptr;
+        if (!md->sized || !si || si->width < static_cast<Word>(md->chip_w) || si->height < static_cast<Word>(md->chip_h) ||
+            (si->format != SlotFormat::Bgra && si->format != SlotFormat::Bgrx)) {
+            c.fail(Errc::Range, "bitmap " + std::to_string(bmp) + " does not fit the map's tiles");
+            return 0;
+        }
+        md->chipset = bmp, ++md->revision;
+        Sprite& s = d.sprite(h);
+        s.x = x, s.y = y, s.blend = effect, s.alpha = level, s.priority = prio;
+        return 0;
+    });
+    // 90:76 (map, cols, rows, tile w, tile h): the view in tiles (at most 0x400 x 0x300 pixels) and the tile size (at most 0x100 x 0x100)
+    add(r, 0x9076, "set map size", 5, 0, [&d, map_of](Ctx& c) {
+        const auto chip_h = static_cast<std::int32_t>(c.pop()), chip_w = static_cast<std::int32_t>(c.pop());
+        const auto rows = static_cast<std::int32_t>(c.pop()), cols = static_cast<std::int32_t>(c.pop());
+        const Word h = c.pop();
+        if (!c.ok()) return 0;
+        Display::MapData* md = map_of(c, h);
+        if (!md) return 0;
+        if (chip_w <= 0 || chip_w > 0x100 || chip_h <= 0 || chip_h > 0x100) { c.fail(Errc::Range, "invalid tile size " + std::to_string(chip_w) + "x" + std::to_string(chip_h)); return 0; }
+        if (cols <= 0 || cols > 0x400 / chip_w || rows <= 0 || rows > 0x300 / chip_h) { c.fail(Errc::Range, "invalid map view size " + std::to_string(cols) + "x" + std::to_string(rows)); return 0; }
+        md->cols = cols, md->rows = rows, md->chip_w = chip_w, md->chip_h = chip_h;
+        md->sized = true, md->chipset = -1, md->view_valid = false, md->col = md->row = md->off_x = md->off_y = -1; // the chipset and the view are dropped
+        ++md->revision;
+        return 0;
+    });
+    // 90:78 (map, w, h, data): the terrain, w x h 16-bit tile numbers in script memory, row by row; the view is forgotten
+    add(r, 0x9078, "set map terrain", 4, 0, [&d, map_of](Ctx& c) {
+        const Word data = c.pop(), hgt = c.pop(), w = c.pop(), h = c.pop();
+        if (!c.ok()) return 0;
+        Display::MapData* md = map_of(c, h);
+        if (!md) return 0;
+        if (w == 0 || hgt == 0 || std::uint64_t{w} * hgt > 0x1000000u) { c.fail(Errc::Range, "invalid terrain size " + std::to_string(w) + "x" + std::to_string(hgt)); return 0; }
+        std::vector<std::uint16_t> terrain(std::size_t{w} * hgt);
+        for (std::size_t i = 0; i < terrain.size(); ++i) terrain[i] = static_cast<std::uint16_t>(c.read(data + static_cast<Word>(2 * i), 2, false));
+        if (!c.ok()) return 0;
+        md->terrain = std::move(terrain), md->terr_w = static_cast<std::int32_t>(w), md->terr_h = static_cast<std::int32_t>(hgt), md->has_terrain = true;
+        md->view_valid = false, md->col = md->row = md->off_x = md->off_y = -1;
+        ++md->revision;
+        return 0;
+    });
+    // 90:79 (map, col, row, offset x, offset y, wrap): the terrain cell at the window's top left and the pixel offset inside it (less than a tile)
+    add(r, 0x9079, "set map view", 6, 0, [&d, map_of](Ctx& c) {
+        const Word wrap = c.pop(), off_y = c.pop(), off_x = c.pop(), row = c.pop(), col = c.pop(), h = c.pop();
+        if (!c.ok()) return 0;
+        Display::MapData* md = map_of(c, h);
+        if (!md) return 0;
+        if (!md->sized || !md->has_terrain || col >= static_cast<Word>(md->terr_w) || row >= static_cast<Word>(md->terr_h) ||
+            off_x >= static_cast<Word>(md->chip_w) || off_y >= static_cast<Word>(md->chip_h)) {
+            c.fail(Errc::Range, "invalid map view position " + std::to_string(static_cast<std::int32_t>(col)) + "," + std::to_string(static_cast<std::int32_t>(row)));
+            return 0;
+        }
+        md->col = static_cast<std::int32_t>(col), md->row = static_cast<std::int32_t>(row);
+        md->off_x = static_cast<std::int32_t>(off_x), md->off_y = static_cast<std::int32_t>(off_y);
+        md->wrap = wrap != 0, md->view_valid = true;
+        ++md->revision;
+        return 0;
+    });
+    // 90:7A (map, tile): every cell showing the tile is redrawn from the chipset after the script repainted it there
+    add(r, 0x907A, "invalidate map tile", 2, 0, [&d, map_of](Ctx& c) {
+        c.pop();
+        const Word h = c.pop();
+        if (!c.ok()) return 0;
+        Display::MapData* md = map_of(c, h);
+        if (!md) return 0;
+        if (!md->sized) { c.fail(Errc::Range, "the map is not initialised"); return 0; }
+        ++md->revision;
+        return 0;
+    });
 }
 
 } // namespace obgi
