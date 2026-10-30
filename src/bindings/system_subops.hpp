@@ -164,6 +164,8 @@ struct SystemState {
     void refresh_planes();
     // B0:80: the script shows a message box (UTF-8 text). The host decides what to do with it; the script goes on.
     std::function<void(const std::string&)> message_box;
+    // B0:81, B0:82: a question box (UTF-8 text); true for "yes" / "OK". Without a host the default button answers.
+    std::function<bool(const std::string&, bool ok_cancel, bool default_yes)> confirm_box;
     // 80:98: registered items (number, two script values, flag 1), newest first in the original list
     struct Item {
         std::uint32_t id = 0, a = 0, b = 0, flag = 1;

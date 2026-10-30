@@ -120,6 +120,16 @@ void register_audio_subops(vm::SubopRegistry& r, SoundHost& host) {
         if (c.ok() && on != 0 && mx.state(Bank::Stream, ch) == ChannelState::Stopped) check(c, mx.start(Bank::Stream, ch));
         return 0;
     });
+    // (ch, &loops): pushes 1 while the stream plays (0 otherwise, also for a bad channel); then the address receives the loop count. The
+    // reference calls these "position" and "length" but its library answers the playing status and the loop counter (snd/sound.c)
+    add(r, 0xA015, "stream playing and loop count", 2, 1, [&mx](Ctx& c) {
+        const Word out = c.pop(), ch = c.pop();
+        if (!c.ok() || !channel_ok(c, Bank::Stream, ch)) return 0;
+        const bool playing = mx.state(Bank::Stream, ch) == ChannelState::Playing;
+        if (playing) c.write(out, mx.loop_count(Bank::Stream, ch), 4);
+        c.push(playing ? 1 : 0);
+        return 0;
+    });
     add(r, 0xA016, "fade stream", 3, 0, [&mx](Ctx& c) {
         Word ms = c.pop(), target = c.pop(), ch = c.pop();
         if (c.ok() && channel_ok(c, Bank::Stream, ch) && level_ok(c, target)) check(c, mx.fade_to(Bank::Stream, ch, target, ms, false));

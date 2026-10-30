@@ -168,6 +168,10 @@ int main(int argc, char** argv) {
     system.message_box = [](const std::string& text) { // script text is UTF-8
         std::fprintf(stderr, "message box: %s\n", text.c_str());
     };
+    system.confirm_box = [](const std::string& text, bool, bool default_yes) { // no dialog: the default button answers
+        std::fprintf(stderr, "question box: %s -> %s\n", text.c_str(), default_yes ? "yes" : "no");
+        return default_yes;
+    };
     th.code_page = &system.code_page;
     register_system_subops(registry, system, finder);
     register_window_subops(registry, system, display->get());

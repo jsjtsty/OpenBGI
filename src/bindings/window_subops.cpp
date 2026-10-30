@@ -212,6 +212,103 @@ void register_window_subops(vm::SubopRegistry& r, SystemState& state, Display* d
         if (c.ok() && s->message_box) s->message_box(text);
         return 0;
     });
+    // B0:81 (text, defaultYes) -> yes, B0:82 (text, style, defaultYes) -> confirmed: a question box; style 1 asks OK / cancel, anything else
+    // yes / no. Without a host that answers, the default button does.
+    const auto ask = [s](const std::string& text, bool ok_cancel, bool default_yes) {
+        return s->confirm_box ? s->confirm_box(text, ok_cancel, default_yes) : default_yes;
+    };
+    add(r, 0xB081, "yes or no box", 2, 1, [ask](Ctx& c) {
+        const Word default_yes = c.pop();
+        const std::string text = c.cstring(c.pop());
+        if (c.ok()) c.push(ask(text, false, default_yes != 0) ? 1 : 0);
+        return 0;
+    });
+    add(r, 0xB082, "confirm box", 3, 1, [ask](Ctx& c) {
+        const Word default_yes = c.pop(), style = c.pop();
+        const std::string text = c.cstring(c.pop());
+        if (c.ok()) c.push(ask(text, style == 1, default_yes != 0) ? 1 : 0);
+        return 0;
+    });
+    // B0:8C (out, size, caption, items): the language chooser of other builds; the reference has no dialog either, drops the operands and
+    // answers 0 (cancelled)
+    add(r, 0xB08C, "choose from list box", 4, 1, [](Ctx& c) {
+        for (int i = 0; i < 4; ++i) c.pop();
+        c.push(0);
+        return 0;
+    });
+    // B0:08 (pattern, amplitude, frequency, repeat, decay, fps, skip): the screen quake (wait_quake.c). The thread waits until it ends; while
+    // it runs the whole screen is presented shifted by a triangle wave of the amplitude at `frequency` cycles a second, sampled `fps` times a
+    // second; pattern 0 shakes horizontally, 1 vertically, 2 diagonally, 3 along a random direction that changes every cycle. The amplitude
+    // loses `decay` percent per cycle, `repeat` cycles end it, as does any input when `skip` is set.
+    auto quake_rand = std::make_shared<std::uint32_t>(0x1234567u);
+    add(r, 0xB008, "screen quake", 7, 0, [s, display, quake_rand](Ctx& c) {
+        const auto skip = static_cast<std::int32_t>(c.pop()), fps = static_cast<std::int32_t>(c.pop()), decay = static_cast<std::int32_t>(c.pop());
+        const auto repeat = static_cast<std::int32_t>(c.pop()), frequency = static_cast<std::int32_t>(c.pop()), amplitude = static_cast<std::int32_t>(c.pop());
+        const auto pattern = static_cast<std::int32_t>(c.pop());
+        if (!c.ok()) return 0;
+        if (static_cast<std::uint32_t>(pattern) >= 4) { c.fail(Errc::Range, "invalid shake pattern " + std::to_string(pattern)); return 0; }
+        if (frequency < 1) { c.fail(Errc::Range, "invalid shake frequency " + std::to_string(frequency)); return 0; }
+        if (repeat < 1) { c.fail(Errc::Range, "invalid shake repeat count " + std::to_string(repeat)); return 0; }
+        if (fps < 1 || fps < frequency) { c.fail(Errc::Range, "invalid frame rate " + std::to_string(fps)); return 0; }
+        if (!display) return 0;
+        // the per-frame offsets, simulated as the reference's wait does (a random value is the mean of eight 30-bit draws)
+        static constexpr bool kWaveX[4] = {true, false, true, false}, kRandom[4] = {false, false, false, true}, kWaveY[4] = {false, true, true, false};
+        const auto random_to = [quake_rand](std::int32_t n) {
+            std::int32_t sum = 0;
+            const auto draw = [quake_rand] { *quake_rand = *quake_rand * 214013u + 2531011u; return static_cast<std::int32_t>((*quake_rand >> 16) & 0x7FFF); };
+            for (int i = 0; i < 8; ++i) sum += ((draw() << 15) | draw()) % (n + 1);
+            return sum >> 3;
+        };
+        auto offsets = std::make_shared<std::vector<std::pair<std::int32_t, std::int32_t>>>();
+        const std::int32_t frames_per_cycle = fps / frequency;
+        std::int32_t amp = amplitude << 11, phase = 0, step = 0;
+        std::int32_t dir_start[2] = {0, 0}, dir_end[2] = {0, 0}, dir_delta[2] = {0, 0};
+        for (std::int32_t cycle = 0; cycle < repeat && offsets->size() < 0x100000; ++cycle) {
+            for (std::int32_t frame = 0; frame < frames_per_cycle; ++frame) {
+                if (frame == 0) {
+                    step = (amp * 4) / frames_per_cycle, phase = 0;
+                    dir_start[0] = dir_end[0], dir_start[1] = dir_end[1];
+                    if (pattern == 3) {
+                        if (amp <= 0) dir_end[0] = dir_end[1] = 0;
+                        else {
+                            const std::int32_t rx = random_to(amp), ry = random_to(amp), quadrant = cycle & 3;
+                            dir_end[0] = quadrant == 1 || quadrant == 3 ? -rx : rx;
+                            dir_end[1] = quadrant == 2 || quadrant == 3 ? -ry : ry;
+                        }
+                    }
+                    dir_delta[0] = dir_end[0] - dir_start[0], dir_delta[1] = dir_end[1] - dir_start[1];
+                }
+                phase += step;
+                if (phase > amp || phase < -amp) step = -step;
+                if (phase > amp) phase = 2 * amp - phase;
+                if (phase < -amp) phase = -phase - 2 * amp;
+                std::int32_t x = kWaveX[pattern] ? phase : 0, y = kWaveY[pattern] ? phase : 0;
+                if (kRandom[pattern]) {
+                    x += dir_delta[0] * frame / frames_per_cycle + dir_start[0];
+                    y += dir_delta[1] * frame / frames_per_cycle + dir_start[1];
+                }
+                offsets->emplace_back(x >> 12, y >> 12);
+            }
+            amp = (100 - decay) * amp / 100;
+        }
+        const std::int64_t start = c.vm.now_ms;
+        const std::int64_t frame_ms = std::max<std::int64_t>(1, 1000 / fps);
+        const auto input_total = [s] { std::uint32_t sum = 0; for (std::uint32_t n : s->input_counts) sum += n; return sum; };
+        const std::uint32_t input_at_start = input_total();
+        vm::Vm* machine = &c.vm;
+        c.t.wait.kind = vm::WaitObject::Kind::Poll;
+        c.t.wait.poll = [display, offsets, start, frame_ms, skip, input_total, input_at_start, machine]() {
+            const std::int64_t frame = (machine->now_ms - start) / frame_ms;
+            if (frame >= static_cast<std::int64_t>(offsets->size()) || (skip && input_total() != input_at_start)) {
+                display->present_dx = display->present_dy = 0; // the window is repainted unshifted when it ends
+                return true;
+            }
+            display->present_dx = (*offsets)[static_cast<std::size_t>(frame)].first;
+            display->present_dy = (*offsets)[static_cast<std::size_t>(frame)].second;
+            return false;
+        };
+        return static_cast<int>(vm::StayThread);
+    });
     add_record(r, state, 0x8164, "client size", 2);
     add_record(r, state, 0x8064, "show window", 1);
     // the window moves back to its default place; 1 = done
@@ -420,6 +517,8 @@ void register_window_subops(vm::SubopRegistry& r, SystemState& state, Display* d
     add_limited_flag(r, state, 0x8163, "setting 81:63", 3);
 
     // ---- typesetting and display settings (analysis/排版引擎.md) ----
+    add_record(r, state, 0x9091, "text input layer mode", 2);
+    add_record(r, state, 0x91BF, "user key map", 2);
     add_record(r, state, 0x9094, "setting 90:94", 1);
     add_range_pair(r, state, 0x9095, "setting 90:95");
     add_range_pair(r, state, 0x9096, "setting 90:96");

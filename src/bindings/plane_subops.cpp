@@ -690,6 +690,9 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
 
     add_plane_setting(r, state, 0x9188, "window object font", 7);
     add_plane_setting(r, state, 0x9189, "window object line gap", 2);
+    add_plane_setting(r, state, 0x918A, "window object text direction", 2);
+    add_plane_setting(r, state, 0x928A, "window object frame fill", 2);
+    add_plane_setting(r, state, 0x928D, "window object text layer bitmap", 6);
     add_plane_setting(r, state, 0x918B, "window object text sway", 2);
     add_plane_setting(r, state, 0x918C, "window object setting 91:8C", 3);
     add_plane_setting(r, state, 0x9288, "window object setting 92:88", 2);

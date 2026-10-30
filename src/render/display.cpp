@@ -1004,6 +1004,7 @@ Result<void> Display::present() {
     const float black[4] = {0, 0, 0, 1};
     if (auto r = m.renderer->begin_frame(black); !r) return r;
     DrawParams dp;
+    dp.x = static_cast<float>(present_dx), dp.y = static_cast<float>(present_dy);
     dp.w = static_cast<float>(m.screen.info.width);
     dp.h = static_cast<float>(m.screen.info.height);
     m.renderer->draw(*m.screen_tex, dp);

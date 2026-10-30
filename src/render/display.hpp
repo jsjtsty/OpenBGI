@@ -174,6 +174,8 @@ class Display {
         std::int32_t amount = 0;                                 // type 6: non-zero samples bilinearly (bmp[1], bmp[2] are the vector maps, -1 = none)
         std::int32_t rings = 0, ripple_no = 0, selector = 0;     // type 8: bmp[1] is the vector + distance map; the level is the amplitude
     } bg_fx;
+    // B0:08, the screen quake: present() shows the whole screen shifted by this many pixels (window.c: Window_PresentOffset)
+    std::int32_t present_dx = 0, present_dy = 0;
     std::uint64_t vecmap_epoch = 0; // bumped whenever a vector map or a ripple definition changes, so the pictures made from them redraw
     // A scrolling tile map (90:70-7A, map.c): a window of cols x rows tiles of chip_w x chip_h pixels onto a terrain of 16-bit tile
     // numbers (0xFFFF = empty), the tiles being cut row by row from the chipset picture. compose() renders the window on the CPU

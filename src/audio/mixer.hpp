@@ -51,6 +51,8 @@ class Mixer {
     ChannelState state(Bank bank, std::uint32_t ch) const;
     // Playback position in source frames (0 for an empty channel).
     std::uint32_t position(Bank bank, std::uint32_t ch) const;
+    // How many times the sound wrapped to its loop start since it was started (A0:15 reports it).
+    std::uint32_t loop_count(Bank bank, std::uint32_t ch) const;
 
     // Renders `frames` stereo frames, replacing the contents of `out`.
     void mix(std::int16_t* out, std::uint32_t frames);
@@ -63,6 +65,7 @@ class Mixer {
         bool playing = false;
         bool paused = false; // survives load/unload: the script pauses before loading
         double pos = 0;      // source frames
+        std::uint32_t loops = 0; // wraps to the loop start since the channel was started
         float volume = 0x80; // current, script scale
         float target = 0x80;
         float step = 0;      // volume change per output frame while fading

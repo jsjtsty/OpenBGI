@@ -874,6 +874,46 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     // 92:F0 (6 values, two of them addresses): makes a video window of the movie cluster (analysis/视频.md) and pushes a result;
     // there is none yet, so it answers 0. 90:F3 (volume 0..0x80) and 90:01 (a value kept in a display global) only take their argument.
     add(r, 0x92F0, "movie window (not modelled)", 6, 1, [](Ctx& c) { for (int i = 0; i < 6; ++i) c.pop(); c.push(0); return 0; });
+    // 90:F0 (file, x, y, w, h) -> length: the reference starts playing a loose movie file in the window and answers its length in ms, 0 when
+    // playback could not start. There is no overlay player here (91:F8 plays a whole movie at once), so playback never starts: it answers 0.
+    add(r, 0x90F0, "play loose movie (not modelled)", 5, 1, [](Ctx& c) {
+        const Word h = c.pop(), w = c.pop();
+        c.pop(), c.pop(), c.pop();
+        if (!c.ok()) return 0;
+        if (static_cast<std::int32_t>(w) <= 0 || static_cast<std::int32_t>(h) <= 0) { c.fail(Errc::Range, "invalid movie size"); return 0; }
+        c.push(0);
+        return 0;
+    });
+    // C0:F0 (out, &count, arc, name, base) -> result: loads a "bwef" lip-sync file of an archive (vecmaps.c: LoadBwef, ParseBwef) as
+    // (offset + base, common) pairs into out and its count into *count; 0, or 0x80000001 for a missing or empty file, 0x80000002 for a bad
+    // magic, 0x80000003 for a size that does not match the count. Never a script error.
+    add(r, 0xC0F0, "load bwef", 5, 1, [res](Ctx& c) {
+        const Word base = c.pop();
+        const std::string name = c.cstring(c.pop()), arc = c.cstring(c.pop());
+        const Word count_addr = c.pop(), out = c.pop();
+        if (!c.ok()) return 0;
+        auto file = res->read(arc, name);
+        if (!file || file->empty()) { c.push(0x80000001u); return 0; }
+        const std::vector<std::uint8_t>& d = *file;
+        const auto u32 = [&d](std::size_t at) { return at + 4 <= d.size() ? std::uint32_t{d[at]} | std::uint32_t{d[at + 1]} << 8 | std::uint32_t{d[at + 2]} << 16 | std::uint32_t{d[at + 3]} << 24 : 0u; };
+        if (d.size() < 0x20 || std::memcmp(d.data(), "bwef    ", 8) != 0) { c.push(0x80000002u); return 0; }
+        const std::uint32_t count = u32(0x14);
+        if (d.size() != 0x120 + 4 * std::size_t{count}) { c.push(0x80000003u); return 0; }
+        for (std::uint32_t i = 0; i < count; ++i) {
+            c.write(out + 8 * i, u32(0x120 + 4 * std::size_t{i}) + base, 4);
+            c.write(out + 8 * i + 4, u32(0x18), 4);
+        }
+        c.write(count_addr, count, 4);
+        c.push(0);
+        return 0;
+    });
+    // B0:C3 (arc, file) -> ok: adds a font file of an archive to the engine's font names; the text library here only finds installed fonts,
+    // so the file is not registered: it answers 1 when the archive member exists, else 0
+    add(r, 0xB0C3, "add font file from archive", 2, 1, [res](Ctx& c) {
+        const std::string file = c.cstring(c.pop()), arc = c.cstring(c.pop());
+        if (c.ok()) c.push(res->exists(arc, file) ? 1 : 0);
+        return 0;
+    });
     add(r, 0x90F3, "movie volume", 1, 0, [s](Ctx& c) { const Word v = c.pop(); if (c.ok()) s->values[0x90F3] = v; return 0; });
     add(r, 0x9001, "display global 90:01", 1, 0, [s](Ctx& c) { const Word v = c.pop(); if (c.ok()) s->values[0x9001] = v; return 0; });
     // 90:F2: whether a movie is still playing; none is, so 0

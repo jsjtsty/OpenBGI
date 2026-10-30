@@ -43,6 +43,7 @@ Result<void> Mixer::play(Bank bank, std::uint32_t ch, std::uint32_t volume, std:
     if (!c->pcm) return fail(Errc::Range, "no sound loaded on the channel");
     c->playing = true;
     c->pos = 0;
+    c->loops = 0;
     c->volume = c->target = static_cast<float>(std::min(volume, kMaxVolume));
     c->step = 0;
     c->stop_after = false;
@@ -57,6 +58,7 @@ Result<void> Mixer::start(Bank bank, std::uint32_t ch) {
     if (!c->pcm) return fail(Errc::Range, "no sound loaded on the channel");
     c->playing = true;
     c->pos = 0;
+    c->loops = 0;
     c->step = 0;
     c->stop_after = false;
     return {};
@@ -135,6 +137,12 @@ std::uint32_t Mixer::position(Bank bank, std::uint32_t ch) const {
     return c && c->pcm ? static_cast<std::uint32_t>(c->pos) : 0;
 }
 
+std::uint32_t Mixer::loop_count(Bank bank, std::uint32_t ch) const {
+    std::lock_guard lock(mutex_);
+    const Channel* c = find(bank, ch);
+    return c ? c->loops : 0;
+}
+
 void Mixer::mix(std::int16_t* out, std::uint32_t frames) {
     std::lock_guard lock(mutex_);
     std::vector<float> acc(std::size_t{frames} * 2, 0.0f);
@@ -164,6 +172,7 @@ void Mixer::mix(std::int16_t* out, std::uint32_t frames) {
                 }
                 c.pos = c.loop_start + (c.pos - total);
                 if (c.pos >= total) c.pos = c.loop_start;
+                ++c.loops;
             }
             const std::uint32_t i0 = static_cast<std::uint32_t>(c.pos);
             const float frac = static_cast<float>(c.pos - i0);
