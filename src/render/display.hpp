@@ -37,6 +37,8 @@ struct Sprite {
     bool background = false;                // the background layers are not held back by the draw limit (90:09)
     int filter_kind = -1;                    // 90:65 / 90:66: a filter object (no picture) changes what is drawn below it; -1 = not one
     std::uint32_t filter_colour = 0;         // 0x00RRGGBB; `alpha` is the filter's level
+    std::uint32_t filter_gray = 0xFFFFFFFFu; // 90:66: the screen-sized gray bitmap that modulates the tint per pixel (0xFFFFFFFF = uniform)
+    std::int32_t filter_param = 0;           // ... and its transition curve
     // 90:35 progress (0..0x100) reveals the picture through the gray slot `wipe_gray` (90:5A) while it is below 0x100
     std::uint32_t progress = 0x100, wipe_gray = 0xFFFFFFFFu, wipe_mode = 0;
     // The background's two-picture type (90:43) reveals the upper picture through a gray map aligned with the screen instead:

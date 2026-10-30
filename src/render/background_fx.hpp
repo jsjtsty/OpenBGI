@@ -33,6 +33,13 @@ void mosaic(Image& dst, const Image& src, int amount, int extra);
 // four bytes without alpha, weighted by the two alphas with it.
 Image crossfade_to(const Image& a, const Image& b, int ratio, bool has_alpha);
 
+// The colour filters of the Filter object (filter.c, blit_filter.c, blit.c: Blit_Tint) applied in place to the screen's pixels at the
+// level (0..0x100; a strength). Kind 0 blends toward the colour (a black colour dims), 1 adds colour * level (black dims), 2 tints by
+// luminance, 3 blends toward the picture XOR the colour; the top byte of the result is 0 except for kind 3, which keeps it.
+void filter_kind(std::vector<std::uint32_t>& px, int kind, std::uint32_t colour, int level);
+// Kind 0 modulated per pixel by a gray bitmap of the screen's size (Blit_TintByGray); `param` is the transition curve.
+void filter_by_gray(std::vector<std::uint32_t>& px, std::uint32_t colour, const std::vector<std::uint32_t>& gray, int param, int level);
+
 // A picture scaled by (sx, sy) and rotated by `angle` (16.16 degrees) about the point (ox16, oy16) (16.16 pixels of the picture),
 // as the transform sprites draw it (sprite.c: Sprite_BoundsProjected for the box). `anchor` is where the origin lands in the result.
 struct Transformed {

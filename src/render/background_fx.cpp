@@ -172,6 +172,98 @@ Image rotate_centred(const Image& src, std::uint32_t w, std::uint32_t h, std::in
     return out;
 }
 
+namespace {
+// the dim of blit.c as the filters use it: src * (0x100 - level) >> 8 per colour byte, top byte 0
+std::uint32_t dim(std::uint32_t sv, int level) {
+    const int inv = 0x100 - level;
+    return static_cast<std::uint32_t>(((sv & 0xff) * inv) >> 8) | static_cast<std::uint32_t>((((sv >> 8) & 0xff) * inv) >> 8) << 8 |
+           static_cast<std::uint32_t>((((sv >> 16) & 0xff) * inv) >> 8) << 16;
+}
+} // namespace
+
+void filter_kind(std::vector<std::uint32_t>& px, int kind, std::uint32_t colour, int level) {
+    level = std::clamp(level, 0, 0x100);
+    if (level == 0) return;
+    switch (kind) {
+    case 0:
+        if (colour == 0) {
+            for (auto& v : px) v = dim(v, level);
+            break;
+        }
+        { // Tint32: (s * inv >> 8) + (colour * level >> 8) per colour byte, saturated, top byte 0
+            const int inv = 0x100 - level;
+            const int add[3] = {static_cast<int>(((colour & 0xff) * unsigned(level)) >> 8), static_cast<int>((((colour >> 8) & 0xff) * unsigned(level)) >> 8),
+                                static_cast<int>((((colour >> 16) & 0xff) * unsigned(level)) >> 8)};
+            for (auto& v : px) {
+                std::uint32_t out = 0;
+                for (int c = 0; c < 3; ++c) out |= static_cast<std::uint32_t>(sat8(static_cast<int>((((v >> (8 * c)) & 0xff) * unsigned(inv)) >> 8) + add[c])) << (8 * c);
+                v = out;
+            }
+        }
+        break;
+    case 1:
+        if (colour == 0) {
+            for (auto& v : px) v = dim(v, level);
+            break;
+        }
+        {
+            std::uint32_t add = 0;
+            for (int c = 0; c < 3; ++c) add |= static_cast<std::uint32_t>(sat8(static_cast<int>((((colour >> (8 * c)) & 0xff) * unsigned(level)) >> 8))) << (8 * c);
+            for (auto& v : px) {
+                std::uint32_t out = 0;
+                for (int sh = 0; sh < 32; sh += 8) out |= static_cast<std::uint32_t>(sat8(static_cast<int>((v >> sh) & 0xff) + static_cast<int>((add >> sh) & 0xff))) << sh;
+                v = out;
+            }
+        }
+        break;
+    case 2: { // the monochrome tint: luma picks an entry of a table, added to the dimmed picture
+        const int inv = 0x100 - level;
+        int table[0x80][3];
+        for (int i = 0; i < 0x80; ++i) {
+            int v = (i + 1) * level;
+            if (v == 0x8000) v = 0x7fff;
+            for (int c = 0; c < 3; ++c) table[i][c] = (((v * static_cast<int>((colour >> (c * 8)) & 0xff)) >> 16) << 1) & 0xffff;
+        }
+        for (auto& p : px) {
+            const int b = p & 0xff, g = (p >> 8) & 0xff, r = (p >> 16) & 0xff, luma = (b * 28 + g * 151 + r * 77) >> 9;
+            p = static_cast<std::uint32_t>(sat8(((b * inv) >> 8) + table[luma][0])) | static_cast<std::uint32_t>(sat8(((g * inv) >> 8) + table[luma][1])) << 8 |
+                static_cast<std::uint32_t>(sat8(((r * inv) >> 8) + table[luma][2])) << 16;
+        }
+        break;
+    }
+    case 3: { // s + ((s ^ colour) - s) * (level >> 1) >> 7 per colour byte; the top byte stays
+        const int l2 = level >> 1;
+        for (auto& p : px) {
+            std::uint32_t out = p & 0xff000000u;
+            for (int sh = 0; sh < 24; sh += 8) {
+                const int sc = (p >> sh) & 0xff, cc = (colour >> sh) & 0xff;
+                out |= static_cast<std::uint32_t>(sat8(((((sc ^ cc) - sc) * l2) >> 7) + sc)) << sh;
+            }
+            p = out;
+        }
+        break;
+    }
+    default: break;
+    }
+}
+
+void filter_by_gray(std::vector<std::uint32_t>& px, std::uint32_t colour, const std::vector<std::uint32_t>& gray, int param, int level) {
+    level = std::clamp(level, 0, 0x100);
+    const int base = 0x100 - ((1 << param) + 1) * level;
+    for (std::size_t i = 0; i < px.size() && i < gray.size(); ++i) {
+        const int v = (static_cast<int>(gray[i] & 0xff) << param) + base;
+        if (v <= 0) { px[i] = colour; continue; }
+        if (v >= 0x100) continue;
+        const int w = v >> 1;
+        std::uint32_t out = 0;
+        for (int sh = 0; sh < 24; sh += 8) {
+            const int cc = (colour >> sh) & 0xff, dc = (px[i] >> sh) & 0xff;
+            out |= static_cast<std::uint32_t>(sat8((((dc - cc) * w) >> 7) + cc)) << sh;
+        }
+        px[i] = out;
+    }
+}
+
 Image crossfade_to(const Image& a, const Image& b, int ratio, bool has_alpha) {
     Image out = blank(a.w, a.h);
     const int inv = 0x100 - ratio;

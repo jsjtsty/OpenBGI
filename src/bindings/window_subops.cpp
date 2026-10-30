@@ -493,21 +493,33 @@ void register_window_subops(vm::SubopRegistry& r, SystemState& state, Display* d
             return 0;
         }
         sp->filter_kind = 0, sp->filter_colour = colour, sp->alpha = level, sp->priority = prio;
+        sp->filter_gray = 0xFFFFFFFFu; // filter.c: Filter_Set drops the gray bitmap
         return 0;
     });
-    // 90:66 (filter, kind 0..3, colour, gray bitmap, param, level, priority): the kinds with a gray bitmap and 1..3 are kept but
-    // not drawn yet
+    // 90:66 (filter, kind 0..3, colour, gray bitmap, param, level, priority): kind 0 blends toward the colour, 1 adds it, 2 tints by
+    // luminance, 3 blends toward the picture XOR the colour; a screen-sized gray bitmap (-1 = none) modulates the tint per pixel
+    // with `param` as its transition curve. The state is set first and then the bitmap checked: no such bitmap, not gray, not screen sized.
     add(r, 0x9066, "filter set (kind)", 7, 0, [s](Ctx& c) {
-        const Word prio = c.pop(), level = c.pop(), param = c.pop(), bmp = c.pop(), colour = c.pop(), kind = c.pop(), h = c.pop();
+        const Word prio = c.pop(), level = c.pop();
+        const auto param = static_cast<std::int32_t>(c.pop()), bmp = static_cast<std::int32_t>(c.pop());
+        const Word colour = c.pop(), kind = c.pop(), h = c.pop();
         if (!c.ok()) return 0;
+        if (level > 0x100) { c.fail(Errc::Range, "alpha out of range"); return 0; }
         Sprite* sp = s->display ? s->display->find_sprite(h) : nullptr;
         if (!sp || sp->filter_kind < 0) {
             c.fail(Errc::Range, "not a filter object handle: " + std::to_string(h));
             return 0;
         }
-        s->records[0x9066] = {h, kind, colour, bmp, param, level, prio};
-        sp->filter_kind = kind == 0 && static_cast<std::int32_t>(bmp) < 0 ? 0 : 1 + static_cast<int>(kind);
-        sp->filter_colour = colour, sp->alpha = std::min<Word>(level, 0x100), sp->priority = prio;
+        s->records[0x9066] = {h, kind, colour, static_cast<Word>(bmp), static_cast<Word>(param), level, prio};
+        sp->filter_kind = static_cast<int>(std::min<Word>(kind, 4)); // a kind above 3 draws nothing
+        sp->filter_colour = colour, sp->alpha = level, sp->priority = prio;
+        sp->filter_gray = 0xFFFFFFFFu;
+        if (bmp == -1) return 0;
+        const SlotInfo* info = bmp >= 0 && bmp < 0x4000 ? s->display->slot(static_cast<Word>(bmp)) : nullptr;
+        if (!info) { c.fail(Errc::Range, "no image slot " + std::to_string(bmp)); return 0; }
+        if (info->format != SlotFormat::Gray8) { c.fail(Errc::Range, "bitmap " + std::to_string(bmp) + " is not a gray bitmap"); return 0; }
+        if (info->width != s->display->screen_width() || info->height != s->display->screen_height()) { c.fail(Errc::Range, "bitmap " + std::to_string(bmp) + " is not screen sized"); return 0; }
+        sp->filter_gray = static_cast<Word>(bmp), sp->filter_param = param;
         return 0;
     });
     // 90:09 (priority): objects below this priority are not drawn (the background layers are)

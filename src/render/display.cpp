@@ -585,17 +585,26 @@ Result<void> Display::compose() {
     for (const auto* kv : order) {
         const Sprite& sp = kv->second;
         if (std::getenv("OBGI_SPRITES")) std::fprintf(stderr, "sprite %X slot %u at %d,%d blend %u alpha %u prio %u%s""\n", kv->first, sp.slot, sp.x, sp.y, sp.blend, sp.alpha, sp.priority, m.slots.count(sp.slot) ? "" : " (no slot)");
-        if (sp.filter_kind >= 0) { // kind 0: the picture so far is blended towards the colour by level / 256 (blit.c: Tint32); kinds 1..3 are not drawn yet
-            if (sp.filter_kind != 0 || sp.alpha == 0) continue;
-            constexpr std::uint32_t kFilterSlot = 0x7F200000u;
-            const std::uint32_t fw = m.screen.info.width, fh = m.screen.info.height;
-            const SlotInfo* fs = slot(kFilterSlot);
-            if (!fs || fs->width != fw || fs->height != fh) {
-                if (auto made = create_slot(kFilterSlot, fw, fh, SlotFormat::Bgrx); !made) return made;
+        if (sp.filter_kind >= 0) {
+            // filter.c: a colour operation on everything drawn so far. The filter's effect is 0xC0, the strength family, so the level
+            // is ((0x100 - fade) * level * opacity) >> 16 (dispobj.c: DispObj_EffectiveLevel); with a gray bitmap (90:66) every kind is
+            // the per-pixel tint of Blit_TintByGray. Done on the CPU on the screen's pixels.
+            const std::int32_t level = static_cast<std::int32_t>(((0x100u - std::min(sp.fade, 0x100u)) * std::min(sp.alpha, 0x100u) * sp.opacity) >> 16);
+            const auto gi = sp.filter_gray != 0xFFFFFFFFu ? m.slots.find(sp.filter_gray) : m.slots.end();
+            const bool by_gray = gi != m.slots.end() && gi->second.info.format == SlotFormat::Gray8 && gi->second.info.width == m.screen.info.width &&
+                                 gi->second.info.height == m.screen.info.height;
+            if (sp.filter_gray != 0xFFFFFFFFu && !by_gray) continue; // the bitmap was freed or replaced: nothing is drawn
+            if (!by_gray && (sp.filter_kind > 3 || level <= 0)) continue;
+            auto px = m.download(m.screen);
+            if (!px) return std::unexpected(px.error());
+            if (by_gray) {
+                auto gray = m.download(gi->second);
+                if (!gray) return std::unexpected(gray.error());
+                bgfx::filter_by_gray(*px, sp.filter_colour & 0xFFFFFFu, *gray, sp.filter_param, level);
+            } else {
+                bgfx::filter_kind(*px, sp.filter_kind, sp.filter_colour & 0xFFFFFFu, level);
             }
-            if (auto filled = fill_slot(kFilterSlot, sp.filter_colour & 0xFFFFFFu); !filled) return filled;
-            auto fit = m.slots.find(kFilterSlot);
-            if (auto r = m.do_blit(m.screen, 0, 0, fit->second, 0, 0, fw, fh, 1, 0x100u - std::min(sp.alpha, 0x100u)); !r) return r;
+            if (auto up_r = m.upload(m.screen.buffer, *px); !up_r) return up_r;
             continue;
         }
         std::uint32_t draw_id = sp.slot;

@@ -80,6 +80,36 @@ TEST_CASE("sprite pictures: an unrotated unscaled transform keeps the picture an
     CHECK(transform(src, 0, 0, 0, 0, 0x10000, false).image.px.empty()); // a zero scale draws nothing
 }
 
+TEST_CASE("filters: kind 0 blends toward the colour, black dims, level 0 changes nothing") {
+    std::vector<std::uint32_t> px = {0x00808080};
+    filter_kind(px, 0, 0x00FF0000, 0x100);
+    CHECK(px[0] == 0x00FF0000); // inv 0: colour * 256 >> 8
+    px = {0x00808080};
+    filter_kind(px, 0, 0, 0x80); // (0x80 * 0x80) >> 8
+    CHECK(px[0] == 0x00404040);
+    px = {0x00808080};
+    filter_kind(px, 0, 0x00FFFFFF, 0);
+    CHECK(px[0] == 0x00808080);
+}
+
+TEST_CASE("filters: kind 1 adds, kind 3 blends toward the XOR, a gray bitmap picks the pixels") {
+    std::vector<std::uint32_t> px = {0x00404040};
+    filter_kind(px, 1, 0x00FFFFFF, 0x80); // + (255 * 128 >> 8) = 127
+    CHECK(px[0] == 0x00BFBFBF);
+    px = {0xFF000000};
+    filter_kind(px, 3, 0x00FFFFFF, 0x100); // full: s ^ colour
+    CHECK(px[0] == 0xFFFFFFFF);
+    const std::vector<std::uint32_t> g = {0, 0xFF};
+    std::vector<std::uint32_t> d = {0x00111111, 0x00222222};
+    filter_by_gray(d, 0x00FFFFFF, g, 0, 0x100); // v = gray + 0x100 - 2 * 0x100 = gray - 0x100
+    CHECK(d[0] == 0x00FFFFFF); // v <= 0: the colour
+    CHECK(d[1] == 0x00FFFFFF); // gray 0xFF: v = -1, still the colour
+    d = {0x00111111, 0x00222222};
+    filter_by_gray(d, 0x00FFFFFF, g, 0, 0); // v = gray + 0x100 >= 0x100: untouched
+    CHECK(d[0] == 0x00111111);
+    CHECK(d[1] == 0x00222222);
+}
+
 TEST_CASE("background zoom and view keep an identity transform") {
     Image src = solid(6, 4, 0);
     for (std::uint32_t i = 0; i < 24; ++i) src.px[i] = 0xFF000000u | i;
