@@ -27,7 +27,7 @@ target_link_libraries(obgi_spvmsl PRIVATE spirv-cross-msl spirv-cross-core spirv
 obgi_shader_pack(OBGI_SHADER_PACK NAME obgi SHADERS blend_cases.comp blit.vert blit.frag blit_rect.comp slot_present.comp
   DEPENDS "${PROJECT_SOURCE_DIR}/shaders/blend.glsl")
 set(OBGI_SHADER_PACK "${OBGI_SHADER_PACK}" CACHE INTERNAL "")
-add_library(obgi_render STATIC render/gpu_blend.cpp render/display.cpp render/renderer.cpp render/shader_pack.cpp render/shader_library.cpp)
+add_library(obgi_render STATIC render/gpu_blend.cpp render/display.cpp render/background_fx.cpp render/renderer.cpp render/shader_pack.cpp render/shader_library.cpp)
 # development fallback when the pack is not next to the executable
 target_compile_definitions(obgi_render PRIVATE OBGI_BUILD_SHADER_DIR="${CMAKE_CURRENT_BINARY_DIR}/shaders")
 target_link_libraries(obgi_render PUBLIC obgi_core PRIVATE obgi_vfs SDL3::SDL3)

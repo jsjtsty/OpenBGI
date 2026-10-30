@@ -72,10 +72,7 @@ void register_object_settings(vm::SubopRegistry& r, SystemState& state, Display*
                                {0x913D, "object query 91:3D", 1, 1}};
     static const Rec loose[] = {{0x903C, "object setting 90:3C", 2, 0},
                                 {0x903D, "object query 90:3D", 1, 1},   {0x903F, "object setting 90:3F", 1, 0},
-                                {0x9041, "object setting 90:41", 3, 0},
-                                {0x9042, "object setting 90:42", 6, 0}, {0x9044, "background frames 90:44", 2, 0},
-                                {0x9045, "object setting 90:45", 5, 0}, {0x9046, "object setting 90:46", 3, 0},
-                                {0x9048, "object setting 90:48", 5, 0}, {0x9049, "object setting 90:49", 3, 0},
+                                {0x9045, "object setting 90:45", 5, 0},
                                 {0x9053, "object setting 90:53", 5, 0}, {0x9055, "object setting 90:55", 2, 0}};
     for (const Rec& rec : loose) {
         const std::uint16_t id = rec.id;

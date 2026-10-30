@@ -122,6 +122,23 @@ class Display {
     void set_progress(std::uint32_t id, std::uint32_t v, int depth = 0);
     void set_fade(std::uint32_t id, std::uint32_t v, int depth = 0);
     void set_opacity(std::uint32_t id, std::uint32_t v, int depth = 0);
+    // The background types that are more than one or two pictures (gfx/background/*.c): 2 crossfade (90:41), 3 tiled view (90:42),
+    // 5 flip book (90:44), 7 blur (90:46), 9 stretched view (90:48), 10 zoom (90:49), 11 mosaic (90:4A). The object's level and
+    // position are those of the upper background sprite (handle 0), so the tweens that drive them need no special case; compose()
+    // renders the picture on the CPU into a temporary slot shown by the lower background sprite. type 0 = none of these.
+    struct BackgroundFx {
+        int type = 0;
+        std::uint64_t revision = 0; // bumped by every change of the fields below
+        std::int32_t bmp[4] = {-1, -1, -1, -1}, second = -1;   // bitmaps; second: a bitmap, 0x7000 black or 0x7001 white
+        std::vector<std::int32_t> frames;                        // type 5
+        std::int32_t origin_x = 0, origin_y = 0;                 // type 3: the window's top left corner
+        std::int32_t edge = 0;                                   // type 7: 0 pads with black, 1 repeats the edge
+        std::int32_t view_w = 0, view_h = 0, target_x = 0, target_y = 0, target_w = 0, target_h = 0; // type 9
+        std::int32_t scale = 0x10000, angle = 0, scale_delta = 0, angle_delta = 0;                    // type 10
+        std::int32_t style = 0, link = 0;                        // type 11
+    } bg_fx;
+    bool bg_visible = true;  // 90:4C
+    std::int32_t bg_mode = 1; // 90:4C: 0 paints black, anything else the type's picture
     std::uint32_t draw_limit = 0;       // 90:09: objects below this priority are not drawn
     bool windows_shown = true;        // 90:0C: hides every window and what hangs on one
     std::uint32_t windows_level = 0;    // 90:0C: transparency added to all of them
@@ -137,6 +154,7 @@ class Display {
     std::uint32_t screen_height() const;
 
   private:
+    Result<void> render_background_fx();
     Display() = default;
     struct Impl;
     std::unique_ptr<Impl> impl_;

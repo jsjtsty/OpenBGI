@@ -114,6 +114,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
                          bmp2, x2, y2, level, wipe_map, wipe_param);
         }
         bg->type = 4;
+        d.bg_fx = {};
         bg_picture(kBgLower, bmp2, x2, y2, 0, bg->visible);
         bg_picture(kBgUpper, bmp1, x1, y1, level, bg->visible);
         // with a gray map the upper picture is revealed through it (level 0 = all shown) instead of faded by `level`
@@ -124,44 +125,152 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         }
         return 0;
     });
-    // 90:40 (bmp): the plain background picture
-    add(r, 0x9040, "background picture", 1, 0, [bg, bg_picture](Ctx& c) {
+    // The background types rendered on the CPU (Display::render_background_fx): the object becomes the type, with the level 0 and
+    // the position (0, 0) a new background object has (gfx/mgr/background.c: Gfx_SetBgType); the upper sprite then only drives them.
+    auto revisions = std::make_shared<std::uint64_t>(0);
+    auto fx_select = [bg, revisions, &d](int type, Word level) {
+        bg->type = static_cast<Word>(type);
+        d.bg_fx = {};
+        d.bg_fx.type = type, d.bg_fx.revision = ++*revisions;
+        d.bg_visible = bg->visible;
+        Sprite& up = d.sprite(kBgUpper);
+        up.x = up.y = 0, up.alpha = level, up.fade = 0, up.opacity = 0x100, up.flip_position = true;
+    };
+    // a picture a background type can use: in a slot, and screen sized unless `any_size`
+    auto bg_usable = [&d](std::int32_t bmp, bool any_size) {
+        if (bmp < 0 || bmp >= 0x4000) return false;
+        const SlotInfo* si = d.slot(static_cast<Word>(bmp));
+        return si && (any_size || (si->width == d.screen_width() && si->height == d.screen_height()));
+    };
+    const auto bg_colour = [](std::int32_t bmp) { return bmp == 0x7000 || bmp == 0x7001; }; // BG_BLACK, BG_WHITE
+    // 90:41 (bmp, second, level): type 2, the picture cross-faded with a second picture (or black / white) by the level
+    add(r, 0x9041, "background crossfade", 3, 0, [=, &d](Ctx& c) {
+        const Word level = c.pop();
+        const auto second = static_cast<std::int32_t>(c.pop()), bmp = static_cast<std::int32_t>(c.pop());
+        if (!c.ok()) return 0;
+        if (level > 0x100) { c.fail(Errc::Range, "alpha out of range"); return 0; }
+        fx_select(2, level);
+        if (!bg_usable(bmp, false) || !(bg_colour(second) || bg_usable(second, false))) {
+            c.fail(Errc::Range, "background bitmap " + std::to_string(bmp) + " or " + std::to_string(second) + " is unusable");
+            return 0;
+        }
+        d.bg_fx.bmp[0] = bmp, d.bg_fx.second = second;
+        return 0;
+    });
+    // 90:42 (b0, b1, b2, b3, x, y): type 3, a window at (x, y) of the 2 x 2 tiling of four screen-sized pictures
+    add(r, 0x9042, "background tiled view", 6, 0, [=, &d](Ctx& c) {
+        const auto y = static_cast<std::int32_t>(c.pop()), x = static_cast<std::int32_t>(c.pop());
+        std::int32_t b[4];
+        for (int i = 3; i >= 0; --i) b[i] = static_cast<std::int32_t>(c.pop());
+        if (!c.ok()) return 0;
+        fx_select(3, 0);
+        if (x < 0 || y < 0 || x > static_cast<std::int32_t>(d.screen_width()) || y > static_cast<std::int32_t>(d.screen_height())) {
+            c.fail(Errc::Range, "background origin " + std::to_string(x) + "," + std::to_string(y) + " is out of range");
+            return 0;
+        }
+        d.sprite(kBgUpper).script_move_to(x, y);
+        d.bg_fx.origin_x = x, d.bg_fx.origin_y = y;
+        for (int i = 0; i < 4; ++i) {
+            if (!bg_usable(b[i], false)) { c.fail(Errc::Range, "background bitmap " + std::to_string(b[i]) + " is unusable"); return 0; }
+            d.bg_fx.bmp[i] = b[i];
+        }
+        return 0;
+    });
+    // 90:44 (n, list, level): type 5, a flip book of 2..32 screen-sized pictures; the level is the frame shown
+    add(r, 0x9044, "background flip book", 3, 0, [=, &d](Ctx& c) {
+        const auto level = static_cast<std::int32_t>(c.pop());
+        const Word list = c.pop(), n = c.pop();
+        if (!c.ok()) return 0;
+        fx_select(5, static_cast<Word>(level));
+        if (n < 2 || n > 32) { c.fail(Errc::Range, "invalid background bitmap count " + std::to_string(n)); return 0; }
+        for (Word i = 0; i < n; ++i) {
+            const auto bmp = static_cast<std::int32_t>(c.read(list + 4 * i, 4, false));
+            if (!c.ok()) return 0;
+            if (!bg_usable(bmp, false)) { c.fail(Errc::Range, "background bitmap " + std::to_string(bmp) + " is unusable"); return 0; }
+            d.bg_fx.frames.push_back(bmp);
+        }
+        return 0;
+    });
+    // 90:46 (bmp, type, level): type 7, the picture through a horizontal box blur (edge 0 pads with black, 1 repeats it)
+    add(r, 0x9046, "background blur", 3, 0, [=, &d](Ctx& c) {
+        const Word level = c.pop(), edge = c.pop();
         const auto bmp = static_cast<std::int32_t>(c.pop());
         if (!c.ok()) return 0;
+        if (level > 0x100) { c.fail(Errc::Range, "alpha out of range"); return 0; }
+        fx_select(7, 0);
+        if (!bg_usable(bmp, false)) { c.fail(Errc::Range, "background bitmap " + std::to_string(bmp) + " is unusable"); return 0; }
+        if (edge > 1) { c.fail(Errc::Range, "invalid gradient type " + std::to_string(edge)); return 0; }
+        d.bg_fx.bmp[0] = bmp, d.bg_fx.edge = static_cast<std::int32_t>(edge);
+        d.sprite(kBgUpper).alpha = level;
+        return 0;
+    });
+    // 90:48 (bmp, x, y, w, h): type 9, a w x h view of a picture of any size at (x, y) stretched over the screen
+    add(r, 0x9048, "background stretched view", 5, 0, [=, &d](Ctx& c) {
+        const auto h = static_cast<std::int32_t>(c.pop()), w = static_cast<std::int32_t>(c.pop());
+        const auto y = static_cast<std::int32_t>(c.pop()), x = static_cast<std::int32_t>(c.pop());
+        const auto bmp = static_cast<std::int32_t>(c.pop());
+        if (!c.ok()) return 0;
+        fx_select(9, 0);
+        if (!bg_usable(bmp, true)) { c.fail(Errc::Range, "background bitmap " + std::to_string(bmp) + " is unusable"); return 0; }
+        if (static_cast<Word>(w) < 2 || static_cast<Word>(h) < 2) { c.fail(Errc::Range, "invalid view size " + std::to_string(w) + "x" + std::to_string(h)); return 0; }
+        d.bg_fx.bmp[0] = bmp, d.bg_fx.view_w = w, d.bg_fx.view_h = h;
+        d.sprite(kBgUpper).script_move_to(static_cast<std::int32_t>(static_cast<Word>(x) << 16), static_cast<std::int32_t>(static_cast<Word>(y) << 16)); // 16.16
+        return 0;
+    });
+    // 90:49 (bmp, scale, option): type 10, a picture of any size zoomed by `scale` (16.16, not 0) and rotated by `option` (16.16 degrees)
+    add(r, 0x9049, "background zoom", 3, 0, [=, &d](Ctx& c) {
+        const auto option = static_cast<std::int32_t>(c.pop()), scale = static_cast<std::int32_t>(c.pop()), bmp = static_cast<std::int32_t>(c.pop());
+        if (!c.ok()) return 0;
+        fx_select(10, 0);
+        if (!bg_usable(bmp, true)) { c.fail(Errc::Range, "background bitmap " + std::to_string(bmp) + " is unusable"); return 0; }
+        if (scale == 0) { c.fail(Errc::Range, "invalid scale 0"); return 0; }
+        d.bg_fx.bmp[0] = bmp, d.bg_fx.scale = scale, d.bg_fx.angle = option;
+        return 0;
+    });
+    // 90:40 (bmp): the plain background picture
+    add(r, 0x9040, "background picture", 1, 0, [bg, bg_picture, &d](Ctx& c) {
+        const auto bmp = static_cast<std::int32_t>(c.pop());
+        if (!c.ok()) return 0;
+        d.bg_fx = {};
         bg->type = 1;
         bg_picture(kBgLower, bmp, 0, 0, 0, bg->visible);
         bg_picture(kBgUpper, -1, 0, 0, 0, false);
         return 0;
     });
     // 90:47 (bmp, vector map, rings, ripple, level): the picture under ripples; the ripple is not drawn, the picture is
-    add(r, 0x9047, "background ripple", 5, 0, [bg, bg_picture](Ctx& c) {
+    add(r, 0x9047, "background ripple", 5, 0, [bg, bg_picture, &d](Ctx& c) {
         c.pop(), c.pop(), c.pop(), c.pop();
         const auto bmp = static_cast<std::int32_t>(c.pop());
         if (!c.ok()) return 0;
         bg->type = 8;
+        d.bg_fx = {};
         bg_picture(kBgLower, bmp, 0, 0, 0, bg->visible);
         bg_picture(kBgUpper, -1, 0, 0, 0, false);
         return 0;
     });
-    // 90:4A (front, back, style, level, link): the mosaic transition from front to back; cross-faded plainly instead
-    add(r, 0x904A, "background flip", 5, 0, [bg, bg_picture](Ctx& c) {
-        c.pop(); // link
-        const Word level = c.pop();
-        c.pop(); // style
+    // 90:4A (front, back, style, level, link): type 11, the mosaic transition from front to back (a picture, black or white)
+    add(r, 0x904A, "background flip", 5, 0, [=, &d](Ctx& c) {
+        const Word link = c.pop(), level = c.pop(), style = c.pop();
         const auto back = static_cast<std::int32_t>(c.pop()), front = static_cast<std::int32_t>(c.pop());
         if (!c.ok()) return 0;
-        bg->type = 11;
-        bg_picture(kBgLower, back, 0, 0, 0, bg->visible);
-        bg_picture(kBgUpper, front, 0, 0, level > 0x100 ? 0x100 : level, bg->visible);
+        fx_select(11, 0);
+        if (!bg_usable(front, false)) { c.fail(Errc::Range, "background front bitmap " + std::to_string(front) + " is unusable"); return 0; }
+        if (!bg_colour(back) && !bg_usable(back, false)) { c.fail(Errc::Range, "background back bitmap " + std::to_string(back) + " is unusable"); return 0; }
+        if (style != 0) { c.fail(Errc::Range, "invalid background style " + std::to_string(style)); return 0; }
+        if (link > 1) { c.fail(Errc::Range, "invalid background link state " + std::to_string(link)); return 0; }
+        d.bg_fx.bmp[0] = front, d.bg_fx.second = back, d.bg_fx.style = 0, d.bg_fx.link = static_cast<std::int32_t>(link);
+        d.sprite(kBgUpper).alpha = level;
         return 0;
     });
     add(r, 0x904D, "background type", 0, 1, [bg](Ctx& c) { c.push(bg->type); return 0; });
+    // 90:4C (visible, mode): shows or hides the background; mode 0 paints black, anything else the type's picture
     add(r, 0x904C, "background show", 2, 0, [bg, &d](Ctx& c) {
-        c.pop(); // draw mode
+        const auto mode = static_cast<std::int32_t>(c.pop());
         bg->visible = c.pop() != 0;
         if (!c.ok()) return 0;
+        d.bg_visible = bg->visible, d.bg_mode = mode;
         for (Word id : {kBgLower, kBgUpper})
-            if (Sprite* s = d.find_sprite(id)) s->visible = bg->visible && s->slot != 0;
+            if (Sprite* s = d.find_sprite(id)) s->visible = bg->visible && mode != 0 && s->slot != 0 && s->slot != 0xFFFFFFFFu;
         return 0;
     });
     // 92:12 (slot, w, h): sets the base size of a slot (the design size of its image); 1 for a valid slot number.
@@ -730,7 +839,31 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
             break;
         // parameters of the effect object types (0x41 and 0x80..0x83 apply to types 2, 5 and 6; 0x8F to all): the original only
         // stores them for the effect; the scripts so far reset them to 0 (analysis/显示对象属性.md)
-        case 0x41: case 0x80: case 0x81: case 0x82: case 0x83: case 0x8F:
+        case 0x41: case 0x81: case 0x82: case 0x83: case 0x8F:
+            break;
+        // the background types' own parameters on handle 0 (zoom.c, stretch.c): 0x80 the zoom and angle change reached at level 0x100,
+        // 0x101 a new zoom and angle, 0x102 the target view (x | y << 16, w | h << 16)
+        case 0x80:
+            if (id == 0 && d.bg_fx.type == 10) {
+                if (d.bg_fx.scale + static_cast<std::int32_t>(a) == 0) c.fail(Errc::Range, "invalid zoom change");
+                else d.bg_fx.scale_delta = static_cast<std::int32_t>(a), d.bg_fx.angle_delta = static_cast<std::int32_t>(b), ++d.bg_fx.revision;
+            }
+            break;
+        case 0x101:
+            if (id == 0 && d.bg_fx.type == 10) {
+                if (a == 0) c.fail(Errc::Range, "invalid zoom 0");
+                else d.bg_fx.scale = static_cast<std::int32_t>(a), d.bg_fx.angle = static_cast<std::int32_t>(b), d.bg_fx.scale_delta = d.bg_fx.angle_delta = 0, ++d.bg_fx.revision;
+            }
+            break;
+        case 0x102:
+            if (id == 0 && d.bg_fx.type == 9) {
+                if ((b & 0xffff) < 2 || (b >> 16) < 2) c.fail(Errc::Range, "invalid view size");
+                else {
+                    d.bg_fx.target_x = static_cast<std::int16_t>(a & 0xffff), d.bg_fx.target_y = static_cast<std::int16_t>(a >> 16);
+                    d.bg_fx.target_w = static_cast<std::int32_t>(b & 0xffff), d.bg_fx.target_h = static_cast<std::int32_t>(b >> 16);
+                    ++d.bg_fx.revision;
+                }
+            }
             break;
         // 0x40 origin (x, y), 0x41 rotation, 0x42 scale (x, y; 16.16, 0 = 1) of the picture types: only the identity is drawn so far
         case 0x40: case 0x42: case 0x43: case 0x60: {

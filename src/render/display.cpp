@@ -2,9 +2,13 @@
 #include <cstdio>
 #include "render/display.hpp"
 
+#include "render/background_fx.hpp"
+
 #include <SDL3/SDL.h>
 
 #include <algorithm>
+#include <array>
+#include <cmath>
 #include <set>
 #include <cstring>
 #include <string>
@@ -58,9 +62,15 @@ struct Display::Impl {
         std::vector<std::uint32_t> src_px;
     };
     std::map<std::uint32_t, ScaleCache> scales;
+    // the pictures of the background types as pixels, and what the temporary slot of the rendered background was last made for
+    std::map<std::uint32_t, bgfx::Image> bg_images;
+    std::map<std::uint32_t, std::uint64_t> versions; // how often each slot's pixels changed
+    std::vector<std::int64_t> bg_key;
     // a slot's pixels changed: the pixels cached from it are stale (the temporary slots 0x7F... are the cache's own)
     void stale(std::uint32_t id) {
         if (id >= 0x7F000000u) return;
+        bg_images.erase(id);
+        ++versions[id];
         for (auto it = wipes.begin(); it != wipes.end();) it = (it->second.src == id || it->second.gray == id) ? wipes.erase(it) : std::next(it);
         for (auto it = scales.begin(); it != scales.end();) it = it->second.src == id ? scales.erase(it) : std::next(it);
     }
@@ -396,10 +406,131 @@ void Display::resolve_masters() {
     for (auto& kv : sprites_) settle(settle, kv.first, 0);
 }
 
+// Renders the current background type (bg_fx) on the CPU into the temporary slot 0x7F400000 that the lower background sprite shows
+// (gfx/background/*.c: each type's render slot). A picture that is gone or does not fit paints black, as in the reference.
+Result<void> Display::render_background_fx() {
+    Impl& m = *impl_;
+    constexpr std::uint32_t kFxSlot = 0x7F400000u;
+    Sprite* up = find_sprite(kBackgroundUpper);
+    Sprite* lo = find_sprite(kBackgroundLower);
+    if (!bg_fx.type || !up || !lo) return {};
+    const std::uint32_t w = m.screen.info.width, h = m.screen.info.height;
+    const std::int32_t level = static_cast<std::int32_t>(up->alpha);
+    const std::int32_t px = up->script_x(), py = up->script_y();
+    std::vector<std::int64_t> key = {bg_fx.type, std::int64_t(bg_fx.revision), level, px, py, up->fade, up->opacity, w, h};
+    const auto version_of = [&](std::int32_t id) {
+        const auto v = m.versions.find(static_cast<std::uint32_t>(id));
+        key.push_back(v == m.versions.end() ? 0 : static_cast<std::int64_t>(v->second));
+    };
+    for (std::int32_t id : bg_fx.bmp) version_of(id);
+    version_of(bg_fx.second);
+    for (std::int32_t id : bg_fx.frames) version_of(id);
+    lo->slot = kFxSlot, lo->x = lo->y = 0, lo->priority = 0, lo->blend = 1, lo->alpha = 0, lo->background = true, lo->flip_position = false;
+    lo->through_gray = false, lo->wipe_gray = 0xFFFFFFFFu, lo->progress = 0x100;
+    lo->visible = bg_visible && bg_mode != 0;
+    up->slot = 0xFFFFFFFFu, up->background = true, up->visible = false; // only drives the level and the position
+    if (m.slots.count(kFxSlot) && m.bg_key == key) return {};
+
+    // a picture as pixels, if it is there and is in a format the kernels know; any size unless `screen_sized`
+    auto image = [&](std::int32_t id, bool screen_sized) -> const bgfx::Image* {
+        if (id < 0 || id >= 0x4000) return nullptr;
+        const auto it = m.slots.find(static_cast<std::uint32_t>(id));
+        if (it == m.slots.end()) return nullptr;
+        if (it->second.info.format != SlotFormat::Bgra && it->second.info.format != SlotFormat::Bgrx) return nullptr;
+        if (screen_sized && (it->second.info.width != w || it->second.info.height != h)) return nullptr;
+        auto cached = m.bg_images.find(static_cast<std::uint32_t>(id));
+        if (cached == m.bg_images.end()) {
+            auto px_data = m.download(it->second);
+            if (!px_data) return nullptr;
+            cached = m.bg_images.emplace(static_cast<std::uint32_t>(id), bgfx::Image{it->second.info.width, it->second.info.height, std::move(*px_data)}).first;
+        }
+        return &cached->second;
+    };
+    bgfx::Image out{w, h, std::vector<std::uint32_t>(std::size_t{w} * h, 0xFF000000u)}; // black unless a type draws something
+    const auto colour_second = [&] { return bg_fx.second == 0x7000 || bg_fx.second == 0x7001; };
+    switch (bg_fx.type) {
+    case 2: {
+        const bgfx::Image* first = image(bg_fx.bmp[0], true);
+        const bgfx::Image* second = colour_second() ? nullptr : image(bg_fx.second, true);
+        if (!first || (!colour_second() && !second)) break;
+        // effect 1 (alpha blend): the effective level combines the fade and the opacity (dispobj.c: DispObj_EffectiveLevel)
+        const std::int32_t eff = 0x100 - static_cast<std::int32_t>(((0x100u - std::min(up->fade, 0x100u)) * (0x100u - std::min<std::uint32_t>(std::max(level, 0), 0x100u)) * up->opacity) >> 16);
+        out = colour_second() ? bgfx::toward_colour(*first, bg_fx.second == 0x7001, eff) : bgfx::crossfade(*first, *second, eff);
+        break;
+    }
+    case 3: {
+        std::array<const bgfx::Image*, 4> q{};
+        for (int i = 0; i < 4; ++i) q[i] = image(bg_fx.bmp[i], true);
+        if (!q[0] || !q[1] || !q[2] || !q[3]) break;
+        // setPos moves the origin; a position out of range is ignored (tiled.c: Bg3_SetOrigin)
+        if (px >= 0 && py >= 0 && px <= static_cast<std::int32_t>(w) && py <= static_cast<std::int32_t>(h)) bg_fx.origin_x = px, bg_fx.origin_y = py;
+        out = bgfx::tiled(q, bg_fx.origin_x, bg_fx.origin_y);
+        break;
+    }
+    case 5: {
+        if (level < 0 || static_cast<std::size_t>(level) >= bg_fx.frames.size()) break;
+        if (const bgfx::Image* f = image(bg_fx.frames[static_cast<std::size_t>(level)], true)) out = *f;
+        break;
+    }
+    case 7: {
+        if (const bgfx::Image* src = image(bg_fx.bmp[0], true)) out = bgfx::box_blur(*src, bg_fx.edge, level);
+        break;
+    }
+    case 9: { // stretch.c: Bg9_Render, in the original's order of doubles
+        const bgfx::Image* src = image(bg_fx.bmp[0], false);
+        if (!src) break;
+        const double lv = static_cast<double>(static_cast<std::uint32_t>(level));
+        const double wp = static_cast<double>(static_cast<std::uint32_t>(bg_fx.view_w)) + (static_cast<double>(bg_fx.target_w - bg_fx.view_w) * lv) * 0.00390625;
+        const double hp = static_cast<double>(static_cast<std::uint32_t>(bg_fx.view_h)) + (static_cast<double>(bg_fx.target_h - bg_fx.view_h) * lv) * 0.00390625;
+        if (wp <= 0 || hp <= 0) break;
+        const auto trunc = [](double v) { return static_cast<std::int32_t>(v); };
+        const std::int32_t a = trunc(static_cast<double>(h * 65540u) / hp), b = trunc(static_cast<double>(w * 65540u) / wp);
+        const std::int32_t c = trunc(hp * 65536.0), d = trunc(wp * 65536.0);
+        const std::int32_t y = trunc((static_cast<double>(static_cast<std::int32_t>((static_cast<std::uint32_t>(bg_fx.target_y) << 16) - static_cast<std::uint32_t>(py))) * lv) * 0.00390625 + py);
+        const std::int32_t x = trunc((static_cast<double>(static_cast<std::int32_t>((static_cast<std::uint32_t>(bg_fx.target_x) << 16) - static_cast<std::uint32_t>(px))) * lv) * 0.00390625 + px);
+        out = bgfx::scale2(*src, w, h, x, y, d, c, b, a);
+        break;
+    }
+    case 10: { // zoom.c: Bg10_Render
+        const bgfx::Image* src = image(bg_fx.bmp[0], false);
+        if (!src) break;
+        std::int32_t zoom = bg_fx.scale;
+        if (bg_fx.scale_delta != 0 && level != 0) {
+            const std::int32_t delta = bg_fx.scale_delta, ad = delta < 0 ? static_cast<std::int32_t>(0u - static_cast<std::uint32_t>(delta)) : delta;
+            const double s256 = std::sin(static_cast<double>(static_cast<std::uint32_t>(level)) * 0.006135923151542565) * 256.0;
+            const double q = static_cast<double>(delta) / (static_cast<double>(ad) - ((static_cast<double>(static_cast<std::int32_t>(static_cast<std::uint32_t>(ad) - 65536u)) * s256) * 0.00390625));
+            const double sign = delta < 0 ? 1.0 : -1.0;
+            zoom = static_cast<std::int32_t>(static_cast<double>(static_cast<std::uint32_t>(bg_fx.scale)) + ((((256.0 - s256) * sign) * 0.00390625) + q) * 65536.0);
+        }
+        const std::int32_t angle = bg_fx.angle + static_cast<std::int32_t>((std::int64_t{bg_fx.angle_delta} * static_cast<std::uint32_t>(level)) >> 8);
+        out = bgfx::rotate_centred(*src, w, h, zoom, angle);
+        break;
+    }
+    case 11: { // mosaic.c: Bg11_Render
+        const bgfx::Image* front = image(bg_fx.bmp[0], true);
+        if (!front) break;
+        bgfx::Image dst = out;
+        if (colour_second()) {
+            if (bg_fx.link == 1) std::fill(dst.px.begin(), dst.px.end(), bg_fx.second == 0x7000 ? 0u : 0xFFFFFFu);
+        } else if (bg_fx.link == 1) {
+            if (const bgfx::Image* back = image(bg_fx.second, true)) bgfx::mosaic(dst, *back, 0x100 - level, 0);
+        }
+        bgfx::mosaic(dst, *front, level, bg_fx.link == 1 ? level : 0);
+        out = std::move(dst);
+        break;
+    }
+    default: break;
+    }
+    if (auto r = upload_slot(kFxSlot, w, h, SlotFormat::Bgra, out.px); !r) return r;
+    m.bg_key = key;
+    return {};
+}
+
 Result<void> Display::compose() {
     Impl& m = *impl_;
     if (auto r = m.fill(m.screen, 0); !r) return r;
     resolve_masters();
+    if (auto r = render_background_fx(); !r) return r;
     std::vector<const std::pair<const std::uint32_t, Sprite>*> order;
     // 90:0C: a switch and a transparency for every window, and for what is attached to one
     auto in_window = [this](std::uint32_t id) {
