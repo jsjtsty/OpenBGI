@@ -696,6 +696,49 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
                      std::move(path));
         return 0;
     });
+    // 90:F8-FD: click targets (sysobj/targets.c). F8 clears the list, FA registers a sprite (an error for anything else), FB removes it
+    // (an error when it was not registered), FC answers the index of the newest target whose screen rectangle holds the pointer
+    // (0xFFFFFFFF for none), FD the left-button state sampled on a target by index (an error for an unknown index).
+    if (display) {
+        const auto sprite_handle = [display](Word h) { return (h >> 28) == 8 && display->find_sprite(h) != nullptr; };
+        const auto first_hit = [s, display]() -> std::uint32_t {
+            for (const auto& t : s->targets) {
+                std::int32_t l, tp, r, b;
+                if (display->screen_rect(t.handle, l, tp, r, b) && s->mouse_x >= l && s->mouse_x <= r && s->mouse_y >= tp && s->mouse_y <= b) return t.index;
+            }
+            return 0xFFFFFFFFu;
+        };
+        add(r, 0x90F8, "clear click targets", 0, 0, [s](Ctx&) { s->targets.clear(), s->target_count = 0; return 0; });
+        add(r, 0x90FA, "add click target", 1, 0, [s, sprite_handle](Ctx& c) {
+            const Word h = c.pop();
+            if (!c.ok()) return 0;
+            if (!sprite_handle(h)) { c.fail(Errc::Range, "click target " + std::to_string(h) + " is not a sprite"); return 0; }
+            s->targets.insert(s->targets.begin(), SystemState::ClickTarget{s->target_count++, h, false});
+            return 0;
+        });
+        add(r, 0x90FB, "remove click target", 1, 0, [s](Ctx& c) {
+            const Word h = c.pop();
+            if (!c.ok()) return 0;
+            const auto it = std::find_if(s->targets.begin(), s->targets.end(), [h](const auto& t) { return t.handle == h; });
+            if (it == s->targets.end()) { c.fail(Errc::Range, "click target " + std::to_string(h) + " is not registered"); return 0; }
+            s->targets.erase(it);
+            return 0;
+        });
+        add(r, 0x90FC, "hit click target", 0, 1, [first_hit](Ctx& c) { c.push(first_hit()); return 0; });
+        add(r, 0x90FD, "click target state", 1, 1, [s](Ctx& c) {
+            const Word index = c.pop();
+            if (!c.ok()) return 0;
+            const auto it = std::find_if(s->targets.begin(), s->targets.end(), [index](const auto& t) { return t.index == index; });
+            if (it == s->targets.end()) { c.fail(Errc::Range, "invalid click target number " + std::to_string(index)); return 0; }
+            c.push(it->hit ? 1 : 0);
+            return 0;
+        });
+        // Target_UpdateAll: the left button sampled over each target's layer, here the button held while the pointer is on the first target hit
+        s->per_frame.push_back([s, first_hit](std::int64_t) {
+            const std::uint32_t hit = s->left_down ? first_hit() : 0xFFFFFFFFu;
+            for (auto& t : s->targets) t.hit = t.index == hit;
+        });
+    }
     // 90:24: through a via point on a cubic curve; popped: prio, skip, max skip, fps, duration, level, curve, y, x, via y, via x, object.
     if (display) add(r, 0x9024, "move object through a point", 12, 0, [s, display](Ctx& c) {
         Word a[12];

@@ -575,6 +575,26 @@ Result<void> Display::render_maps() {
     return {};
 }
 
+bool Display::screen_rect(std::uint32_t id, std::int32_t& left, std::int32_t& top, std::int32_t& right, std::int32_t& bottom) {
+    Sprite* sp = find_sprite(id);
+    if (!sp) return false;
+    const auto it = impl_->slots.find(sp->slot);
+    if (it == impl_->slots.end()) return false;
+    std::int64_t w = it->second.info.width, h = it->second.info.height, x = sp->x + sp->off_x + sp->off2_x, y = sp->y + sp->off_y + sp->off2_y;
+    if (sp->projected) {
+        const std::int64_t k = project_scale(sp->depth, sp->no_perspective ? 0 : sp->dist);
+        const auto scaled = [k](std::int64_t v) { return v * k >> 16; };
+        x = std::int64_t{impl_->screen.info.width / 2} + (sp->scale_position ? scaled(sp->x) : sp->x) - scaled(sp->origin_x) + sp->off_x + sp->off2_x;
+        y = std::int64_t{impl_->screen.info.height / 2} + (sp->scale_position ? scaled(sp->y) : sp->y) - scaled(sp->origin_y) + sp->off_y + sp->off2_y;
+        w = std::max<std::int64_t>(1, scaled(w)), h = std::max<std::int64_t>(1, scaled(h));
+    } else if (sp->xform) {
+        x -= std::int64_t{sp->origin_x} * sp->sx >> 16, y -= std::int64_t{sp->origin_y} * sp->sy >> 16;
+        w = std::max<std::int64_t>(1, w * sp->sx >> 16), h = std::max<std::int64_t>(1, h * sp->sy >> 16);
+    }
+    left = static_cast<std::int32_t>(x), top = static_cast<std::int32_t>(y), right = static_cast<std::int32_t>(x + w - 1), bottom = static_cast<std::int32_t>(y + h - 1);
+    return true;
+}
+
 Result<void> Display::compose() {
     Impl& m = *impl_;
     if (auto r = m.fill(m.screen, 0); !r) return r;

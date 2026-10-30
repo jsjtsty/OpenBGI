@@ -44,6 +44,11 @@ struct SystemState {
         std::vector<std::int32_t> quake_amps, quake_wave;    // the amplitude of every cycle, one cycle of the wave (16.16 of the amplitude)
     };
     std::vector<Motion> motions;
+    // 90:F8-FD (sysobj/targets.c): sprites registered as click targets, newest first; each gets the running number of its registration
+    // (never reused until the list is cleared) and the left-button state sampled on it every frame
+    struct ClickTarget { std::uint32_t index = 0, handle = 0; bool hit = false; };
+    std::vector<ClickTarget> targets;
+    std::uint32_t target_count = 0;
     std::uint32_t last_manager_object = 0;
     std::uint32_t rand_seed = 0;           // 80:00
     std::size_t scratch_size = 0;     // 80:70: zeroed buffer of 0x1000 << v bytes; saved in BGI.gdb (first 0x400)

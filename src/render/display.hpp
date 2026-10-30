@@ -176,6 +176,9 @@ class Display {
 
     // Composes the sprites (by priority, then id) into the screen slot, which is returned for reading.
     Result<void> compose();
+    // The screen rectangle (inclusive) a sprite's picture covers, as the compositor draws it (rotations are not followed); false for an
+    // object without a picture (dispobj.c: DispObj_ScreenRect, used by the click targets, 90:FC).
+    bool screen_rect(std::uint32_t id, std::int32_t& left, std::int32_t& top, std::int32_t& right, std::int32_t& bottom);
     // Moves every slave sprite (91:3E) to its master's position plus the stored offset.
     void resolve_masters();
     // compose() and draw the result as one frame of the renderer.
