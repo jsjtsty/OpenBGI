@@ -218,3 +218,48 @@ TEST_CASE("vector maps: created by 90:11, filled by 91:10, read by 90:1A") {
     CHECK(((*px)[1] & 0x00FFFFFF) == 0x00FF0000);
     CHECK(((*px)[2] & 0x00FFFFFF) == 0);          // x + 2 is outside: nothing
 }
+
+TEST_CASE("ripple sprite 90:5B and ripple definitions run through the display") {
+    RendererOptions ro;
+    ro.headless = true;
+    auto renderer = Renderer::create(ro);
+    if (!renderer) return;
+    auto display = Display::create(**renderer);
+    REQUIRE(display.has_value());
+    ArcResourceFinder finder(obgi_test::game_dir());
+    ArcImageSource images(finder);
+    GraphicsHost host{display->get(), &images};
+    SubopRegistry registry;
+    register_core_subops(registry);
+    register_graphics_subops(registry, host);
+    MemProvider provider;
+    Vm vm(provider, registry);
+
+    Asm a;
+    a.i32(1).i32(8).i32(8).i32(1).sub(0x90, 0x11); // slot 1: an 8 x 8 red picture
+    a.i32(1).i32(0x00FF0000).sub(0x90, 0x13);
+    a.i32(3).i32(8).i32(8).i32(6).sub(0x90, 0x11); // slot 3: a vector + distance map
+    a.i32(3).i32(0).sub(0x92, 0x11);                // linear, type 0
+    a.i32(0).i32(1).i32(4).i32(1).i32(8).sub(0x92, 0x00); // ripple 0: period 4 pairs, 8 rings
+    a.i32(1).i32(10).i32(20).i32(1).i32(3).i32(2).i32(0).i32(0x100).i32(0).i32(5).sub(0x90, 0x5B);
+    a.ret();
+    provider.set(a);
+    ThreadConfig cfg;
+    cfg.stack_size = 0x1000;
+    cfg.program_capacity = 0x10000;
+    REQUIRE(vm.spawn(cfg, "x.arc", "main").has_value());
+    auto st = vm.run_frame(0);
+    REQUIRE_MESSAGE(st.has_value(), std::string(st ? "" : st.error().message));
+    REQUIRE((*display)->present().has_value());
+    const Sprite* sp = (*display)->find_sprite(1);
+    REQUIRE(sp != nullptr);
+    CHECK(sp->ripple_map == 3);
+    CHECK(sp->rings == 2);
+    CHECK((*display)->ripples[0].defined);
+    // a bad ripple number or ring count is a script error
+    Asm bad;
+    bad.i32(1).i32(10).i32(20).i32(1).i32(3).i32(0).i32(0).i32(0x100).i32(0).i32(5).sub(0x90, 0x5B).ret();
+    provider.set(bad);
+    REQUIRE(vm.spawn(cfg, "x.arc", "main").has_value());
+    CHECK_FALSE(vm.run_frame(0).has_value());
+}

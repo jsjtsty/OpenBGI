@@ -423,7 +423,8 @@ Result<void> Display::render_background_fx() {
     const std::uint32_t w = m.screen.info.width, h = m.screen.info.height;
     const std::int32_t level = static_cast<std::int32_t>(up->alpha);
     const std::int32_t px = up->script_x(), py = up->script_y();
-    std::vector<std::int64_t> key = {bg_fx.type, std::int64_t(bg_fx.revision), level, px, py, up->fade, up->opacity, w, h};
+    std::vector<std::int64_t> key = {bg_fx.type, std::int64_t(bg_fx.revision), level, px, py, up->fade, up->opacity, w, h,
+                                     std::int64_t(vecmap_epoch), bg_fx.amount, bg_fx.rings, bg_fx.ripple_no, bg_fx.selector};
     const auto version_of = [&](std::int32_t id) {
         const auto v = m.versions.find(static_cast<std::uint32_t>(id));
         key.push_back(v == m.versions.end() ? 0 : static_cast<std::int64_t>(v->second));
@@ -478,8 +479,33 @@ Result<void> Display::render_background_fx() {
         if (const bgfx::Image* f = image(bg_fx.frames[static_cast<std::size_t>(level)], true)) out = *f;
         break;
     }
+    case 6: { // displace.c: Bg6_Render, the picture through one vector map or the mix of two by the effective level
+        const bgfx::Image* src = image(bg_fx.bmp[0], true);
+        const auto v1 = vecmaps.find(static_cast<std::uint32_t>(bg_fx.bmp[1]));
+        if (!src || v1 == vecmaps.end()) break;
+        const vecmap::Map* v2 = nullptr;
+        if (bg_fx.bmp[2] != -1) {
+            const auto it = vecmaps.find(static_cast<std::uint32_t>(bg_fx.bmp[2]));
+            if (it == vecmaps.end()) break;
+            v2 = &it->second;
+        }
+        const std::int32_t eff = 0x100 - static_cast<std::int32_t>(((0x100u - std::min(up->fade, 0x100u)) * (0x100u - std::min<std::uint32_t>(std::max(level, 0), 0x100u)) * up->opacity) >> 16);
+        bgfx::Image shifted;
+        if (vecmap::displace(shifted, *src, v1->second, v2, eff, bg_fx.amount) == 0) out = std::move(shifted);
+        break;
+    }
     case 7: {
         if (const bgfx::Image* src = image(bg_fx.bmp[0], true)) out = bgfx::box_blur(*src, bg_fx.edge, level);
+        break;
+    }
+    case 8: { // ripple.c: Bg8_Render, the picture through the vector + distance map and the ring table filled for the level (the amplitude)
+        const bgfx::Image* src = image(bg_fx.bmp[0], true);
+        const auto vd = vecmaps.find(static_cast<std::uint32_t>(bg_fx.bmp[1]));
+        if (!src || vd == vecmaps.end()) break;
+        std::vector<std::uint32_t> table;
+        if (vecmap::ripple_fill(ripples, table, bg_fx.ripple_no, bg_fx.selector, level, bg_fx.rings) != 0) break;
+        bgfx::Image rippled;
+        if (vecmap::ripple_blit(rippled, *src, vd->second, table) == 0) out = std::move(rippled);
         break;
     }
     case 9: { // stretch.c: Bg9_Render, in the original's order of doubles
@@ -749,6 +775,26 @@ Result<void> Display::compose() {
             const auto v = m.versions.find(id);
             return v == m.versions.end() ? std::int64_t{0} : static_cast<std::int64_t>(v->second);
         };
+        // sprite.c mode 4: the picture read through the ripple's vector + distance map and ring table (Blit_RippleLevel) into a temporary slot
+        if (sp.ripple_map != -1 && draw_id == sp.slot) {
+            const auto s0 = m.slots.find(sp.slot);
+            const auto vd = vecmaps.find(static_cast<std::uint32_t>(sp.ripple_map));
+            if (s0 != m.slots.end() && vd != vecmaps.end() && (s0->second.info.format == SlotFormat::Bgra || s0->second.info.format == SlotFormat::Bgrx)) {
+                Impl::TempCache& rc = m.mixes[kv->first | 0x80000000u];
+                const std::uint32_t tmp_id = 0x7F800000u | (kv->first & 0xFFFFFu);
+                const std::vector<std::int64_t> key = {sp.slot, sp.ripple_map, sp.rings, sp.ripple_no, sp.ripple_sel, sp.alpha, std::int64_t(vecmap_epoch), version_of(sp.slot)};
+                if (!m.slots.count(tmp_id) || rc.key != key) {
+                    std::vector<std::uint32_t> table;
+                    auto px_data = m.download(s0->second);
+                    bgfx::Image rippled;
+                    if (px_data && vecmap::ripple_fill(ripples, table, sp.ripple_no, sp.ripple_sel, static_cast<std::int32_t>(sp.alpha), sp.rings) == 0 &&
+                        vecmap::ripple_blit(rippled, bgfx::Image{s0->second.info.width, s0->second.info.height, std::move(*px_data)}, vd->second, table) == 0 &&
+                        upload_slot(tmp_id, rippled.w, rippled.h, s0->second.info.format, rippled.px))
+                        rc.key = key;
+                }
+                if (m.slots.count(tmp_id) && rc.key == key) draw_id = tmp_id;
+            }
+        }
         // sprite.c modes 1 and 5: a second picture is cross-faded in first (Blit_CrossfadeTo)
         if (sp.slot2 != 0xFFFFFFFFu && sp.mix_ratio > 0 && draw_id == sp.slot) {
             const auto a0 = m.slots.find(sp.slot), b0 = m.slots.find(sp.slot2);
@@ -862,6 +908,7 @@ Result<void> Display::compose() {
             else if ((sp.blend >= 2 && sp.blend <= 4) || sp.blend == 0xC0 || sp.blend == 0xC1)
                 alpha = ((0x100u - sp.fade) * alpha * sp.opacity) >> 16;
         }
+        if (sp.ripple_map != -1) alpha = std::min(sp.fade, 0x100u); // Blit_RippleLevel draws with the fade as its level, the amplitude is the level
         if (windows_level && sp.blend == 1 && window_parts.count(kv->first))
             alpha = 0x100u - (((0x100u - std::min(alpha, 0x100u)) * (0x100u - std::min(windows_level, 0x100u))) >> 8);
         if (auto r = m.do_blit(m.screen, blit_x, blit_y, it->second, 0, 0, it->second.info.width, it->second.info.height, sp.blend,

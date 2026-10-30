@@ -86,6 +86,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
             c.fail(Errc::Range, "bad image format " + std::to_string(format));
             return 0;
         }
+        ++d.vecmap_epoch;
         if (format > 3) {
             (void)d.free_slot(slot);
             d.vecmaps[slot] = vecmap::Map(static_cast<vecmap::Mode>(format), w, h);
@@ -252,17 +253,6 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         bg_picture(kBgUpper, -1, 0, 0, 0, false);
         return 0;
     });
-    // 90:47 (bmp, vector map, rings, ripple, level): the picture under ripples; the ripple is not drawn, the picture is
-    add(r, 0x9047, "background ripple", 5, 0, [bg, bg_picture, &d](Ctx& c) {
-        c.pop(), c.pop(), c.pop(), c.pop();
-        const auto bmp = static_cast<std::int32_t>(c.pop());
-        if (!c.ok()) return 0;
-        bg->type = 8;
-        d.bg_fx = {};
-        bg_picture(kBgLower, bmp, 0, 0, 0, bg->visible);
-        bg_picture(kBgUpper, -1, 0, 0, 0, false);
-        return 0;
-    });
     // 90:4A (front, back, style, level, link): type 11, the mosaic transition from front to back (a picture, black or white)
     add(r, 0x904A, "background flip", 5, 0, [=, &d](Ctx& c) {
         const Word link = c.pop(), level = c.pop(), style = c.pop();
@@ -313,6 +303,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         Word slot = c.pop();
         if (!c.ok()) return 0;
         if (std::getenv("OBGI_SLOTS")) std::fprintf(stderr, "90:12 free slot %u\n", slot);
+        ++d.vecmap_epoch;
         const bool freed = static_cast<bool>(d.free_slot(slot)) || d.vecmaps.erase(slot) != 0;
         if (freed) (*base_sizes)[slot] = {-1, -1}; // bmpmgr.c: BmpMgr_FreeSlot marks the base size -1
         c.push(freed ? 1 : 0); // verified in the real game: 1 freed, 0 no such slot
@@ -612,7 +603,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         }
         Sprite& s = d.sprite(id);
         s.slot = slot, s.x = x, s.y = y, s.blend = blend, s.alpha = alpha, s.priority = priority;
-        s.projected = false, s.xform = false, s.slot2 = 0xFFFFFFFFu, s.mix_ratio = 0, s.level_route = -1;
+        s.projected = false, s.xform = false, s.slot2 = 0xFFFFFFFFu, s.mix_ratio = 0, s.level_route = -1, s.ripple_map = -1;
         return 0;
     });
     // 90:58 (object, x, y, bmp1, bmp2, mix ratio, level, priority, level route): two pictures of the same size cross-faded by the mix ratio
@@ -633,7 +624,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         if (i1->width != i2->width || i1->height != i2->height || i1->format != i2->format) return 0;
         s.slot = static_cast<Word>(bmp1), s.slot2 = static_cast<Word>(bmp2), s.mix_ratio = mix, s.level_route = route;
         s.x = x, s.y = y, s.blend = 1, s.alpha = level, s.priority = priority;
-        s.projected = false, s.xform = false;
+        s.projected = false, s.xform = false, s.ripple_map = -1;
         return 0;
     });
     // 90:59 (object, x, y, bmp, ox, oy, angle, sx, sy, smooth, effect, level, priority): one picture rotated by `angle` (16.16 degrees) and scaled by
@@ -652,7 +643,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         if (!d.slot(bmp)) { c.fail(Errc::Range, "no image slot " + std::to_string(bmp)); return 0; }
         if (sx <= 0 || sy <= 0) { c.fail(Errc::Range, "invalid scale " + std::to_string(sx) + "," + std::to_string(sy)); return 0; }
         s.slot = bmp, s.slot2 = 0xFFFFFFFFu, s.mix_ratio = 0, s.level_route = -1;
-        s.projected = false, s.xform = true;
+        s.projected = false, s.xform = true, s.ripple_map = -1;
         s.origin_x = ox, s.origin_y = oy, s.angle = angle, s.sx = sx, s.sy = sy, s.smooth = smooth != 0;
         return 0;
     });
@@ -670,7 +661,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         if (!d.slot(slot)) { c.fail(Errc::Range, "no image slot " + std::to_string(slot)); return 0; }
         Sprite& s = d.sprite(id);
         s.slot = slot, s.x = x, s.y = y, s.blend = effect, s.alpha = level, s.priority = priority;
-        s.projected = false, s.xform = false, s.slot2 = 0xFFFFFFFFu, s.mix_ratio = 0, s.level_route = -1;
+        s.projected = false, s.xform = false, s.slot2 = 0xFFFFFFFFu, s.mix_ratio = 0, s.level_route = -1, s.ripple_map = -1;
         const SlotInfo* gi = d.slot(gray);
         s.wipe_gray = gi && gi->format == SlotFormat::Gray8 ? gray : 0xFFFFFFFFu; // no pattern: shown whole
         s.wipe_mode = wipe_mode;
@@ -715,7 +706,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         // route of the previous mode, priority), then sets the mode, which may still refuse the pictures
         // the script's position stays relative to the centre (90:29 paths and 90:28 tweens are in that space); the compositor
         // projects it
-        s->projected = true, s->xform = false;
+        s->projected = true, s->xform = false, s->ripple_map = -1;
         s->x = static_cast<std::int32_t>(v[15]) >> 16;
         s->y = static_cast<std::int32_t>(v[14]) >> 16;
         s->depth = static_cast<std::int32_t>(v[13]);
@@ -924,6 +915,26 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
                 else d.bg_fx.scale = static_cast<std::int32_t>(a), d.bg_fx.angle = static_cast<std::int32_t>(b), d.bg_fx.scale_delta = d.bg_fx.angle_delta = 0, ++d.bg_fx.revision;
             }
             break;
+        case 0x100: // type 8 (ripple.c: Bg8_SelectRipple): the ripple's phase selector a and a new level b (above 0x100 keeps the current one)
+            if (id == 0 && d.bg_fx.type == 8) {
+                bool ok = false;
+                if (vecmap::ripple_check(d.ripples, ok, d.bg_fx.ripple_no, static_cast<std::int32_t>(a), d.bg_fx.rings) != 0 || !ok) {
+                    c.fail(Errc::Range, "ripple phase " + std::to_string(static_cast<std::int32_t>(a)) + " is not available");
+                } else {
+                    d.bg_fx.selector = static_cast<std::int32_t>(a);
+                    if (b <= 0x100) s->set_level(b);
+                    ++d.bg_fx.revision;
+                }
+            } else if (s->ripple_map != -1) { // sprite.c: Sprite_SelectRipple, the same for the ripple sprite (90:5B)
+                bool ok = false;
+                if (vecmap::ripple_check(d.ripples, ok, s->ripple_no, static_cast<std::int32_t>(a), s->rings) != 0 || !ok) {
+                    c.fail(Errc::Range, "ripple phase " + std::to_string(static_cast<std::int32_t>(a)) + " is not available");
+                } else {
+                    s->ripple_sel = static_cast<std::int32_t>(a);
+                    if (b <= 0x100) s->set_level(b);
+                }
+            }
+            break;
         case 0x102:
             if (id == 0 && d.bg_fx.type == 9) {
                 if ((b & 0xffff) < 2 || (b >> 16) < 2) c.fail(Errc::Range, "invalid view size");
@@ -1074,6 +1085,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
                 c.fail(Errc::Range, std::string(name) + ": " + (exists(a[0]) ? "bitmap " + std::to_string(a[0]) + " is not a vector map" : "destination bitmap " + std::to_string(a[0]) + " does not exist"));
                 return 0;
             }
+            ++d.vecmap_epoch;
             if (const int rc = run(*m, a + 1); rc != 0) c.fail(Errc::Range, std::string(name) + ": bitmap " + std::to_string(a[0]) + " " + vec_code_text(rc));
             return 0;
         });
@@ -1094,6 +1106,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         const auto rings = static_cast<std::int32_t>(c.pop()), count = static_cast<std::int32_t>(c.pop()), amp = static_cast<std::int32_t>(c.pop());
         const auto period = static_cast<std::int32_t>(c.pop()), no = static_cast<std::int32_t>(c.pop());
         if (!c.ok()) return 0;
+        ++d.vecmap_epoch;
         if (vecmap::define_ripple(d.ripples, no, period, amp, count, rings) != 0) c.fail(Errc::Range, "invalid ripple number " + std::to_string(no));
         return 0;
     });
@@ -1102,7 +1115,75 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         const auto fade_out = static_cast<std::int32_t>(c.pop()), fade_in = static_cast<std::int32_t>(c.pop());
         const auto amp = static_cast<std::int32_t>(c.pop()), period = static_cast<std::int32_t>(c.pop()), no = static_cast<std::int32_t>(c.pop());
         if (!c.ok()) return 0;
+        ++d.vecmap_epoch;
         if (vecmap::define_ripple_ex(d.ripples, no, period, amp, fade_in, fade_out, count, rings) != 0) c.fail(Errc::Range, "invalid ripple number " + std::to_string(no));
+        return 0;
+    });
+    // 90:5B (object, x, y, bmp, map, rings, ripple, level, fade, priority): the picture read through the vector + distance map of its own size
+    // and the ripple definition `ripple` (92:00) with `rings` rings; the level is the amplitude (a later level change moves it), the fade the
+    // transparency it is drawn with (sprite.c: Sprite_SetRippleEx; the effect is forced to 1)
+    add(r, 0x905B, "set ripple sprite", 10, 0, [=, &d](Ctx& c) {
+        const Word priority = c.pop(), fade = c.pop();
+        const auto level = static_cast<std::int32_t>(c.pop()), ripple = static_cast<std::int32_t>(c.pop()), rings = static_cast<std::int32_t>(c.pop());
+        const auto map = static_cast<std::int32_t>(c.pop()), bmp = static_cast<std::int32_t>(c.pop());
+        const auto y = static_cast<std::int32_t>(c.pop()), x = static_cast<std::int32_t>(c.pop());
+        const Word id = c.pop();
+        if (!c.ok()) return 0;
+        if (!slot_ok(c, static_cast<Word>(bmp)) || !slot_ok(c, static_cast<Word>(map))) return 0;
+        if (fade > 0x100 || priority > 0xffff) { c.fail(Errc::Range, "ripple sprite parameter out of range"); return 0; }
+        const SlotInfo* bi = exists(bmp) ? d.slot(static_cast<Word>(bmp)) : nullptr;
+        if (!bi) { c.fail(Errc::Range, "invalid bitmap " + std::to_string(bmp)); return 0; }
+        if (bi->width == 0 || bi->height == 0) { c.fail(Errc::Range, "bitmap " + std::to_string(bmp) + " is empty"); return 0; }
+        const vecmap::Map* vd = find_vec(map);
+        if (!vd && !exists(map)) { c.fail(Errc::Range, "invalid vector + distance map " + std::to_string(map)); return 0; }
+        if (!vd || vd->mode != vecmap::Mode::VecDist || vd->w != bi->width || vd->h != bi->height) { c.fail(Errc::Range, "vector + distance map " + std::to_string(map) + " does not fit bitmap " + std::to_string(bmp)); return 0; }
+        if (rings == 0) { c.fail(Errc::Range, "invalid maximum distance 0"); return 0; }
+        bool ok = false;
+        if (vecmap::ripple_check(d.ripples, ok, ripple, 0, rings) != 0) { c.fail(Errc::Range, "ripple " + std::to_string(ripple) + " is not registered"); return 0; }
+        if (!ok) { c.fail(Errc::Range, "ripple " + std::to_string(ripple) + " does not fit the map " + std::to_string(map)); return 0; }
+        Sprite& s = d.sprite(id);
+        s.slot = static_cast<Word>(bmp), s.slot2 = 0xFFFFFFFFu, s.mix_ratio = 0, s.level_route = -1, s.projected = false, s.xform = false;
+        s.ripple_map = map, s.rings = rings, s.ripple_no = ripple, s.ripple_sel = 0;
+        s.alpha = static_cast<Word>(level);
+        s.x = x, s.y = y, s.blend = 1, s.fade = fade, s.priority = priority;
+        return 0;
+    });
+    // 90:45 (bmp, vec1, vec2, level, amount): type 6, a screen-sized picture displaced by one vector map, or two (vec2 -1 = none) mixed by the level
+    const auto screen_map = [&d, find_vec](std::int32_t id, vecmap::Mode mode) {
+        const vecmap::Map* m = find_vec(id);
+        return m && m->mode == mode && m->w == d.screen_width() && m->h == d.screen_height();
+    };
+    add(r, 0x9045, "background displace", 5, 0, [=, &d](Ctx& c) {
+        const auto amount = static_cast<std::int32_t>(c.pop());
+        const Word level = c.pop();
+        const auto vec2 = static_cast<std::int32_t>(c.pop()), vec1 = static_cast<std::int32_t>(c.pop()), bmp = static_cast<std::int32_t>(c.pop());
+        if (!c.ok()) return 0;
+        if (level > 0x100) { c.fail(Errc::Range, "alpha out of range"); return 0; }
+        fx_select(6, 0);
+        if (!bg_usable(bmp, false)) { c.fail(Errc::Range, "background bitmap " + std::to_string(bmp) + " is unusable"); return 0; }
+        if (!screen_map(vec1, vecmap::Mode::Vector)) { c.fail(Errc::Range, "vector map " + std::to_string(vec1) + " is missing or not screen sized"); return 0; }
+        if (vec2 != -1 && !screen_map(vec2, vecmap::Mode::Vector)) { c.fail(Errc::Range, "vector map " + std::to_string(vec2) + " is missing or not screen sized"); return 0; }
+        d.bg_fx.bmp[0] = bmp, d.bg_fx.bmp[1] = vec1, d.bg_fx.bmp[2] = vec2, d.bg_fx.amount = amount;
+        d.sprite(kBgUpper).alpha = level;
+        return 0;
+    });
+    // 90:47 (bmp, map, rings, ripple, level): type 8, the picture under the ripples of definition `ripple` (92:00) with `rings` rings, read
+    // through the screen-sized vector + distance map; the level is the amplitude
+    add(r, 0x9047, "background ripple", 5, 0, [=, &d](Ctx& c) {
+        const Word level = c.pop();
+        const auto ripple = static_cast<std::int32_t>(c.pop()), rings = static_cast<std::int32_t>(c.pop());
+        const auto map = static_cast<std::int32_t>(c.pop()), bmp = static_cast<std::int32_t>(c.pop());
+        if (!c.ok()) return 0;
+        if (level > 0x100) { c.fail(Errc::Range, "alpha out of range"); return 0; }
+        fx_select(8, 0);
+        if (!bg_usable(bmp, false)) { c.fail(Errc::Range, "background bitmap " + std::to_string(bmp) + " is unusable"); return 0; }
+        if (!screen_map(map, vecmap::Mode::VecDist)) { c.fail(Errc::Range, "vector + distance map " + std::to_string(map) + " is missing or not screen sized"); return 0; }
+        if (rings == 0) { c.fail(Errc::Range, "invalid maximum distance 0"); return 0; }
+        bool ok = false;
+        if (vecmap::ripple_check(d.ripples, ok, ripple, 0, rings) != 0) { c.fail(Errc::Range, "ripple " + std::to_string(ripple) + " is not registered"); return 0; }
+        if (!ok) { c.fail(Errc::Range, "ripple " + std::to_string(ripple) + " does not fit the map " + std::to_string(map)); return 0; }
+        d.bg_fx.bmp[0] = bmp, d.bg_fx.bmp[1] = map, d.bg_fx.rings = rings, d.bg_fx.ripple_no = ripple, d.bg_fx.selector = 0;
+        d.sprite(kBgUpper).alpha = level;
         return 0;
     });
     // 90:1A (dst, src, vec1, vec2, level, amount): src read through the vector map vec1, or the mix of vec1 and vec2 (-1 = none) by level / 256

@@ -74,6 +74,9 @@ struct Sprite {
     // The transform mode (90:59): scaled by (sx, sy) and rotated by `angle` about the origin (origin_x, origin_y) of the picture, which
     // lands on the position; projected planes use the same angle with the scale of their depth.
     bool xform = false, smooth = false;
+    // The ripple mode (90:5B, sprite.c mode 4): the picture read through the vector + distance map `ripple_map` (-1 = not a ripple) and the
+    // ring table of ripple definition `ripple_no` from phase `ripple_sel`; the level is the amplitude, the fade the only transparency.
+    std::int32_t ripple_map = -1, rings = 0, ripple_no = 0, ripple_sel = 0;
     std::int32_t angle = 0, sx = 0x10000, sy = 0x10000;
     // 90:38 parameters the reference's DispObj_SetParam keeps (dispobj.c): 0x8001 no perspective scaling, 0x8000 snap to whole
     // pixels (with the snap mode), 0xC0 pass 90:31 on to the children, 0xC4 follow the 91:06 offset, 0xC5 a stored switch, 0x8101 the
@@ -156,7 +159,10 @@ class Display {
         std::int32_t view_w = 0, view_h = 0, target_x = 0, target_y = 0, target_w = 0, target_h = 0; // type 9
         std::int32_t scale = 0x10000, angle = 0, scale_delta = 0, angle_delta = 0;                    // type 10
         std::int32_t style = 0, link = 0;                        // type 11
+        std::int32_t amount = 0;                                 // type 6: non-zero samples bilinearly (bmp[1], bmp[2] are the vector maps, -1 = none)
+        std::int32_t rings = 0, ripple_no = 0, selector = 0;     // type 8: bmp[1] is the vector + distance map; the level is the amplitude
     } bg_fx;
+    std::uint64_t vecmap_epoch = 0; // bumped whenever a vector map or a ripple definition changes, so the pictures made from them redraw
     // A scrolling tile map (90:70-7A, map.c): a window of cols x rows tiles of chip_w x chip_h pixels onto a terrain of 16-bit tile
     // numbers (0xFFFF = empty), the tiles being cut row by row from the chipset picture. compose() renders the window on the CPU
     // into a temporary slot that the map's sprite (handle 0xA0000000 | index) shows.
