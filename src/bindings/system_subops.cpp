@@ -880,7 +880,7 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     add(r, 0x90F2, "movie playing", 0, 1, [](Ctx& c) { c.push(0); return 0; });
     // 91:10..1E (except 91:1C): bitmap effects (stretch, vector graphics, bend, blend by degree, transforms); the pop counts are
     // known, the effects are not drawn yet
-    for (auto [id, n] : {std::pair{0x9110, 5}, {0x9111, 2}, {0x9112, 6}, {0x9113, 5}, {0x9114, 5}, {0x9115, 5}, {0x9116, 7}, {0x9117, 6},
+    for (auto [id, n] : {std::pair{0x9117, 6},
                          {0x9118, 11}, {0x9119, 11}, {0x911A, 3}, {0x911B, 5}, {0x911D, 5}, {0x911E, 4}})
         add(r, static_cast<std::uint16_t>(id), "bitmap effect (not drawn)", n, 0, [n](Ctx& c) { for (int i = 0; i < n; ++i) c.pop(); return 0; });
     // 80:16 (no arguments): resets the original's key state tables; our input is edge counted, nothing to reset

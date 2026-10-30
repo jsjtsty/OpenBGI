@@ -177,3 +177,44 @@ TEST_CASE("tile maps show the tiles of their terrain and leave empty cells clear
     CHECK((*screen)[25 * 800 + 15] == 0x00FF0000u); // inside the first tile
     CHECK((*screen)[25 * 800 + 35] != 0x00FF0000u); // the second cell is empty
 }
+
+TEST_CASE("vector maps: created by 90:11, filled by 91:10, read by 90:1A") {
+    RendererOptions ro;
+    ro.headless = true;
+    auto renderer = Renderer::create(ro);
+    if (!renderer) return;
+    auto display = Display::create(**renderer);
+    REQUIRE(display.has_value());
+    ArcResourceFinder finder(obgi_test::game_dir());
+    ArcImageSource images(finder);
+    GraphicsHost host{display->get(), &images};
+    SubopRegistry registry;
+    register_core_subops(registry);
+    register_graphics_subops(registry, host);
+    MemProvider provider;
+    Vm vm(provider, registry);
+
+    Asm a;
+    a.i32(1).i32(4).i32(4).i32(1).sub(0x90, 0x11);  // slot 1: 4 x 4 picture, red
+    a.i32(1).i32(0x00FF0000).sub(0x90, 0x13);
+    a.i32(2).i32(4).i32(4).i32(1).sub(0x90, 0x11);  // slot 2: the result
+    a.i32(3).i32(4).i32(4).i32(4).sub(0x90, 0x11);  // slot 3: a vector map (mode 4)
+    a.i32(3).i32(2).i32(0).i32(4).i32(4).sub(0x91, 0x10); // the rectangle starting at x = 2: every vector (2, 0) pixels
+    a.i32(2).i32(1).i32(3).i32(0xFFFFFFFFu).i32(0x100).i32(0).sub(0x90, 0x1A);
+    a.ret();
+    provider.set(a);
+    ThreadConfig cfg;
+    cfg.stack_size = 0x1000;
+    cfg.program_capacity = 0x10000;
+    REQUIRE(vm.spawn(cfg, "x.arc", "main").has_value());
+    auto st = vm.run_frame(0);
+    REQUIRE_MESSAGE(st.has_value(), std::string(st ? "" : st.error().message));
+    auto map = (*display)->vecmaps.find(3);
+    REQUIRE(map != (*display)->vecmaps.end());
+    CHECK(map->second.px[0] == 32);
+    auto px = (*display)->read_slot(2);
+    REQUIRE(px.has_value());
+    CHECK(((*px)[0] & 0x00FFFFFF) == 0x00FF0000); // x + 2 is inside the picture
+    CHECK(((*px)[1] & 0x00FFFFFF) == 0x00FF0000);
+    CHECK(((*px)[2] & 0x00FFFFFF) == 0);          // x + 2 is outside: nothing
+}

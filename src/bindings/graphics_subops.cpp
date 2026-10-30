@@ -68,6 +68,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         Word slot = c.pop();
         if (!c.ok() || !slot_ok(c, slot)) return 0;
         if (std::getenv("OBGI_SLOTS")) std::fprintf(stderr, "90:10 slot %u <- %s/%s\n", slot, prefix.c_str(), name.c_str());
+        d.vecmaps.erase(slot);
         auto img = host.images->load(prefix, name);
         if (!img) {
             c.fail(img.error().code, "\"" + prefix + "/" + name + "\": " + img.error().message);
@@ -77,13 +78,20 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         if (img->has_base) (*base_sizes)[slot] = {static_cast<std::int32_t>(img->base_width), static_cast<std::int32_t>(img->base_height)};
         return 0; // the original may go asynchronous (rc 2); loading here is always synchronous
     });
+    // modes 4-6 (vector, height, vector + distance) are the vector-map bitmaps, kept by Display::vecmaps under the slot number
     add(r, 0x9011, "create image", 4, 0, [&d](Ctx& c) {
         Word format = c.pop(), h = c.pop(), w = c.pop(), slot = c.pop();
         if (!c.ok() || !slot_ok(c, slot)) return 0;
-        if (format > 3) {
+        if (format > 6) {
             c.fail(Errc::Range, "bad image format " + std::to_string(format));
             return 0;
         }
+        if (format > 3) {
+            (void)d.free_slot(slot);
+            d.vecmaps[slot] = vecmap::Map(static_cast<vecmap::Mode>(format), w, h);
+            return 0;
+        }
+        d.vecmaps.erase(slot);
         check(c, d.create_slot(slot, w, h, static_cast<SlotFormat>(format)));
         return 0;
     });
@@ -305,7 +313,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         Word slot = c.pop();
         if (!c.ok()) return 0;
         if (std::getenv("OBGI_SLOTS")) std::fprintf(stderr, "90:12 free slot %u\n", slot);
-        const bool freed = static_cast<bool>(d.free_slot(slot));
+        const bool freed = static_cast<bool>(d.free_slot(slot)) || d.vecmaps.erase(slot) != 0;
         if (freed) (*base_sizes)[slot] = {-1, -1}; // bmpmgr.c: BmpMgr_FreeSlot marks the base size -1
         c.push(freed ? 1 : 0); // verified in the real game: 1 freed, 0 no such slot
         return 0;
@@ -1034,6 +1042,91 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
                 out[std::size_t{y} * ow + x] = px;
             }
         check(c, d.upload_slot(static_cast<Word>(dst), ow, oh, si.format, out));
+        return 0;
+    });
+    // ---- vector maps (gfx/vecmaps.c, bmpmgr.c): 91:10-16 and 92:10/11 fill a vector or vector + distance map, 92:00/01 define the
+    // ripples, 90:1A reads a picture through vector maps ----
+    const auto find_vec = [&d](std::int32_t id) -> vecmap::Map* {
+        const auto it = d.vecmaps.find(static_cast<Word>(id));
+        return it == d.vecmaps.end() ? nullptr : &it->second;
+    };
+    const auto vec_code_text = [](int rc) -> const char* {
+        switch (static_cast<std::uint32_t>(rc)) {
+        case 0x80000003: return "is not a map of the mode this instruction fills";
+        case 0x80000004: return "has the wrong height field size";
+        case 0x80000005: return "gets an empty stretch range";
+        case 0x80000006: return "gets a zero ripple period";
+        case 0x80000008: return "gets a zero angle or radius";
+        case 0x80000009: return "gets an unknown ripple type";
+        case 0x8000000A: return "gets an unknown wipe type";
+        default: return "failed";
+        }
+    };
+    // the generators: pops `pops` values (the first pushed is the slot), runs the kernel on the slot's map, reports its code as a script error
+    const auto vec_rand = std::make_shared<std::uint32_t>(0x2545F491u);
+    const auto add_gen = [=, &r, &d](std::uint16_t id, const char* name, int pops, std::function<int(vecmap::Map&, const std::int32_t*)> run) {
+        add(r, id, name, pops, 0, [=, &d](Ctx& c) {
+            std::int32_t a[8] = {};
+            for (int i = pops - 1; i >= 0; --i) a[i] = static_cast<std::int32_t>(c.pop());
+            if (!c.ok()) return 0;
+            vecmap::Map* m = find_vec(a[0]);
+            if (!m) {
+                c.fail(Errc::Range, std::string(name) + ": " + (exists(a[0]) ? "bitmap " + std::to_string(a[0]) + " is not a vector map" : "destination bitmap " + std::to_string(a[0]) + " does not exist"));
+                return 0;
+            }
+            if (const int rc = run(*m, a + 1); rc != 0) c.fail(Errc::Range, std::string(name) + ": bitmap " + std::to_string(a[0]) + " " + vec_code_text(rc));
+            return 0;
+        });
+    };
+    add_gen(0x9110, "vector map: stretch range", 5, [](vecmap::Map& m, const std::int32_t* a) { return vecmap::stretch_range(m, a[0], a[1], a[2], a[3]); });
+    add_gen(0x9111, "vector map: random", 2, [vec_rand](vecmap::Map& m, const std::int32_t* a) {
+        return vecmap::random(m, a[0], [vec_rand] { *vec_rand = *vec_rand * 214013u + 2531011u; return (*vec_rand >> 16) & 0x7FFFu; });
+    });
+    add_gen(0x9112, "vector map: ripple", 6, [](vecmap::Map& m, const std::int32_t* a) { return vecmap::ripple(m, a[0], a[1], a[2], a[3], a[4]); });
+    add_gen(0x9113, "vector map: polar", 5, [](vecmap::Map& m, const std::int32_t* a) { return vecmap::polar(m, a[0], a[1], a[2], a[3]); });
+    add_gen(0x9114, "vector map: bend by angle", 5, [](vecmap::Map& m, const std::int32_t* a) { return vecmap::bend_angle(m, a[0], a[1], a[2], a[3]); });
+    add_gen(0x9115, "vector map: bend", 5, [](vecmap::Map& m, const std::int32_t* a) { return vecmap::bend(m, a[0], a[1], a[2], a[3]); });
+    add_gen(0x9116, "vector map: sine", 7, [](vecmap::Map& m, const std::int32_t* a) { return vecmap::sine(m, a[0], a[1], a[2], a[3], a[4], a[5]); });
+    add_gen(0x9210, "vector + distance map: radial", 5, [](vecmap::Map& m, const std::int32_t* a) { return vecmap::radial(m, a[0], a[1], a[2], a[3]); });
+    add_gen(0x9211, "vector + distance map: linear", 2, [](vecmap::Map& m, const std::int32_t* a) { return vecmap::linear(m, a[0]); });
+    // 92:00 (no, period, amplitude, count, rings) and 92:01 (no, period, amplitude, fadeIn, fadeOut, count, rings): a ripple definition, numbers 0-7
+    add(r, 0x9200, "define ripple", 5, 0, [&d](Ctx& c) {
+        const auto rings = static_cast<std::int32_t>(c.pop()), count = static_cast<std::int32_t>(c.pop()), amp = static_cast<std::int32_t>(c.pop());
+        const auto period = static_cast<std::int32_t>(c.pop()), no = static_cast<std::int32_t>(c.pop());
+        if (!c.ok()) return 0;
+        if (vecmap::define_ripple(d.ripples, no, period, amp, count, rings) != 0) c.fail(Errc::Range, "invalid ripple number " + std::to_string(no));
+        return 0;
+    });
+    add(r, 0x9201, "define ripple with fades", 7, 0, [&d](Ctx& c) {
+        const auto rings = static_cast<std::int32_t>(c.pop()), count = static_cast<std::int32_t>(c.pop());
+        const auto fade_out = static_cast<std::int32_t>(c.pop()), fade_in = static_cast<std::int32_t>(c.pop());
+        const auto amp = static_cast<std::int32_t>(c.pop()), period = static_cast<std::int32_t>(c.pop()), no = static_cast<std::int32_t>(c.pop());
+        if (!c.ok()) return 0;
+        if (vecmap::define_ripple_ex(d.ripples, no, period, amp, fade_in, fade_out, count, rings) != 0) c.fail(Errc::Range, "invalid ripple number " + std::to_string(no));
+        return 0;
+    });
+    // 90:1A (dst, src, vec1, vec2, level, amount): src read through the vector map vec1, or the mix of vec1 and vec2 (-1 = none) by level / 256
+    add(r, 0x901A, "displace image", 6, 0, [=, &d](Ctx& c) {
+        const auto amount = static_cast<std::int32_t>(c.pop()), level = static_cast<std::int32_t>(c.pop());
+        const auto vec2 = static_cast<std::int32_t>(c.pop()), vec1 = static_cast<std::int32_t>(c.pop());
+        const auto src = static_cast<std::int32_t>(c.pop()), dst = static_cast<std::int32_t>(c.pop());
+        if (!c.ok()) return 0;
+        if (!exists(dst)) { c.fail(Errc::Range, "invalid destination bitmap " + std::to_string(dst)); return 0; }
+        if (!exists(src)) { c.fail(Errc::Range, "invalid source bitmap " + std::to_string(src)); return 0; }
+        if (!find_vec(vec1) && !exists(vec1)) { c.fail(Errc::Range, "invalid vector map " + std::to_string(vec1)); return 0; }
+        if (vec2 != -1 && !find_vec(vec2) && !exists(vec2)) { c.fail(Errc::Range, "invalid vector map " + std::to_string(vec2)); return 0; }
+        const vecmap::Map* v1 = find_vec(vec1);
+        const vecmap::Map* v2 = vec2 != -1 ? find_vec(vec2) : nullptr;
+        const auto in = picture(src);
+        if (!in) return 0; // other modes are not drawn
+        const SlotInfo *di = d.slot(static_cast<Word>(dst)), *si = d.slot(static_cast<Word>(src));
+        if (static_cast<std::uint32_t>(level) > 0x100) { c.fail(Errc::Range, "invalid effect level " + std::to_string(level)); return 0; }
+        if (!v1 || v1->w != in->w || v1->h != in->h) { c.fail(Errc::Range, "bitmap " + std::to_string(vec1) + " is not a vector map for " + std::to_string(dst)); return 0; }
+        if (vec2 != -1 && (!v2 || v2->w != in->w || v2->h != in->h)) { c.fail(Errc::Range, "bitmap " + std::to_string(vec2) + " is not a vector map for " + std::to_string(dst)); return 0; }
+        if (di->format != si->format) { c.fail(Errc::Range, "bitmaps " + std::to_string(dst) + " and " + std::to_string(src) + " differ in mode"); return 0; }
+        bgfx::Image out;
+        if (vecmap::displace(out, *in, *v1, v2, level, amount) != 0) return 0;
+        check(c, d.upload_slot(static_cast<Word>(dst), out.w, out.h, di->format, out.px));
         return 0;
     });
     // 90:0A, 0B, 0E, 0F: settings the original stores for its loader and glyph cache (present mode of a wait, the bitmap manager's option,

@@ -7,6 +7,7 @@
 
 #include "core/error.hpp"
 #include "render/renderer.hpp"
+#include "render/vector_maps.hpp"
 
 namespace obgi {
 
@@ -168,6 +169,10 @@ class Display {
         std::vector<std::int64_t> key; // what the picture in the temporary slot was last made for
     };
     std::map<std::uint32_t, MapData> maps;
+    // The bitmaps of the vector-map modes (vector, height, vector + distance; vector_maps.hpp) live here, under the slot numbers the
+    // scripts give them; a number is either a GPU slot or one of these. The eight ripple definitions (92:00, 92:01) too.
+    std::map<std::uint32_t, vecmap::Map> vecmaps;
+    vecmap::RippleDefs ripples;
     bool bg_visible = true;  // 90:4C
     std::int32_t bg_mode = 1; // 90:4C: 0 paints black, anything else the type's picture
     std::uint32_t draw_limit = 0;       // 90:09: objects below this priority are not drawn
