@@ -229,14 +229,14 @@ Result<fs::path> FontLibrary::resolve_uncached(const std::string& cp932_name, bo
             if (fs::path p = find(over); !p.empty()) return p;
         }
     const std::string utf8 = to_utf8(cp932_to_utf32(cp932_name));
-    // Windows font charset is part of the script's font registration. Han
-    // characters shared by Japanese and Chinese are present in both fonts, so
-    // glyph fallback alone cannot select the intended regional glyph shape.
-    if (fallback && charset == 0x86) {
-        for (const char* file : {"msyh.ttc", "simsun.ttc", "simhei.ttf", "NotoSansSC-VF.ttf", "NotoSerifSC-VF.ttf"})
+    // Shared Han characters exist in Japanese faces too, so per-glyph fallback
+    // cannot select simplified Chinese forms. Prefer an SC face for ordinary
+    // script fonts, even when the script did not register a Chinese charset.
+    if (fallback && charset != 0x88) {
+        for (const char* file : {"msyh.ttc", "simsun.ttc", "simhei.ttf", "NotoSansSC-VF.ttf", "NotoSansSC-Regular.otf", "NotoSerifSC-VF.ttf"})
             if (fs::path p = find(file); !p.empty()) return p;
     }
-    if (charset == 0x88) {
+    if (fallback && charset == 0x88) {
         for (const char* file : {"msjh.ttc", "mingliu.ttc", "NotoSansTC-VF.ttf"})
             if (fs::path p = find(file); !p.empty()) return p;
     }

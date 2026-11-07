@@ -1,6 +1,9 @@
 #include <doctest/doctest.h>
 
 #include <cstring>
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
 
 #include "bindings/graphics_subops.hpp"
 #include "bindings/text_subops.hpp"
@@ -36,6 +39,20 @@ std::shared_ptr<Font> open_font(FontLibrary& lib, int size) {
 }
 
 } // namespace
+
+TEST_CASE("simplified Chinese font is preferred over script Japanese font" * doctest::test_suite("host")) {
+    if (std::getenv("OBGI_FONT")) return; // An explicit override takes precedence.
+    const auto dir = std::filesystem::temp_directory_path() / "obgi_font_preference_test";
+    std::filesystem::create_directories(dir);
+    std::ofstream(dir / "msyh.ttc").put('x');
+    std::ofstream(dir / "msgothic.ttc").put('x');
+    auto library = FontLibrary::create(); REQUIRE(library);
+    (*library)->add_search_dir(dir);
+    auto resolved = (*library)->resolve("MS Gothic"); REQUIRE(resolved);
+    CHECK(resolved->filename() == "msyh.ttc");
+    CHECK((*library)->has_exact("MS Gothic"));
+    std::filesystem::remove_all(dir);
+}
 
 TEST_CASE("embedded fonts and their glyphs outlive the registering library" * doctest::test_suite("host")) {
     auto library = FontLibrary::create(); REQUIRE(library);
