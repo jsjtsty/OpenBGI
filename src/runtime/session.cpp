@@ -14,6 +14,7 @@
 #include "bindings/graphics_subops.hpp"
 #include "bindings/message_subops.hpp"
 #include "bindings/movie_subops.hpp"
+#include "bindings/panel.hpp"
 #include "bindings/particle_subops.hpp"
 #include "bindings/sequence_subops.hpp"
 #include "bindings/system_subops.hpp"
@@ -193,6 +194,8 @@ Result<vm::FrameStatus> EngineSession::tick(std::int64_t now) {
     if (auto movie = m.player->update(now); !movie) return std::unexpected(movie.error());
     auto status = m.vm->run_frame(now);
     m.display->resolve_masters();
+    // Scripts may change window visibility after the frame hook ran.
+    panel_sync(m.system);
     return status;
 }
 

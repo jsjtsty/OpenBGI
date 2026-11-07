@@ -59,8 +59,11 @@ void show(SystemState& s, const SystemState::IconControl& ic, const SystemState:
     sp.x = (win ? win->x : 0) + ox + b.x;
     sp.y = (win ? win->y : 0) + oy + b.y;
     sp.priority = (win ? win->priority : 0) + 1; // over the window itself
-    sp.blend = 1, sp.alpha = 0;
-    sp.visible = bmp >= 0 && s.display->slot(static_cast<std::uint32_t>(bmp)) != nullptr;
+    sp.blend = 1;
+    sp.alpha = win ? win->alpha : 0;
+    sp.fade = win ? win->fade : 0, sp.opacity = win ? win->opacity : 0x100;
+    sp.visible = win && win->is_shown() && s.display->windows_shown && bmp >= 0 &&
+                 s.display->slot(static_cast<std::uint32_t>(bmp)) != nullptr;
     sp.hit_bits.clear(), sp.hit_w = sp.hit_h = 0, sp.has_hit_mask = false;
     if (b.hit_mask == -2) {
         const SlotInfo* slot = s.display->slot(sp.slot);

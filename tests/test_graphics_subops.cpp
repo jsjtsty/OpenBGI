@@ -94,6 +94,34 @@ TEST_CASE("painting a panel replaces old window sprites" * doctest::test_suite("
     CHECK(d.find_sprite(other_sprite) != nullptr);
 }
 
+TEST_CASE("new panel buttons inherit hidden window state" * doctest::test_suite("gpu")) {
+    RendererOptions options; options.headless = true;
+    auto renderer = Renderer::create(options); REQUIRE(renderer);
+    auto display = Display::create(**renderer, 32, 32); REQUIRE(display);
+    auto& d = **display;
+    REQUIRE(d.create_slot(1, 2, 2, SlotFormat::Bgra));
+    constexpr Word window = 0xB0000000u;
+    auto& win = d.sprite(window); win.visible = true; win.fade = 0x100;
+    SystemState state; state.display = &d;
+    SubopRegistry registry; MemProvider provider; provider.set(Asm().ret());
+    Vm vm(provider, registry); ThreadConfig config; config.stack_size = 1024;
+    auto thread = vm.spawn(config, "test", "paint"); REQUIRE(thread);
+    Ctx c(vm, **thread);
+    c.write(0x200, 1, 4); c.write(0x204, 0x300, 4);
+    c.write(0x300, 1, 4); c.write(0x304, 1, 4); c.write(0x308, 0x400, 4);
+    c.write(0x30C, 0xFFFFFFFFu, 4);
+    c.write(0x400, 1, 4); c.write(0x404, 1, 4); c.write(0x420, 1, 4);
+    REQUIRE(c.ok());
+    REQUIRE(panel_paint(state, c, window, 0x200, false) == 0);
+    const auto sprite = state.icon_controls.at(window).groups[0].buttons[0].sprite;
+    REQUIRE(sprite != 0); REQUIRE(d.find_sprite(sprite));
+    CHECK_FALSE(d.find_sprite(sprite)->is_shown());
+    win.fade = 0; panel_sync(state);
+    CHECK(d.find_sprite(sprite)->is_shown());
+    win.fade = 0x100; panel_sync(state);
+    CHECK_FALSE(d.find_sprite(sprite)->is_shown());
+}
+
 TEST_CASE("panel uses the mouse position at the click, even after a move" * doctest::test_suite("gpu")) {
     RendererOptions options; options.headless = true;
     auto renderer = Renderer::create(options); REQUIRE(renderer);
