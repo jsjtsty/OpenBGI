@@ -68,6 +68,32 @@ TEST_CASE("window snapshots include painted panel buttons" * doctest::test_suite
     CHECK(((*captured)[5 * 32 + 4] & 0x00FFFFFFu) == 0x00FF0000u);
 }
 
+TEST_CASE("painting a panel replaces old window sprites" * doctest::test_suite("gpu")) {
+    RendererOptions options; options.headless = true;
+    auto renderer = Renderer::create(options); REQUIRE(renderer);
+    auto display = Display::create(**renderer, 32, 32); REQUIRE(display);
+    auto& d = **display;
+    constexpr Word window = 0xB0000000u, old_sprite = 0x7D001000u, other_sprite = 0x7D002000u;
+    d.sprite(window); d.sprite(old_sprite); d.sprite(other_sprite);
+    SystemState state; state.display = &d;
+    auto& old = state.icon_controls[1]; old.window = window;
+    old.groups.emplace_back(); old.groups[0].buttons.emplace_back(); old.groups[0].buttons[0].sprite = old_sprite;
+    auto& other = state.icon_controls[2]; other.window = window + 1;
+    other.groups.emplace_back(); other.groups[0].buttons.emplace_back(); other.groups[0].buttons[0].sprite = other_sprite;
+    SubopRegistry registry; MemProvider provider; provider.set(Asm().ret());
+    Vm vm(provider, registry); ThreadConfig config; config.stack_size = 1024;
+    auto thread = vm.spawn(config, "test", "paint"); REQUIRE(thread);
+    Ctx c(vm, **thread);
+    // One group with one hidden button is a valid, empty replacement panel.
+    c.write(0x200, 1, 4); c.write(0x204, 0x300, 4);
+    c.write(0x300, 1, 4); c.write(0x304, 1, 4); c.write(0x308, 0x400, 4);
+    REQUIRE(c.ok());
+    CHECK(panel_paint(state, c, window, 0x200, false) == 0);
+    CHECK(d.find_sprite(old_sprite) == nullptr);
+    CHECK(old.groups[0].buttons[0].sprite == 0);
+    CHECK(d.find_sprite(other_sprite) != nullptr);
+}
+
 TEST_CASE("panel uses the mouse position at the click, even after a move" * doctest::test_suite("gpu")) {
     RendererOptions options; options.headless = true;
     auto renderer = Renderer::create(options); REQUIRE(renderer);

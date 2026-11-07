@@ -483,6 +483,18 @@ void panel_input(SystemState& s) {
 // panel_start.
 std::uint32_t panel_paint(SystemState& s, Ctx& c, std::uint32_t window, std::uint32_t desc, bool basic) {
     if (!s.display || !s.display->find_sprite(window)) return 1;
+    // Painting replaces the window's existing sub-sprites, including those
+    // created by a running panel. Keep the controller itself alive until the
+    // script stops it, but detach its old visual items from the window.
+    for (auto& [other_id, other] : s.icon_controls) {
+        if (other.window != window) continue;
+        for (auto& group : other.groups)
+            for (auto& button : group.buttons)
+                if (button.sprite) {
+                    s.display->remove_sprite(button.sprite);
+                    button.sprite = 0;
+                }
+    }
     const std::uint32_t id = 0x80000000u | (window & 0x7FFFFFFFu);
     panel_stop(s, id);
     auto& ic = s.icon_controls[id];
