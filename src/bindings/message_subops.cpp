@@ -450,6 +450,12 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
             auto result = operation.update(context.now_ms, input.poll(*state));
             return result ? vm::WaitUpdate::complete({*result}) : vm::WaitUpdate::pending();
         };
+        if (wait_click) {
+            ++state->message_wait_clicks;
+            wait.cleanup = [state]() {
+                if (state->message_wait_clicks) --state->message_wait_clicks;
+            };
+        }
         c.suspend(std::move(wait), 1);
         return static_cast<int>(vm::StayThread);
     };

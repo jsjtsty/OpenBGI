@@ -126,6 +126,17 @@ std::int64_t Ctx::read(Word addr, unsigned width, bool sign_extend) {
 }
 
 void Ctx::write(Word addr, Word value, unsigned width) {
+    const Word off = addr & kOffsetMask;
+    if (std::getenv("OBGI_TRACEPANEL") && (addr >> kTagShift) == static_cast<Word>(Tag::Global) &&
+        (off == 0x65C || off == 0xD30 || off == 0xD34 || off == 0xD94)) {
+        const Word before = static_cast<Word>(read(addr, width, false));
+        std::fprintf(stderr, "PANEL-GLOBAL-WRITE t%u ip=%X", t.id, t.ip);
+        for (const auto& module : t.modules) if (t.ip >= module.start && t.ip < module.start + module.size) {
+            std::fprintf(stderr, " module=%s/%s+%X", module.arc.c_str(), module.name.c_str(), t.ip - module.start);
+            break;
+        }
+        std::fprintf(stderr, " addr=%08X width=%u before=%08X value=%08X\n", addr, width, before, value);
+    }
     std::uint8_t buf[4] = {std::uint8_t(value), std::uint8_t(value >> 8), std::uint8_t(value >> 16),
                            std::uint8_t(value >> 24)};
     write_bytes(addr, buf, width);

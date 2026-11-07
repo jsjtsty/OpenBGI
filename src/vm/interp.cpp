@@ -1,6 +1,7 @@
 #include <cmath>
 #include <algorithm>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 
 #include "vm/vm.hpp"
@@ -122,8 +123,28 @@ Result<int> Vm::step(Thread& t) {
     const std::uint8_t op = r.u8();
     int rc = Continue;
     if (trace_op) trace_op(t, op);
-
     auto stack_addr = [&](unsigned operand) { return make_addr(Tag::Stack, t.sp - (operand & 0x3fff)); };
+    const bool trace_panel_thread = t.id == 20 &&
+        ((pc >= 0xC2C0 && pc < 0xC340) || (pc >= 0xC500 && pc < 0xC900) || (pc >= 0xEA7E && pc <= 0xEE8D) || (pc >= 0xF00 && pc < 0xF80));
+    const bool trace_message_writer = t.id == 1 &&
+        ((pc >= 0x14400 && pc < 0x14800) || (pc >= 0x16200 && pc < 0x16300));
+    if (std::getenv("OBGI_TRACEPANEL") && (trace_panel_thread || trace_message_writer)) {
+        std::fprintf(stderr, "VM-STEP t%u pc=%X op=%02X sp=%X", t.id, pc, op, t.sp);
+        for (const auto& module : t.modules) if (pc >= module.start && pc < module.start + module.size) {
+            std::fprintf(stderr, " module=%s/%s+%X", module.arc.c_str(), module.name.c_str(), pc - module.start);
+            break;
+        }
+        for (Word i = 1; i <= 4 && i <= t.depth; ++i)
+            std::fprintf(stderr, " e%u=%X", i, t.expr[(t.depth + t.expr.size() - i) % t.expr.size()]);
+        for (Word off = 4; off <= 16 && off <= t.sp; off += 4)
+            std::fprintf(stderr, " s%u=%X", off, static_cast<Word>(c.read(make_addr(Tag::Stack, t.sp - off), 4, false)));
+        if (pc == 0xC58E) {
+            for (unsigned off : {0xA368, 0xA37C, 0xA378, 0xA370, 0xA36C, 0xA6B0})
+                std::fprintf(stderr, " local[%X]=%X", off,
+                             static_cast<Word>(c.read(stack_addr(off), 4, false)));
+        }
+        std::fputc('\n', stderr);
+    }
 
     // Decode operands first (they all precede execution), then run. `end` is the next instruction.
     if (is_prefix(op)) {
@@ -210,12 +231,17 @@ Result<int> Vm::step(Thread& t) {
         std::int32_t a = s32(c.pop());
         bool conds[6] = {a != 0, a == 0, a > 0, a >= 0, a <= 0, a < 0};
         if ((mode & 7) >= 6) { c.fail(Errc::Unsupported, "unsupported branch mode"); break; }
+        if (std::getenv("OBGI_TRACEPANEL") && (trace_panel_thread || trace_message_writer) &&
+            ((pc >= 0xC500 && pc < 0xC900) || (pc >= 0xEA7E && pc <= 0xEE8D) || (pc >= 0xF00 && pc < 0xF80) || trace_message_writer))
+            std::fprintf(stderr, "VM-BRANCH1 t%u pc=%X mode=%02X value=%X cond=%d target=%X\n", t.id, pc, mode, static_cast<Word>(a), conds[mode & 7], conds[mode & 7] ? dest : t.ip);
         if (conds[mode & 7]) t.ip = dest;
         break;
     }
     case 0x16: {
         t.ip = r.p;
         Word dest = code_target(c, c.pop());
+        if (std::getenv("OBGI_TRACEPANEL") && ((t.id == 20 && ((pc >= 0xB700 && pc < 0xB900) || (pc >= 0xC2C0 && pc < 0xC340) || (pc >= 0xC500 && pc < 0xC900) || (pc >= 0xEA7E && pc <= 0xEE8D) || (pc >= 0xF00 && pc < 0xF80) || (pc >= 0x19000 && pc < 0x1A100))) || trace_message_writer))
+            std::fprintf(stderr, "VM-CALL t%u pc=%X dest=%X depth=%zu ret=%X\n", t.id, pc, dest, t.calls.size(), t.ip);
         c.write(make_addr(Tag::Stack, t.sp), t.ip, 4);
         t.sp += 4;
         t.calls.push_back({pc, t.ip});
@@ -229,6 +255,8 @@ Result<int> Vm::step(Thread& t) {
         Word dest = static_cast<Word>(c.read(make_addr(Tag::Stack, t.sp), 4, false));
         Thread::Call call = t.calls.back();
         t.calls.pop_back();
+        if (std::getenv("OBGI_TRACEPANEL") && ((t.id == 20 && ((pc >= 0xB700 && pc < 0xB900) || (pc >= 0xC2C0 && pc < 0xC340) || (pc >= 0xC500 && pc < 0xC900) || (pc >= 0xEA7E && pc <= 0xEE8D) || (pc >= 0xF00 && pc < 0xF80) || (pc >= 0x19000 && pc < 0x1A100) || (dest >= 0xC600 && dest < 0xC900))) || trace_message_writer))
+            std::fprintf(stderr, "VM-RET t%u pc=%X origin=%X ret=%X depth=%zu\n", t.id, pc, call.origin, dest, t.calls.size());
         if (c.ok() && dest != call.ret) c.fail(Errc::Format, "return address does not match the call record");
         t.ip = dest;
         break;
@@ -340,6 +368,9 @@ Result<int> Vm::step(Thread& t) {
         if ((mode & 15) >= 10) { c.fail(Errc::Unsupported, "unsupported compare mode"); break; }
         bool cond = conds[mode & 15];
         if (!(mode & 0x80)) cond = !cond;
+        if (std::getenv("OBGI_TRACEPANEL") && t.id == 20 &&
+            ((pc >= 0xB700 && pc < 0xB900) || (pc >= 0xC2C0 && pc < 0xC340) || (pc >= 0xC500 && pc < 0xC900) || (pc >= 0xEA7E && pc <= 0xEE8D) || (pc >= 0xF00 && pc < 0xF80)))
+            std::fprintf(stderr, "VM-BRANCH t%u pc=%X mode=%02X lhs=%X rhs=%X cond=%d target=%X\n", t.id, pc, mode, b, a, cond, cond ? dest : t.ip);
         if (cond) t.ip = dest;
         break;
     }
@@ -671,6 +702,8 @@ Result<int> Vm::step(Thread& t) {
         std::snprintf(where, sizeof where, " (op %02X at 0x%X)", op, pc);
         return fail(c.error->code, c.error->message + where);
     }
+    if (std::getenv("OBGI_TRACEPANEL") && (trace_panel_thread || trace_message_writer))
+        std::fprintf(stderr, "VM-STEP-END t%u pc=%X next=%X sp=%X\n", t.id, pc, t.ip, t.sp);
     return rc;
 }
 

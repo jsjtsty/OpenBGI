@@ -267,6 +267,8 @@ bool moved_selection(SystemState& s, SystemState::IconControl& ic, std::uint32_t
 
 void panel_input(SystemState& s) {
     if (!s.display) return;
+    const bool trace_panel = std::getenv("OBGI_TRACEPANEL") != nullptr;
+    const bool trace_press = s.input_pending[1] || s.input_pending[2] || s.input_pending[3] || !s.wheel_events.empty();
     // A click and a later pointer move can arrive in the same host poll. Hit-test
     // the click at its event position, not at the final position in that batch.
     const int mouse_x = s.input_pending[1] && s.click_position_valid ? s.click_x : s.mouse_x;
@@ -285,6 +287,10 @@ void panel_input(SystemState& s) {
     });
     for (auto [id, control] : panels) {
         auto& ic = *control;
+        if (trace_panel && trace_press)
+            std::fprintf(stderr, "PANEL frame-input id=%u basic=%d paint=%d modal=%d info0=%u events=%zu input=%d pending=%d/%d/%d mouse=%d,%d click=%d,%d\n",
+                         id, ic.basic, ic.paint_only, ic.modal, ic.info[0], ic.events.size(), s.input_enabled,
+                         s.input_pending[1], s.input_pending[2], s.input_pending[3], s.mouse_x, s.mouse_y, mouse_x, mouse_y);
         if (ic.groups.empty() || ic.paint_only || (ic.basic && ic.info[0] == 0)) continue; // not started, painted only, or a plain panel that has decided
         const Sprite* win = s.display->find_sprite(ic.window);
         if (win && (!win->is_shown() || !s.display->windows_shown)) continue;
@@ -364,9 +370,14 @@ void panel_input(SystemState& s) {
                     }
                 }
         }
+        const std::uint32_t raw_bits = bits;
         const bool shift = false; // the host does not report modifier keys; Tab goes to the next group
         bits &= ~ic.input_mask;
         if (!ic.modal) bits &= 0x2C3;
+        if (trace_panel && trace_press)
+            std::fprintf(stderr, "PANEL hit id=%u hover=%d/%d ptrlayer=%d keylayer=%d winprio=%u winkey=%u keytop=%u rawbits=%X filtered=%X active=%d\n",
+                         id, hg, hi, pointer_layer, key_layer, win ? win->priority : 0u, win_key,
+                         s.key_layers.empty() ? 0u : s.key_layers.front(), raw_bits, bits, s.input_enabled);
         auto was_pressed = [&](std::uint32_t vk) {
             return vk < pressed_now.size() && (pressed_now[vk] ||
                 (s.input_enabled && pointer_layer && key_layer && consume_input_trigger(s, vk)));
@@ -420,9 +431,17 @@ void panel_input(SystemState& s) {
         };
         switch (act) {
         case Click:
+            if (trace_panel) std::fprintf(stderr, "PANEL action id=%u CLICK hit=%d/%d pos=%d,%d\n", id, hg, hi, mouse_x, mouse_y);
             if (hi < 0) {
                 if (!ic.basic) ic.events.push_back({0x10000007u, 0xFFFFFFFFu, static_cast<std::uint32_t>(mouse_y - (win ? win->y : 0)) << 16 | (static_cast<std::uint32_t>(mouse_x - (win ? win->x : 0)) & 0xFFFF)});
                 break;
+            }
+            // Confirming a modal over a pending in-game message is also the user's
+            // explicit resume action. Replay only the affirmative second button of
+            // the two-choice modal; the panel still owns and consumes the physical click.
+            if (ic.modal && hi == 1 && ic.groups[std::size_t(hg)].buttons.size() == 2 && s.message_wait_clicks) {
+                ++s.message_input_replay_serial;
+                if (trace_panel) std::fprintf(stderr, "PANEL replay modal-confirm click to pending message id=%u group=%d button=%d\n", id, hg, hi);
             }
             decide(ic, hg, hi, 1, lx, ly);
             if (ic.select_on_decide) select_button(s, ic, id, hg, hi);
@@ -482,6 +501,7 @@ void panel_select(SystemState& s, std::uint32_t id, int group, int index) {
 void panel_decide(SystemState& s, std::uint32_t id, int group, int index, std::uint32_t flag) {
     auto it = s.icon_controls.find(id);
     if (it == s.icon_controls.end() || it->second.groups.empty()) return;
+    if (std::getenv("OBGI_TRACEPANEL")) std::fprintf(stderr, "PANEL script-decide id=%u group=%d index=%d flag=%u\n", id, group, index, flag);
     decide(it->second, group, index, flag, 0, 0);
 }
 

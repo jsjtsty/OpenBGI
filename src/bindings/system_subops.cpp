@@ -1059,6 +1059,15 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
             } else if (ctl.reads++ < 2) {
                 ev = {0x10000002u, 0xFFFFFFFFu, 0};
             }
+            if (std::getenv("OBGI_TRACEPANEL") && num <= 32 && (ev[0] || ctl.reads <= 3)) {
+                const auto f4 = static_cast<Word>(c.read(0x80F4, 4, false));
+                const auto f8 = static_cast<Word>(c.read(0x80F8, 4, false));
+                std::fprintf(stderr, "PANEL poll t%u ip=%X control=%u event=%X %X %X remaining=%zu reads=%u info0=%u locals[F4=%X,F8=%X] sp=%X calls=%zu",
+                             c.t.id, c.t.ip, num, ev[0], ev[1], ev[2], ctl.events.size(), ctl.reads, ctl.info[0], f4, f8, c.t.sp, c.t.calls.size());
+                for (std::size_t n = c.t.calls.size() > 3 ? c.t.calls.size() - 3 : 0; n < c.t.calls.size(); ++n)
+                    std::fprintf(stderr, " [%X->%X]", c.t.calls[n].origin, c.t.calls[n].ret);
+                std::fputc('\n', stderr);
+            }
             if (std::getenv("OBGI_DBGPANEL") && ev[0]) std::fprintf(stderr, "90:BF control %u event %X %X %X\n", num, ev[0], ev[1], ev[2]);
             for (int k = 0; k < 3; ++k) c.write(addr + 4 * k, ev[k], 4);
         }
@@ -1178,12 +1187,18 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     add(r, 0x810F, "window minimised", 0, 1, [](Ctx& c) { c.push(0); return 0; });
     add(r, 0x8018, "input priority add", 1, 0, [s](Ctx& c) {
         const Word priority = c.pop();
-        if (c.ok()) push_input_priority(*s, priority);
+        if (c.ok()) {
+            push_input_priority(*s, priority);
+            if (std::getenv("OBGI_TRACEPANEL")) std::fprintf(stderr, "INPUT-LAYER add t%u ip=%X priority=%u keytop=%u depth=%zu\n", c.t.id, c.t.ip, priority, s->key_layers.empty() ? 0u : s->key_layers.front(), s->key_layers.size());
+        }
         return 0;
     });
     add(r, 0x8019, "input priority remove", 1, 0, [s](Ctx& c) {
         const Word priority = c.pop();
-        if (c.ok()) pop_input_priority(*s, priority);
+        if (c.ok()) {
+            pop_input_priority(*s, priority);
+            if (std::getenv("OBGI_TRACEPANEL")) std::fprintf(stderr, "INPUT-LAYER remove t%u ip=%X priority=%u keytop=%u depth=%zu\n", c.t.id, c.t.ip, priority, s->key_layers.empty() ? 0u : s->key_layers.front(), s->key_layers.size());
+        }
         return 0;
     });
     // The ruby (furigana) dictionary, word -> reading, longest word first (analysis: the reference engine's gfx/text/ruby.c).
@@ -1282,6 +1297,13 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     add(r, 0x90B9, "remove icon control", 1, 1, [s](Ctx& c) {
         const Word id = c.pop();
         if (!c.ok()) return 0;
+        if (std::getenv("OBGI_TRACEPANEL") && id <= 32) {
+            const auto it = s->icon_controls.find(id);
+            std::fprintf(stderr, "PANEL remove t%u ip=%X control=%u exists=%d window=%u pending=%zu\n",
+                         c.t.id, c.t.ip, id, it != s->icon_controls.end(),
+                         it == s->icon_controls.end() ? 0u : it->second.window,
+                         it == s->icon_controls.end() ? 0u : it->second.events.size());
+        }
         panel_stop(*s, id);
         c.push(s->icon_controls.erase(id) ? 1 : 0);
         return 0;
