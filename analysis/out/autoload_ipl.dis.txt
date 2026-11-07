@@ -1,0 +1,14 @@
+; program offset=0x10 size=0x40; linear hypothesis
+00000000: 12 04                    adjust_sp            4
+00000002: 01 74 07                 push_i16             1908
+00000005: 00 01                    push_i8              1
+00000007: 09 02                    store_keep           2
+00000009: 05 17 00                 addr_code            0x0017
+0000000c: 05 1f 00                 addr_code            0x001F
+0000000f: 80 40                    op_80                40 handler=004978F0
+00000011: 0f 04 80                 store_stack          0x8004
+00000014: 19 04 80                 load_stack           0x8004
+00000017: 16                       call                 
+00000018: 80 41                    op_80                41 handler=004979C0
+0000001a: 12 7c                    adjust_sp            -4
+0000001c: 17                       ret                  

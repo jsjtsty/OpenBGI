@@ -148,35 +148,29 @@ void register_core_subops(SubopRegistry& r) {
         if (remaining > 0) c.t.wait = {WaitObject::Kind::Time, c.t.deadline};
         return static_cast<int>(StayThread);
     });
-    // (wait time, input interrupt flag, input priority) popped from the right. The thread sleeps for `time` x 10 ms
-    // (checked against the original: 0x32 sleeps about half a second); the result 0 means the time ran out
-    // (1 would mean the input interrupt fired, which a headless run never sees).
-    add(r, 0x805C, "wait timing", 3, 1, [](Ctx& c) {
-        c.pop(); c.pop(); // priority, flag
-        const Word time = c.pop();
-        c.push(0);
-        std::int64_t until = c.vm.now_ms + static_cast<std::int64_t>(time) * 10;
-        if (c.t.objects_until > until) until = c.t.objects_until; // timed display-object changes
-        c.t.wait = {WaitObject::Kind::Time, until};
-        if (std::getenv("OBGI_DBGWAIT"))
-            std::fprintf(stderr, "80:5C thread %u at %lld ms: time %u, until %lld (objects until %lld)\n", c.t.id, static_cast<long long>(c.vm.now_ms), time, static_cast<long long>(until), static_cast<long long>(c.t.objects_until));
-        if (time == 0 && c.t.objects_until <= c.vm.now_ms) c.t.wait = {WaitObject::Kind::Frame, static_cast<std::int64_t>(c.vm.frame) + 1};
+    // 80:5C takes milliseconds. The result is delivered only when the wait finishes.
+    r.add({0x805C, "wait timing", 3, 1, [](Ctx& c) {
+        const Word priority = c.pop(), interrupt = c.pop(), time = c.pop();
+        WaitObject wait;
+        wait.kind = WaitObject::Kind::InputTime;
+        wait.until = c.vm.now_ms + static_cast<std::int64_t>(time);
+        wait.input_priority = priority;
+        wait.interrupt_input = interrupt != 0;
+        c.suspend(std::move(wait), 1);
         return static_cast<int>(StayThread);
-    });
-    // 80:4C (thread, a, b, c): tells a thread blocked in a wait object about an event; a = 1 cuts an 80:5C wait short (the wait then
-    // yields 1 instead of 0). Pushes 1 when the thread was waiting, 0 otherwise. The other waits (text, selection, tween) are not modelled.
+    }, 1});
     add(r, 0x804C, "notify waiting thread", 4, 1, [](Ctx& c) {
-        c.pop(), c.pop(); // b, c
-        const Word a = c.pop(), id = c.pop();
-        if (!c.ok()) return 0;
-        Thread* target = c.vm.find(id);
-        Word result = 0;
-        if (target && !target->dead && target->wait.kind == WaitObject::Kind::Time && a == 1 && target->depth > 0) {
-            target->expr[target->depth - 1] = 1;
-            target->wait = {WaitObject::Kind::Frame, static_cast<std::int64_t>(c.vm.frame) + 1};
-            result = 1;
-        }
-        c.push(result);
+        c.pop(); c.pop();
+        const Word message = c.pop(), id = c.pop();
+        Thread* target = c.ok() ? c.vm.find(id) : nullptr;
+        const bool waiting = target && target->wait.kind != WaitObject::Kind::None;
+        if (waiting && message == 1) target->wait.notified = true;
+        c.push(waiting ? 1 : 0);
+        return 0;
+    });
+    add(r, 0x805D, "exclusive thread", 1, 0, [](Ctx& c) {
+        const Word on = c.pop();
+        if (c.ok()) c.vm.exclusive_thread = on ? c.t.id : 0;
         return 0;
     });
     add(r, 0x805F, "yield", 0, 0, [](Ctx&) { return static_cast<int>(NextThread); });

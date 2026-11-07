@@ -52,10 +52,13 @@ struct Renderer::Impl {
     bool frame_skipped = false;
     std::vector<std::uint8_t> last_frame;
     std::uint32_t key = 0;
-    std::vector<std::uint32_t> presses;
+    std::vector<InputPress> presses;
+    std::array<bool, 256> held_inputs{};
+    std::array<std::uint8_t, SDL_SCANCODE_COUNT> scancode_vks{};
     int mouse_x = 0, mouse_y = 0; // pointer in logical canvas coordinates
     bool left_down = false;
     int wheel = 0;
+    std::vector<int> wheel_events;
 
     ~Impl() {
         if (pipeline) SDL_ReleaseGPUGraphicsPipeline(device, pipeline);
@@ -75,6 +78,35 @@ SDL_GPUDevice* Renderer::native_device() const { return impl_->device; }
 const ShaderPack& Renderer::shaders() const { return impl_->library->pack(); }
 
 const char* Renderer::driver_name() const { return SDL_GetGPUDeviceDriver(impl_->device); }
+std::uint32_t Renderer::logical_width() const { return impl_->opt.logical_width; }
+std::uint32_t Renderer::logical_height() const { return impl_->opt.logical_height; }
+
+Result<void> Renderer::update_texture(Texture& texture, ByteView pixels) {
+    auto& m = *impl_;
+    const auto bytes = std::size_t{texture.width()} * texture.height() * 4;
+    if (pixels.size() != bytes) return fail(Errc::Range, "texture update size mismatch");
+    SDL_GPUTransferBufferCreateInfo info{};
+    info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+    info.size = static_cast<Uint32>(bytes);
+    auto transfer = SDL_CreateGPUTransferBuffer(m.device, &info);
+    if (!transfer) return std::unexpected(sdl_error("texture transfer"));
+    auto mapped = SDL_MapGPUTransferBuffer(m.device, transfer, false);
+    if (!mapped) { SDL_ReleaseGPUTransferBuffer(m.device, transfer); return std::unexpected(sdl_error("map texture transfer")); }
+    std::memcpy(mapped, pixels.data(), bytes);
+    SDL_UnmapGPUTransferBuffer(m.device, transfer);
+    auto cmd = SDL_AcquireGPUCommandBuffer(m.device);
+    if (!cmd) { SDL_ReleaseGPUTransferBuffer(m.device, transfer); return std::unexpected(sdl_error("texture commands")); }
+    auto pass = SDL_BeginGPUCopyPass(cmd);
+    SDL_GPUTextureTransferInfo source{transfer, 0, 0, 0};
+    SDL_GPUTextureRegion target{};
+    target.texture = texture.native();
+    target.w = texture.width(); target.h = texture.height(); target.d = 1;
+    SDL_UploadToGPUTexture(pass, &source, &target, true);
+    SDL_EndGPUCopyPass(pass);
+    const bool submitted = SDL_SubmitGPUCommandBuffer(cmd);
+    SDL_ReleaseGPUTransferBuffer(m.device, transfer);
+    return submitted ? Result<void>{} : std::unexpected(sdl_error("submit texture update"));
+}
 
 Result<std::unique_ptr<Renderer>> Renderer::create(const RendererOptions& options) {
     std::unique_ptr<Renderer> r(new Renderer);
@@ -253,18 +285,61 @@ namespace {
 std::uint32_t virtual_key(SDL_Keycode k) {
     if (k >= SDLK_0 && k <= SDLK_9) return 0x30 + (k - SDLK_0);
     if (k >= SDLK_A && k <= SDLK_Z) return 0x41 + (k - SDLK_A);
+    if (k >= SDLK_KP_1 && k <= SDLK_KP_9) return 0x61 + (k - SDLK_KP_1);
+    if (k >= SDLK_F1 && k <= SDLK_F24) return 0x70 + (k - SDLK_F1);
     switch (k) {
+    case SDLK_BACKSPACE: return 0x08;
+    case SDLK_CLEAR: return 0x0C;
     case SDLK_RETURN: case SDLK_KP_ENTER: return 0x0D;
+    case SDLK_LSHIFT: case SDLK_RSHIFT: return 0x10;
+    case SDLK_LCTRL: case SDLK_RCTRL: return 0x11;
+    case SDLK_LALT: case SDLK_RALT: return 0x12;
+    case SDLK_PAUSE: return 0x13;
+    case SDLK_CAPSLOCK: return 0x14;
     case SDLK_SPACE: return 0x20;
     case SDLK_TAB: return 0x09;
     case SDLK_ESCAPE: return 0x1B;
+    case SDLK_PAGEUP: return 0x21;
+    case SDLK_PAGEDOWN: return 0x22;
+    case SDLK_END: return 0x23;
+    case SDLK_HOME: return 0x24;
     case SDLK_LEFT: return 0x25;
     case SDLK_UP: return 0x26;
     case SDLK_RIGHT: return 0x27;
     case SDLK_DOWN: return 0x28;
-    case SDLK_LCTRL: case SDLK_RCTRL: return 0x11;
+    case SDLK_PRINTSCREEN: return 0x2C;
+    case SDLK_INSERT: return 0x2D;
+    case SDLK_DELETE: return 0x2E;
+    case SDLK_LGUI: return 0x5B;
+    case SDLK_RGUI: return 0x5C;
+    case SDLK_MENU: return 0x5D;
+    case SDLK_KP_0: return 0x60;
+    case SDLK_KP_MULTIPLY: return 0x6A;
+    case SDLK_KP_PLUS: return 0x6B;
+    case SDLK_KP_MINUS: return 0x6D;
+    case SDLK_KP_PERIOD: return 0x6E;
+    case SDLK_KP_DIVIDE: return 0x6F;
+    case SDLK_NUMLOCKCLEAR: return 0x90;
+    case SDLK_SCROLLLOCK: return 0x91;
+    case SDLK_SEMICOLON: case SDLK_COLON: return 0xBA;
+    case SDLK_EQUALS: case SDLK_PLUS: return 0xBB;
+    case SDLK_COMMA: case SDLK_LESS: return 0xBC;
+    case SDLK_MINUS: case SDLK_UNDERSCORE: return 0xBD;
+    case SDLK_PERIOD: case SDLK_GREATER: return 0xBE;
+    case SDLK_SLASH: case SDLK_QUESTION: return 0xBF;
+    case SDLK_GRAVE: case SDLK_TILDE: return 0xC0;
+    case SDLK_LEFTBRACKET: case SDLK_LEFTBRACE: return 0xDB;
+    case SDLK_BACKSLASH: case SDLK_PIPE: return 0xDC;
+    case SDLK_RIGHTBRACKET: case SDLK_RIGHTBRACE: return 0xDD;
+    case SDLK_APOSTROPHE: case SDLK_DBLAPOSTROPHE: return 0xDE;
     default: return 0;
     }
+}
+
+std::uint32_t mouse_virtual_key(std::uint8_t button) {
+    // The script ABI follows Win32 virtual keys: left, right, middle, X1, X2.
+    static constexpr std::uint32_t kButtons[] = {0, 1, 4, 2, 5, 6};
+    return button < std::size(kButtons) ? kButtons[button] : 0;
 }
 
 } // namespace
@@ -274,9 +349,28 @@ bool Renderer::poll_events() {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
         if (e.type == SDL_EVENT_QUIT || e.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) { alive = false; if (std::getenv("OBGI_DBGWIN")) std::fprintf(stderr, "window event %u\n", e.type); }
-        if (e.type == SDL_EVENT_KEY_DOWN && !e.key.repeat) impl_->key = e.key.key;
-        if (e.type == SDL_EVENT_KEY_DOWN)
-            if (const std::uint32_t vk = virtual_key(e.key.key)) impl_->presses.push_back(vk);
+        if (e.type == SDL_EVENT_KEY_DOWN) {
+            if (!e.key.repeat) impl_->key = e.key.key;
+            if (const std::uint32_t vk = virtual_key(e.key.key); vk && vk < impl_->held_inputs.size()) {
+                const std::size_t sc = static_cast<std::size_t>(e.key.scancode);
+                const std::uint32_t prior = sc < impl_->scancode_vks.size() ? impl_->scancode_vks[sc] : 0;
+                if (prior == 0) impl_->presses.push_back({vk});
+                if (sc < impl_->scancode_vks.size()) impl_->scancode_vks[sc] = static_cast<std::uint8_t>(vk);
+                impl_->held_inputs[vk] = true;
+            }
+        }
+        if (e.type == SDL_EVENT_KEY_UP) {
+            const std::size_t sc = static_cast<std::size_t>(e.key.scancode);
+            if (sc < impl_->scancode_vks.size()) {
+                const std::uint32_t vk = impl_->scancode_vks[sc];
+                impl_->scancode_vks[sc] = 0;
+                if (vk) {
+                    impl_->held_inputs[vk] = false;
+                    for (std::uint8_t held_vk : impl_->scancode_vks)
+                        if (held_vk == vk) { impl_->held_inputs[vk] = true; break; }
+                }
+            }
+        }
         if (e.type == SDL_EVENT_MOUSE_MOTION || e.type == SDL_EVENT_MOUSE_BUTTON_DOWN || e.type == SDL_EVENT_MOUSE_BUTTON_UP) {
             // window units -> pixels -> the letterboxed logical canvas
             const float mx = e.type == SDL_EVENT_MOUSE_MOTION ? e.motion.x : e.button.x;
@@ -289,26 +383,35 @@ bool Renderer::poll_events() {
                 impl_->mouse_y = int((my * ph / wh - (ph - lh * scale) * 0.5f) / scale);
             }
         }
-        if ((e.type == SDL_EVENT_MOUSE_BUTTON_DOWN || e.type == SDL_EVENT_MOUSE_BUTTON_UP) && e.button.button == 1) impl_->left_down = e.type == SDL_EVENT_MOUSE_BUTTON_DOWN;
+        if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN || e.type == SDL_EVENT_MOUSE_BUTTON_UP) {
+            const std::uint32_t vk = mouse_virtual_key(e.button.button);
+            if (vk < impl_->held_inputs.size()) impl_->held_inputs[vk] = e.type == SDL_EVENT_MOUSE_BUTTON_DOWN;
+            if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN && vk) impl_->presses.push_back({vk, impl_->mouse_x, impl_->mouse_y, true});
+            if (e.button.button == 1) impl_->left_down = e.type == SDL_EVENT_MOUSE_BUTTON_DOWN;
+        }
         if (e.type == SDL_EVENT_MOUSE_WHEEL) {
             // one notch per event, like WM_MOUSEWHEEL (the engine looks only at the sign); precise touchpads send fractions
-            if (e.wheel.y != 0) impl_->wheel += e.wheel.y > 0 ? 1 : -1;
-        }
-        if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN) {
-            static constexpr std::uint32_t kButtons[] = {0, 1, 4, 2, 5, 6}; // SDL: 1 left, 2 middle, 3 right, 4 X1, 5 X2
-            if (e.button.button < 6) impl_->presses.push_back(kButtons[e.button.button]);
+            if (e.wheel.y != 0) {
+                const int step = e.wheel.y > 0 ? 1 : -1;
+                impl_->wheel += step;
+                impl_->wheel_events.push_back(step);
+            }
         }
     }
     return alive;
 }
 
-std::vector<std::uint32_t> Renderer::take_presses() { return std::exchange(impl_->presses, {}); }
+std::vector<InputPress> Renderer::take_presses() { return std::exchange(impl_->presses, {}); }
+
+std::array<bool, 256> Renderer::held_inputs() const { return impl_->held_inputs; }
 
 std::pair<int, int> Renderer::mouse_position() const { return {impl_->mouse_x, impl_->mouse_y}; }
 
 bool Renderer::left_button_down() const { return impl_->left_down; }
 
 int Renderer::take_wheel() { return std::exchange(impl_->wheel, 0); }
+
+std::vector<int> Renderer::take_wheel_events() { return std::exchange(impl_->wheel_events, {}); }
 
 std::uint32_t Renderer::take_key() { return std::exchange(impl_->key, 0u); }
 

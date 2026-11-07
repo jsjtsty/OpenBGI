@@ -4,6 +4,7 @@
 
 #include "vfs/arc.hpp"
 #include "vm/vm.hpp"
+#include "resources/archive_store.hpp"
 
 namespace obgi {
 
@@ -11,14 +12,13 @@ namespace obgi {
 class ArcProgramProvider final : public vm::ProgramProvider {
   public:
     explicit ArcProgramProvider(std::filesystem::path game_dir);
+    explicit ArcProgramProvider(ArcResourceFinder& resources) : resources_(&resources) {}
     Result<std::vector<std::uint8_t>> load(std::string_view arc, std::string_view name) override;
 
   private:
-    Result<Arc*> open(std::string_view arc);
+    std::unique_ptr<ArcResourceFinder> owned_;
+    ArcResourceFinder* resources_;
 
-    std::filesystem::path dir_;
-    std::map<std::string, std::filesystem::path> files_; // lowercase file name -> path
-    std::map<std::string, Arc> arcs_;
 };
 
 } // namespace obgi

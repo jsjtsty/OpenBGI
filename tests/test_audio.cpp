@@ -105,8 +105,8 @@ TEST_CASE("mixer resamples to the output rate") {
     CHECK(m.state(Bank::Stream, 0) == ChannelState::Stopped);
 }
 
-TEST_CASE("real bw sound files decode to the length in their header") {
-    if (!std::filesystem::exists(obgi_test::game_dir() / "data05500.arc")) return;
+TEST_CASE("real bw sound files decode to the length in their header" * doctest::test_suite("game")) {
+    REQUIRE(std::filesystem::exists(obgi_test::game_dir() / "data05500.arc"));
     auto arc = Arc::open(obgi_test::game_dir() / "data05500.arc");
     REQUIRE(arc.has_value());
     std::size_t checked = 0;
@@ -150,8 +150,8 @@ class OneProgram final : public vm::ProgramProvider {
 
 } // namespace
 
-TEST_CASE("A0 sub-opcodes load and play game sounds") {
-    if (!std::filesystem::exists(obgi_test::game_dir() / "data05500.arc")) return;
+TEST_CASE("A0 sub-opcodes load and play game sounds" * doctest::test_suite("game")) {
+    REQUIRE(std::filesystem::exists(obgi_test::game_dir() / "data05500.arc"));
     Mixer mixer;
     ArcResourceFinder finder(obgi_test::game_dir());
     SoundHost host{&mixer, &finder};

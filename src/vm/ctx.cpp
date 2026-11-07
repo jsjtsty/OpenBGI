@@ -5,6 +5,15 @@
 
 namespace obgi::vm {
 
+void Ctx::suspend(WaitObject wait, std::uint8_t results) {
+    if (!ok()) return;
+    vm.cancel_wait(t);
+    wait.result_count = results;
+    t.wait = std::move(wait);
+    if (t.wait.kind == WaitObject::Kind::InputTime && t.wait.interrupt_input && vm.wait_input)
+        vm.wait_input->begin(t.wait.input_priority);
+}
+
 bool PagedSegment::read(Word off, std::size_t n, std::uint8_t* out) const {
     if (static_cast<std::uint64_t>(off) + n > (1ull << kTagShift)) return false;
     while (n) {

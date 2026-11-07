@@ -1,0 +1,4 @@
+frame	thread	next_ip	address	width	value
+0	0	autoload.arc/ipl._bp+0x9	00000774	4	00000001
+0	0	system.arc/ipl._bp+0x89	00000400	4	00000000
+125	0	system.arc/ipl._bp+0xBC4	00000774	4	00000001

@@ -1,7 +1,10 @@
 #include "bindings/panel.hpp"
 
+#include <algorithm>
 #include <cstdio>
 #include <cstdlib>
+#include <limits>
+#include <vector>
 
 namespace obgi {
 
@@ -16,6 +19,18 @@ std::int32_t word(Ctx& c, Word addr) { return static_cast<std::int32_t>(c.read(a
 
 std::uint32_t button_sprite(std::uint32_t control, std::uint32_t index) { return kSpriteBase | (control & 0xFFF) << 12 | (index & 0xFFF); }
 
+bool sprite_hit(Display& display, std::uint32_t id, int x, int y) {
+    Sprite* sp = display.find_sprite(id);
+    if (!sp || !sp->is_shown()) return false;
+    std::int32_t left = 0, top = 0, right = 0, bottom = 0;
+    if (!display.screen_rect(id, left, top, right, bottom) || x < left || x > right || y < top || y > bottom) return false;
+    if (!sp->has_hit_mask) return true;
+    const auto px = static_cast<std::uint32_t>(x - left), py = static_cast<std::uint32_t>(y - top);
+    if (px >= sp->hit_w || py >= sp->hit_h) return false;
+    const std::size_t pitch = (std::size_t{sp->hit_w} + 7) >> 3;
+    return ((sp->hit_bits[std::size_t{py} * pitch + (px >> 3)] >> (px & 7)) & 1) != 0;
+}
+
 // the picture a button shows: normal / focus / selected / selected+focus, falling back to the nearest one that exists
 std::int32_t picture(const SystemState::PanelGroup& g, int index, bool focus = false) {
     const auto& b = g.buttons[static_cast<std::size_t>(index)];
@@ -28,16 +43,47 @@ std::int32_t picture(const SystemState::PanelGroup& g, int index, bool focus = f
 
 bool hovered(const SystemState::IconControl& ic, int group, int index) { return ic.hover_group == group && ic.hover_index == index; }
 
+std::pair<std::int32_t, std::int32_t> panel_offset(const SystemState& s, const SystemState::IconControl& ic) {
+    const auto index = ic.window & 0xFFFFFFu;
+    if (ic.basic && (ic.window & 0xFF000000u) == 0xB0000000u && index < s.planes.size() && s.planes[index])
+        return {s.planes[index]->area[0], s.planes[index]->area[1]};
+    return {0, 0};
+}
+
 void show(SystemState& s, const SystemState::IconControl& ic, const SystemState::PanelButton& b, std::int32_t bmp) {
     if (!s.display || b.sprite == 0) return;
     Sprite& sp = s.display->sprite(b.sprite);
     const Sprite* win = s.display->find_sprite(ic.window);
     sp.slot = static_cast<std::uint32_t>(bmp);
-    sp.x = (win ? win->x : 0) + b.x;
-    sp.y = (win ? win->y : 0) + b.y;
+    const auto [ox, oy] = panel_offset(s, ic);
+    sp.x = (win ? win->x : 0) + ox + b.x;
+    sp.y = (win ? win->y : 0) + oy + b.y;
     sp.priority = (win ? win->priority : 0) + 1; // over the window itself
     sp.blend = 1, sp.alpha = 0;
     sp.visible = bmp >= 0 && s.display->slot(static_cast<std::uint32_t>(bmp)) != nullptr;
+    sp.hit_bits.clear(), sp.hit_w = sp.hit_h = 0, sp.has_hit_mask = false;
+    if (b.hit_mask == -2) {
+        const SlotInfo* slot = s.display->slot(sp.slot);
+        sp.hit_w = slot ? slot->width : 0, sp.hit_h = slot ? slot->height : 0;
+        sp.has_hit_mask = true;
+        sp.hit_bits.assign((std::size_t{sp.hit_w + 7} >> 3) * sp.hit_h, 0);
+    } else if (b.hit_mask >= 0 && b.hit_mask < 0x4000) {
+        if (const SlotInfo* mask = s.display->slot(static_cast<std::uint32_t>(b.hit_mask))) {
+            auto pixels = s.display->read_slot(static_cast<std::uint32_t>(b.hit_mask));
+            if (pixels) {
+                sp.hit_w = mask->width, sp.hit_h = mask->height, sp.has_hit_mask = true;
+                const std::size_t pitch = (std::size_t{mask->width} + 7) >> 3;
+                sp.hit_bits.assign(pitch * mask->height, 0);
+                for (std::uint32_t y = 0; y < mask->height; ++y)
+                    for (std::uint32_t x = 0; x < mask->width; ++x) {
+                        const std::uint32_t px = (*pixels)[std::size_t{y} * mask->width + x];
+                        const bool opaque = mask->format == SlotFormat::Bgra ? (px >> 24) != 0 :
+                            mask->format == SlotFormat::Bgrx ? (px & 0xFFFFFF) != 0 : (px & 0xFF) != 0;
+                        if (opaque) sp.hit_bits[std::size_t{y} * pitch + (x >> 3)] |= static_cast<std::uint8_t>(1u << (x & 7));
+                    }
+            }
+        }
+    }
 }
 
 // The plain panel (90:B8 / 90:BA, the confirmation windows and the like): the same buttons and events, a smaller descriptor.
@@ -46,6 +92,7 @@ void show(SystemState& s, const SystemState::IconControl& ic, const SystemState:
 // bitmap (-2: none), ... A button is drawn when it is enabled. Returns 1 for an unknown control, 4 when it has started, 2 / 3 as 91:BA.
 std::uint32_t panel_start_basic(SystemState& s, SystemState::IconControl& ic, std::uint32_t id, Ctx& c, Word desc) {
     if (!ic.groups.empty()) return 4;
+    ic.modal = false, ic.mouse = false;
     const std::int32_t group_count = word(c, desc);
     const Word groups = static_cast<Word>(word(c, desc + 4));
     if (!c.ok() || group_count <= 0 || group_count > 0x100) return 2;
@@ -72,7 +119,7 @@ std::uint32_t panel_start_basic(SystemState& s, SystemState::IconControl& ic, st
             const std::int32_t focus = word(c, ba + 0x14);
             b.bmp_focus = focus < 0 ? -1 : focus;
             b.bmp_selected_focus = b.bmp_focus;
-            b.no_hit = word(c, ba + 0x18) == -2;
+            b.hit_mask = word(c, ba + 0x18), b.no_hit = b.hit_mask == -2;
             b.hotkey = static_cast<std::uint32_t>(word(c, ba + 0x38));
             if (!c.ok()) return 3;
             pg.buttons.push_back(b);
@@ -82,9 +129,9 @@ std::uint32_t panel_start_basic(SystemState& s, SystemState::IconControl& ic, st
     const std::int32_t cur = word(c, desc + 8);
     ic.groups = std::move(out);
     ic.current_group = cur >= 0 && cur < group_count ? cur : -1;
-    ic.modal = word(c, desc + 0xC) != 0, ic.input_mask = static_cast<std::uint32_t>(word(c, desc + 0x14));
+    ic.modal = word(c, desc + 0xC) != 0, ic.mouse = word(c, desc + 0x10) != 0;
+    ic.input_mask = static_cast<std::uint32_t>(word(c, desc + 0x14));
     ic.key_map = word(c, desc + 0x18) & 7, ic.select_on_decide = word(c, desc + 0x1C) != 0;
-    ic.seen_input = s.input_counts;
     ic.info = {1, 0xFFFFFFFFu, 0xFFFFFFFFu, 0, 0, 0};
     std::uint32_t k = 0;
     for (auto& g : ic.groups)
@@ -131,7 +178,7 @@ std::uint32_t panel_start(SystemState& s, std::uint32_t id, Ctx& c, std::uint32_
             b.x = word(c, ba + 8), b.y = word(c, ba + 0xC);
             b.bmp_normal = word(c, ba + 0x20), b.bmp_focus = word(c, ba + 0x24);
             b.bmp_selected = word(c, ba + 0x28), b.bmp_selected_focus = word(c, ba + 0x2C);
-            b.no_hit = word(c, ba + 0x30) == -2;
+            b.hit_mask = word(c, ba + 0x30), b.no_hit = b.hit_mask == -2;
             b.flags = static_cast<std::uint32_t>(word(c, ba + 0xC0));
             if (!c.ok()) return 3;
             pg.buttons.push_back(b);
@@ -143,7 +190,6 @@ std::uint32_t panel_start(SystemState& s, std::uint32_t id, Ctx& c, std::uint32_
     ic.current_group = cur >= 0 && cur < group_count ? cur : -1;
     ic.modal = word(c, desc + 0xC) != 0, ic.input_mask = static_cast<std::uint32_t>(word(c, desc + 0x14));
     ic.key_map = word(c, desc + 0x18) & 7, ic.select_on_decide = word(c, desc + 0x1C) != 0;
-    ic.seen_input = s.input_counts;
     ic.info = {1, 0xFFFFFFFFu, 0xFFFFFFFFu, 0, 0, 0};
     // from 1.588 on a button is drawn when `shown`, unless its flags say 0x40 (never)
     std::uint32_t k = 0;
@@ -221,26 +267,59 @@ bool moved_selection(SystemState& s, SystemState::IconControl& ic, std::uint32_t
 
 void panel_input(SystemState& s) {
     if (!s.display) return;
-    for (auto& [id, ic] : s.icon_controls) {
+    // A click and a later pointer move can arrive in the same host poll. Hit-test
+    // the click at its event position, not at the final position in that batch.
+    const int mouse_x = s.input_pending[1] && s.click_position_valid ? s.click_x : s.mouse_x;
+    const int mouse_y = s.input_pending[1] && s.click_position_valid ? s.click_y : s.mouse_y;
+    // A press is consumed by the first panel that handles it. Visit panels in
+    // the same top-to-bottom order as their owning windows, not by control ID.
+    std::vector<std::pair<std::uint32_t, SystemState::IconControl*>> panels;
+    panels.reserve(s.icon_controls.size());
+    for (auto& [id, ic] : s.icon_controls) panels.emplace_back(id, &ic);
+    auto priority = [&](const auto& panel) {
+        const Sprite* win = s.display->find_sprite(panel.second->window);
+        return win ? win->priority : 0u;
+    };
+    std::stable_sort(panels.begin(), panels.end(), [&](const auto& a, const auto& b) {
+        return priority(a) > priority(b);
+    });
+    for (auto [id, control] : panels) {
+        auto& ic = *control;
         if (ic.groups.empty() || ic.paint_only || (ic.basic && ic.info[0] == 0)) continue; // not started, painted only, or a plain panel that has decided
         const Sprite* win = s.display->find_sprite(ic.window);
         if (win && (!win->is_shown() || !s.display->windows_shown)) continue;
-        // The button under the pointer: the enabled, drawn buttons of the current group (every group while none is current).
+        // Pointer hit testing covers every group. current_group only controls
+        // keyboard navigation; the reference's flat button list has no group filter.
         int hg = -1, hi = -1;
         std::int32_t lx = 0, ly = 0;
-        const int first = ic.current_group >= 0 ? ic.current_group : 0, last = ic.current_group >= 0 ? ic.current_group : int(ic.groups.size()) - 1;
-        for (int gi = first; gi <= last && hi < 0; ++gi) {
+        std::int32_t best_priority = std::numeric_limits<std::int32_t>::min();
+        int best_order = -1, order = 0;
+        for (int gi = 0; gi < int(ic.groups.size()); ++gi) {
             const auto& g = ic.groups[static_cast<std::size_t>(gi)];
-            for (std::size_t i = 0; i < g.buttons.size() && hi < 0; ++i) {
+            for (std::size_t i = 0; i < g.buttons.size(); ++i, ++order) {
                 const auto& b = g.buttons[i];
                 if (!b.enabled || b.no_hit || b.sprite == 0) continue;
                 const Sprite* sp = s.display->find_sprite(b.sprite);
                 const SlotInfo* info = sp ? s.display->slot(sp->slot) : nullptr;
                 if (!sp || !sp->visible || !info) continue;
-                if (s.mouse_x >= sp->x && s.mouse_y >= sp->y && s.mouse_x < sp->x + std::int32_t(info->width) &&
-                    s.mouse_y < sp->y + std::int32_t(info->height)) {
+                if (mouse_x >= sp->x && mouse_y >= sp->y && mouse_x < sp->x + std::int32_t(info->width) &&
+                    mouse_y < sp->y + std::int32_t(info->height)) {
+                    const std::uint32_t px = static_cast<std::uint32_t>(mouse_x - sp->x);
+                    const std::uint32_t py = static_cast<std::uint32_t>(mouse_y - sp->y);
+                    if (sp->has_hit_mask) {
+                        if (px >= sp->hit_w || py >= sp->hit_h) continue;
+                        const std::size_t pitch = (std::size_t{sp->hit_w} + 7) >> 3;
+                        if (((sp->hit_bits[std::size_t{py} * pitch + (px >> 3)] >> (px & 7)) & 1) == 0) continue;
+                    }
+                    // Window sub-sprites use the button's y as their local sort
+                    // priority when flag 0x02 is set. Equal layers are inserted
+                    // newest-first, so the later descriptor entry wins a tie.
+                    const std::int32_t layer_priority = (b.flags & 0x02) ? b.y : 0;
+                    if (layer_priority < best_priority || (layer_priority == best_priority && order < best_order)) continue;
+                    best_priority = layer_priority;
+                    best_order = order;
                     hg = gi, hi = int(i);
-                    lx = s.mouse_x - sp->x, ly = s.mouse_y - sp->y;
+                    lx = static_cast<std::int32_t>(px), ly = static_cast<std::int32_t>(py);
                 }
             }
         }
@@ -267,16 +346,31 @@ void panel_input(SystemState& s) {
 
         // what was pressed since the last update, as logical input bits (a non-modal panel only reacts to the mouse buttons,
         // the wheel and the cancel key)
+        const bool pointer_layer = ic.modal || hi >= 0 || (ic.mouse && win && sprite_hit(*s.display, ic.window, mouse_x, mouse_y));
+        const std::uint32_t win_key = ((win ? win->priority : 0u) << 20) | 0xFFFFFu;
+        const bool key_layer = !ic.modal || (s.input_enabled && !s.key_layers.empty() && win_key >= s.key_layers.front());
         std::uint32_t bits = 0;
-        for (std::uint32_t bit : kPanelBits)
-            for (std::uint32_t n : s.input_numbers(bit))
-                if (n < 256 && s.input_counts[n] != ic.seen_input[n]) bits |= bit;
+        std::array<bool, 256> pressed_now{};
+        if (s.input_enabled && pointer_layer && key_layer) {
+            for (std::uint32_t bit : kPanelBits) {
+                // A non-modal panel polls only the mouse, wheel and cancel groups
+                // (0x2C3). Do not consume navigation keys that it will discard.
+                if (!ic.modal && (bit & 0x2C3u) == 0) continue;
+                for (std::uint32_t n : s.input_numbers(bit))
+                    if (consume_input_trigger(s, n)) {
+                        bits |= bit;
+                        if (n < pressed_now.size()) pressed_now[n] = true;
+                        break;
+                    }
+                }
+        }
         const bool shift = false; // the host does not report modifier keys; Tab goes to the next group
-        const std::array<std::uint32_t, 256> hotkey_seen = ic.seen_input;
-        ic.seen_input = s.input_counts;
         bits &= ~ic.input_mask;
         if (!ic.modal) bits &= 0x2C3;
-        auto was_pressed = [&](std::uint32_t vk) { return vk < 256 && s.input_counts[vk] != hotkey_seen[vk]; };
+        auto was_pressed = [&](std::uint32_t vk) {
+            return vk < pressed_now.size() && (pressed_now[vk] ||
+                (s.input_enabled && pointer_layer && key_layer && consume_input_trigger(s, vk)));
+        };
 
         Action act = None;
         int k = 0;
@@ -327,7 +421,7 @@ void panel_input(SystemState& s) {
         switch (act) {
         case Click:
             if (hi < 0) {
-                if (!ic.basic) ic.events.push_back({0x10000007u, 0xFFFFFFFFu, static_cast<std::uint32_t>(s.mouse_y - (win ? win->y : 0)) << 16 | (static_cast<std::uint32_t>(s.mouse_x - (win ? win->x : 0)) & 0xFFFF)});
+                if (!ic.basic) ic.events.push_back({0x10000007u, 0xFFFFFFFFu, static_cast<std::uint32_t>(mouse_y - (win ? win->y : 0)) << 16 | (static_cast<std::uint32_t>(mouse_x - (win ? win->x : 0)) & 0xFFFF)});
                 break;
             }
             decide(ic, hg, hi, 1, lx, ly);
@@ -401,18 +495,19 @@ void panel_sync(SystemState& s) {
     if (!s.display) return;
     for (auto& [id, ic] : s.icon_controls) {
         const Sprite* win = s.display->find_sprite(ic.window);
+        const auto [ox, oy] = panel_offset(s, ic);
         for (auto& g : ic.groups)
             for (std::size_t i = 0; i < g.buttons.size(); ++i) {
                 auto& b = g.buttons[i];
                 if (b.sprite == 0) continue;
                 Sprite* sp = s.display->find_sprite(b.sprite);
                 if (!sp) continue;
-                sp->x = (win ? win->x : 0) + b.x;
-                sp->y = (win ? win->y : 0) + b.y;
+                sp->x = (win ? win->x : 0) + ox + b.x;
+                sp->y = (win ? win->y : 0) + oy + b.y;
                 sp->priority = (win ? win->priority : 0) + 1;
                 sp->alpha = win ? win->alpha : 0;
                 sp->fade = win ? win->fade : 0, sp->opacity = win ? win->opacity : 0x100;
-                sp->visible = (!win || (win->is_shown() && s.display->windows_shown)) && s.display->slot(sp->slot) != nullptr;
+                sp->visible = win && win->is_shown() && s.display->windows_shown && s.display->slot(sp->slot) != nullptr;
             }
     }
 }

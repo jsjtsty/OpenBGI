@@ -1,0 +1,44 @@
+{
+  "python": "3.13.5 (tags/v3.13.5:6cb20a2, Jun 11 2025, 16:15:46) [MSC v.1943 64 bit (AMD64)]",
+  "native_boot_complete": 344,
+  "native_boot_partial": 1,
+  "native_boot_semantic_stubs": 0,
+  "title_reached": false,
+  "groups": {
+    "T1": {
+      "requested": 14,
+      "normal_return_items": 14,
+      "no_dispatch_entry": 0
+    },
+    "T2": {
+      "requested": 23,
+      "normal_return_items": 23,
+      "no_dispatch_entry": 0
+    },
+    "T3": {
+      "requested": 47,
+      "normal_return_items": 33,
+      "no_dispatch_entry": 7
+    },
+    "T4": {
+      "requested": 24,
+      "normal_return_items": 19,
+      "no_dispatch_entry": 1
+    }
+  },
+  "sha256": {
+    "E:\\Games\\Amairo Chocolate 2\\ac2_ML.exe": "8a0d98b3ae576dcb1ecd674aba53ac4608fb7705477c57035dfcc7cbfa012f3e",
+    "E:\\Games\\Amairo Chocolate 2\\BGI.gdb": "7c1f27fc27b28e2321b6b4977e0e77340668b4aa0c5037b34c85cfcaf9bcbbe0",
+    "D:\\Projects\\C++\\OpenBGI\\analysis\\out\\boot_truth.tsv": "c0b410aba7b9d8dbb885b9428837213e571cae00ba3b3f3cb5a29f8e5a23d860",
+    "D:\\Projects\\C++\\OpenBGI\\analysis\\out\\task5_edge_trials.json": "5ef134616db0f342a5296f357ee3a684278b720238f761fbbd6eb4883e92c849",
+    "D:\\Projects\\C++\\OpenBGI\\analysis\\scripts\\truth5_boot.py": "561a144f33081ad1cdbaad5e7f690b9c1d35ec2e75915b20ab3fe000bbb1b2f9",
+    "D:\\Projects\\C++\\OpenBGI\\analysis\\scripts\\truth5_docs.py": "4f3236c70b4e5a9150224bf8d25a74d4ad593e3fa2232fc07e3b8c32876e41ce",
+    "D:\\Projects\\C++\\OpenBGI\\analysis\\scripts\\truth5_edges.py": "d145a3d2e9c7975387a2013f3345ea459e4e77d5c5c59a0b01e1266d77e71fbc",
+    "D:\\Projects\\C++\\OpenBGI\\analysis\\scripts\\truth5_finalize.py": "fc72f08abaa1d8117d7afcb3eb547fec012b92f53db30b4c17e2d0d9ee3a9acc",
+    "D:\\Projects\\C++\\OpenBGI\\analysis\\scripts\\truth5_report.py": "9447bd9ca57fcc0d1f2f93c313bb736258386c7f8956343cfc2c237a881acf5a",
+    "D:\\Projects\\C++\\OpenBGI\\analysis\\scripts\\truth5_runtime.py": "169695199055634993ee9f069a1b3b0912e220e6a3e7f995ef6724e7d45a3cdb",
+    "D:\\Projects\\C++\\OpenBGI\\analysis\\scripts\\truth5_sources.py": "fc126f742bfdba2ffbf3daecc8c2ff165d3cf7d311db252162e1744d4167f241",
+    "D:\\Projects\\C++\\OpenBGI\\analysis\\scripts\\truth5_targets.py": "1587254de08d4f5b1063e64abfe4fe685c7279d928eed45189955ebd8dc123d5",
+    "D:\\Projects\\C++\\OpenBGI\\analysis\\scripts\\truth5_verify.py": "a4cbd22441c352290cf56c5398b09dd122851b5c3f2e5031feea95912a2d1512"
+  }
+}

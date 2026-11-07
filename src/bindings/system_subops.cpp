@@ -164,7 +164,7 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     });
     // not modelled yet (display object / effect parameters); pop counts measured in the original: 90:3A 2, 90:53 5, 90:58 9,
     // 91:38 3, 91:9F 2, 92:90 15, 90:90 6 (none pushes anything). 80:1A (mouse region priority) pushes the logical input mask: 0 here
-    for (const auto& [id, pops] : {std::pair{0x9053u, 5}, {0x919Fu, 2}})
+    for (const auto& [id, pops] : {std::pair{0x919Fu, 2}})
         add(r, static_cast<std::uint16_t>(id), "effect parameters (not modelled)", pops, 0, [pops](Ctx& c) { for (int i = 0; i < pops; ++i) c.pop(); return 0; });
     add(r, 0x9214, "92:14 wait object (not modelled)", 2, 0, [](Ctx& c) { c.pop(), c.pop(); return 0; });
     // 91:94 / 91:95 (two strings): a text (font name list) registry the original keeps; not modelled. 91:95 pushed 0 in the original.
@@ -179,7 +179,7 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     });
 
     // GetLocalTime: SYSTEMTIME = year, month, day of week, day, hour, minute, second, milliseconds (u16 each)
-    add(r, 0x800C, "local time", 1, 0, [](Ctx& c) {
+    add(r, 0x800C, "local time", 1, 0, [s](Ctx& c) {
         const Word dst = c.pop();
         if (!c.ok()) return 0;
         const std::time_t now = std::time(nullptr);
@@ -189,9 +189,10 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
 #else
         localtime_r(&now, &tm);
 #endif
-        const std::uint16_t f[8] = {std::uint16_t(tm.tm_year + 1900), std::uint16_t(tm.tm_mon + 1), std::uint16_t(tm.tm_wday),
+        std::array<std::uint16_t, 8> f = {std::uint16_t(tm.tm_year + 1900), std::uint16_t(tm.tm_mon + 1), std::uint16_t(tm.tm_wday),
                                     std::uint16_t(tm.tm_mday), std::uint16_t(tm.tm_hour), std::uint16_t(tm.tm_min),
                                     std::uint16_t(tm.tm_sec), 0};
+        if (s->calendar_time) f = s->calendar_time();
         std::uint8_t bytes[16];
         for (int i = 0; i < 8; ++i) {
             bytes[2 * i] = std::uint8_t(f[i] & 255);
@@ -815,9 +816,12 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
         c.write_cstring(dst, utf8);
         return 0;
     });
-    add(r, 0x8037, "add resource search path", 1, 0, [s](Ctx& c) {
+    add(r, 0x8037, "add resource search path", 1, 0, [s, res](Ctx& c) {
         std::string path = c.cstring(c.pop());
-        if (c.ok()) s->search_paths.insert(s->search_paths.begin(), std::move(path));
+        if (c.ok()) {
+            res->add_search_path(std::filesystem::path(cp932_to_utf32(path)));
+            s->search_paths.insert(s->search_paths.begin(), std::move(path));
+        }
         return 0;
     });
     // (a, b, index): remembers two numbers per index below 16. 1 = bad index, 2 = a zero number, 0 = stored
@@ -847,7 +851,7 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
             c.fail(Errc::Range, "frame rate " + std::to_string(v) + " out of range");
             return 0;
         }
-        s->frame_ms = v ? 1000 / v : 0;
+        s->frame_ms = std::max<Word>(1, v ? 1000 / v : 1);
         return 0;
     });
     // pop a value and push ceil-ish 0x10000 / v (the 16.16 type-size scale; 0 stays 0)
@@ -867,9 +871,18 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     });
 
     // ---- input / window state queries (verified against the original handlers, analysis/out/t_verify.tsv) ----
-    // No window, no keys: nothing is pressed, the window is active and not minimised.
-    add(r, 0x8017, "input skip state", 0, 1, [](Ctx& c) { c.push(0); return 0; }); // nothing pressed
-    add(r, 0x8014, "set input skip permission", 1, 0, [s](Ctx& c) { const Word v = c.pop(); if (c.ok()) s->values[0x8014] = v; return 0; });
+    add(r, 0x8017, "input skip state", 0, 1, [s](Ctx& c) { c.push(input_skip_state(*s)); return 0; });
+    add(r, 0x8014, "set input skip permission", 1, 0, [s](Ctx& c) {
+        const Word v = c.pop();
+        if (c.ok()) s->skip_enabled = v != 0, s->values[0x8014] = v;
+        return 0;
+    });
+    add(r, 0x801E, "swap mouse buttons", 1, 1, [s](Ctx& c) {
+        const Word value = c.pop();
+        if (!c.ok()) return 0;
+        c.push(s->set_mouse_button_swap(value) ? 1u : 0u);
+        return 0;
+    });
     add(r, 0x800F, "window active", 0, 1, [](Ctx& c) { c.push(1); return 0; });
     // 92:F0 (6 values, two of them addresses): makes a video window of the movie cluster (analysis/视频.md) and pushes a result;
     // there is none yet, so it answers 0. 90:F3 (volume 0..0x80) and 90:01 (a value kept in a display global) only take their argument.
@@ -907,31 +920,28 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
         c.push(0);
         return 0;
     });
-    // B0:C3 (arc, file) -> ok: adds a font file of an archive to the engine's font names; the text library here only finds installed fonts,
-    // so the file is not registered: it answers 1 when the archive member exists, else 0
-    add(r, 0xB0C3, "add font file from archive", 2, 1, [res](Ctx& c) {
-        const std::string file = c.cstring(c.pop()), arc = c.cstring(c.pop());
-        if (c.ok()) c.push(res->exists(arc, file) ? 1 : 0);
+    add(r, 0x9001, "display enable", 1, 0, [s](Ctx& c) {
+        const Word on = c.pop();
+        if (c.ok()) s->display_enabled = on != 0, s->values[0x9001] = on;
         return 0;
     });
-    add(r, 0x90F3, "movie volume", 1, 0, [s](Ctx& c) { const Word v = c.pop(); if (c.ok()) s->values[0x90F3] = v; return 0; });
-    add(r, 0x9001, "display global 90:01", 1, 0, [s](Ctx& c) { const Word v = c.pop(); if (c.ok()) s->values[0x9001] = v; return 0; });
-    // 90:F2: whether a movie is still playing; none is, so 0
-    add(r, 0x90F2, "movie playing", 0, 1, [](Ctx& c) { c.push(0); return 0; });
     // 91:10..1E (except 91:1C): bitmap effects (stretch, vector graphics, bend, blend by degree, transforms); the pop counts are
     // known, the effects are not drawn yet
     for (auto [id, n] : {std::pair{0x9117, 6},
                          {0x9118, 11}, {0x911A, 3}})
         add(r, static_cast<std::uint16_t>(id), "bitmap effect (not drawn)", n, 0, [n](Ctx& c) { for (int i = 0; i < n; ++i) c.pop(); return 0; });
-    // 80:16 (no arguments): resets the original's key state tables; our input is edge counted, nothing to reset
-    add(r, 0x8016, "input reset", 0, 0, [](Ctx&) { return 0; });
-    // 80:13: a number that changes whenever any input arrives (the original bumps it on window events); the sum of the press counts
-    add(r, 0x8013, "input serial", 0, 1, [s](Ctx& c) {
-        std::uint32_t sum = 0;
-        for (std::uint32_t n : s->input_counts) sum += n;
-        c.push(sum);
+    add(r, 0x8010, "input enable", 1, 0, [s](Ctx& c) {
+        const Word enabled = c.pop();
+        if (c.ok()) s->set_input_enabled(enabled != 0);
         return 0;
     });
+    add(r, 0x8016, "input flush", 0, 0, [s](Ctx&) {
+        s->skip_flushed = true;
+        for (Word vk : s->input_numbers(0x80000000)) (void)consume_input_trigger(*s, vk);
+        return 0;
+    });
+    // 80:13: the input event serial, bumped on each new key/button press and wheel event.
+    add(r, 0x8013, "input serial", 0, 1, [s](Ctx& c) { c.push(s->input_serial); return 0; });
     add(r, 0x8069, "close main window", 0, 0, [s](Ctx&) { s->quit_requested = true; return 0; });
     // 80:C0 (dst, src, size) -> encoded size: SDC-encodes the data (the original did it on a worker thread and pushed the size when done)
     add(r, 0x80C0, "SDC encode", 3, 1, [](Ctx& c) {
@@ -982,7 +992,11 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     add(r, 0x8119, "touch points", 1, 1, [](Ctx& c) { c.pop(); c.push(0); return 0; });
     add(r, 0x81F7, "create shortcut", 4, 1, [](Ctx& c) { for (int i = 0; i < 4; ++i) c.pop(); c.push(0); return 0; });
     add(r, 0x90F1, "stop movie", 0, 0, [](Ctx&) { return 0; }); // movies are not played
-    add(r, 0x8015, "skip latch", 1, 0, [s](Ctx& c) { const Word v = c.pop(); if (c.ok()) s->values[0x8015] = v; return 0; });
+    add(r, 0x8015, "skip latch", 1, 0, [s](Ctx& c) {
+        const Word v = c.pop();
+        if (c.ok()) s->skip_latch = v != 0, s->values[0x8015] = v;
+        return 0;
+    });
     // 80:39 (dir): the alternative game directory (path selector 1 of 80:3D); 1 when the directory exists
     add(r, 0x8039, "alternative directory", 1, 1, [s](Ctx& c) {
         const std::string dir = c.cstring(c.pop());
@@ -1162,8 +1176,16 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     });
     add(r, 0x8008, "mouse position", 0, 2, [s](Ctx& c) { c.push(static_cast<Word>(s->mouse_x)), c.push(static_cast<Word>(s->mouse_y)); return 0; }); // client x, y
     add(r, 0x810F, "window minimised", 0, 1, [](Ctx& c) { c.push(0); return 0; });
-    add(r, 0x8018, "input priority add", 1, 0, [](Ctx& c) { c.pop(); return 0; });
-    add(r, 0x8019, "input priority remove", 1, 0, [](Ctx& c) { c.pop(); return 0; });
+    add(r, 0x8018, "input priority add", 1, 0, [s](Ctx& c) {
+        const Word priority = c.pop();
+        if (c.ok()) push_input_priority(*s, priority);
+        return 0;
+    });
+    add(r, 0x8019, "input priority remove", 1, 0, [s](Ctx& c) {
+        const Word priority = c.pop();
+        if (c.ok()) pop_input_priority(*s, priority);
+        return 0;
+    });
     // The ruby (furigana) dictionary, word -> reading, longest word first (analysis: the reference engine's gfx/text/ruby.c).
     // 91:94 (word, reading): a null word clears it, a null reading removes the word, otherwise adds / replaces the pair.
     auto ruby_insert = [s](const std::string& word, const std::string& reading) {
@@ -1264,13 +1286,6 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
         c.push(s->icon_controls.erase(id) ? 1 : 0);
         return 0;
     });
-    // 90:05 (upper, lower display priority bounds, each at most 0xFFFF); 90:20 (priority, B, frame rate, D, blend, object)
-    add(r, 0x9005, "display priority range", 2, 0, [](Ctx& c) {
-        const Word lo = c.pop(), hi = c.pop();
-        if (c.ok() && (lo > 0xFFFF || hi > 0xFFFF)) c.fail(Errc::Range, "display priority range out of bounds");
-        return 0;
-    });
-
     add_setter(r, state, 0x8068, "window close policy");
     add_setter(r, state, 0x8052, "setting 80:52");
     add_setter(r, state, 0x8074, "setting 80:74");

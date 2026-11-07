@@ -1,0 +1,49 @@
+; payload file offset=0x130; code end=0x138; data bytes=126
+; modules=21 exports=0
+00000000  0001 000000F0                   push_module_addr     ; sysprg/00010_scrctrl._bp+0005BB
+00000008  0018                            jump_indirect        ; sysprg/00010_scrctrl._bp+000828
+0000000C  0003 00000138                   push_relative_addr   ; sysprg/00010_scrctrl._bp+00062D 'D:\\BURIKOScriptSystem\\amacho2\\Script\\100_systemscript\\main.bs5'
+00000014  0000 00000006                   push_imm             ; sysprg/00010_scrctrl._bp+0005AC
+0000001C  003F 00000002                   op_003F              ; sysprg/00010_scrctrl._bp+000DFA
+00000024  00FE                            op_00FE              ; sysprg/00010_scrctrl._bp+001C6F
+00000028  0000 00000001                   push_imm             ; sysprg/00010_scrctrl._bp+0005AC
+00000030  003F 00000001                   op_003F              ; sysprg/00010_scrctrl._bp+000DFA
+00000038  0122                            op_0122              ; sysprg/00011_scrsys._bp+000DF3
+0000003C  0003 00000138                   push_relative_addr   ; sysprg/00010_scrctrl._bp+00062D 'D:\\BURIKOScriptSystem\\amacho2\\Script\\100_systemscript\\main.bs5'
+00000044  0000 00000007                   push_imm             ; sysprg/00010_scrctrl._bp+0005AC
+0000004C  003F 00000002                   op_003F              ; sysprg/00010_scrctrl._bp+000DFA
+00000054  00FE                            op_00FE              ; sysprg/00010_scrctrl._bp+001C6F
+00000058  0000 00000001                   push_imm             ; sysprg/00010_scrctrl._bp+0005AC
+00000060  003F 00000001                   op_003F              ; sysprg/00010_scrctrl._bp+000DFA
+00000068  0123                            op_0123              ; sysprg/00011_scrsys._bp+000E13
+0000006C  0003 00000138                   push_relative_addr   ; sysprg/00010_scrctrl._bp+00062D 'D:\\BURIKOScriptSystem\\amacho2\\Script\\100_systemscript\\main.bs5'
+00000074  0000 0000000A                   push_imm             ; sysprg/00010_scrctrl._bp+0005AC
+0000007C  003F 00000002                   op_003F              ; sysprg/00010_scrctrl._bp+000DFA
+00000084  00FE                            op_00FE              ; sysprg/00010_scrctrl._bp+001C6F
+00000088  0000 00000000                   push_imm             ; sysprg/00010_scrctrl._bp+0005AC
+00000090  003F 00000001                   op_003F              ; sysprg/00010_scrctrl._bp+000DFA
+00000098  0104                            op_0104              ; sysprg/00011_scrsys._bp+000486
+0000009C  0003 00000138                   push_relative_addr   ; sysprg/00010_scrctrl._bp+00062D 'D:\\BURIKOScriptSystem\\amacho2\\Script\\100_systemscript\\main.bs5'
+000000A4  0000 0000000D                   push_imm             ; sysprg/00010_scrctrl._bp+0005AC
+000000AC  003F 00000002                   op_003F              ; sysprg/00010_scrctrl._bp+000DFA
+000000B4  00FE                            op_00FE              ; sysprg/00010_scrctrl._bp+001C6F
+000000B8  0003 00000138                   push_relative_addr   ; sysprg/00010_scrctrl._bp+00062D 'D:\\BURIKOScriptSystem\\amacho2\\Script\\100_systemscript\\main.bs5'
+000000C0  0000 0000000F                   push_imm             ; sysprg/00010_scrctrl._bp+0005AC
+000000C8  003F 00000002                   op_003F              ; sysprg/00010_scrctrl._bp+000DFA
+000000D0  00FE                            op_00FE              ; sysprg/00010_scrctrl._bp+001C6F
+000000D4  0003 00000177                   push_relative_addr   ; sysprg/00010_scrctrl._bp+00062D '_start'
+000000DC  0000 00000000                   push_imm             ; sysprg/00010_scrctrl._bp+0005AC
+000000E4  00F6                            op_00F6              ; sysprg/00010_scrctrl._bp+001ACC
+000000E8  00F3                            op_00F3              ; sysprg/00010_scrctrl._bp+0019C5
+000000EC  001B                            return               ; sysprg/00010_scrctrl._bp+0008FB
+000000F0  0000 00000000                   push_imm             ; sysprg/00010_scrctrl._bp+0005AC
+000000F8  00F7                            op_00F7              ; sysprg/00010_scrctrl._bp+001AF9
+000000FC  0001 0000000C                   push_module_addr     ; sysprg/00010_scrctrl._bp+0005BB
+00000104  0019 00000001                   op_0019              ; sysprg/00010_scrctrl._bp+00084A
+0000010C  0003 0000017E                   push_relative_addr   ; sysprg/00010_scrctrl._bp+00062D 'AC2_main_story'
+00000114  00F7                            op_00F7              ; sysprg/00010_scrctrl._bp+001AF9
+00000118  0001 000000B8                   push_module_addr     ; sysprg/00010_scrctrl._bp+0005BB
+00000120  0019 00000001                   op_0019              ; sysprg/00010_scrctrl._bp+00084A
+00000128  0003 0000018D                   push_relative_addr   ; sysprg/00010_scrctrl._bp+00062D '指定されたラベルは見つかりませんでした。'
+00000130  00F9                            op_00F9              ; sysprg/00010_scrctrl._bp+001B67
+00000134  00F4                            stop                 ; sysprg/00010_scrctrl._bp+001AA4

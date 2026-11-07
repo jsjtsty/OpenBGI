@@ -4,41 +4,114 @@
     {
       "name": "base",
       "hidden": true,
-      "binaryDir": "${sourceDir}/build/${presetName}",
-      "cacheVariables": {
-        "OPENBGI_PROXY": "http://127.0.0.1:7897"
-      }
+      "binaryDir": "${sourceDir}/build/${presetName}"
     },
     {
       "name": "windows",
       "inherits": "base",
       "generator": "Visual Studio 18 2026",
       "architecture": "x64",
-      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" }
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Windows"
+      }
     },
     {
       "name": "linux",
       "inherits": "base",
       "generator": "Ninja Multi-Config",
-      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" }
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Linux"
+      }
     },
     {
       "name": "macos",
       "inherits": "base",
       "generator": "Ninja Multi-Config",
-      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Darwin" }
+      "condition": {
+        "type": "equals",
+        "lhs": "${hostSystemName}",
+        "rhs": "Darwin"
+      }
+    },
+    {
+      "name": "windows-core",
+      "inherits": "windows",
+      "cacheVariables": {
+        "OPENBGI_BUILD_RUNTIME": "OFF"
+      }
     }
   ],
   "buildPresets": [
-    { "name": "windows-debug", "configurePreset": "windows", "configuration": "Debug" },
-    { "name": "windows-release", "configurePreset": "windows", "configuration": "Release" },
-    { "name": "linux-debug", "configurePreset": "linux", "configuration": "Debug" },
-    { "name": "macos-debug", "configurePreset": "macos", "configuration": "Debug" }
+    {
+      "name": "windows-debug",
+      "configurePreset": "windows",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-release",
+      "configurePreset": "windows",
+      "configuration": "Release"
+    },
+    {
+      "name": "linux-debug",
+      "configurePreset": "linux",
+      "configuration": "Debug"
+    },
+    {
+      "name": "macos-debug",
+      "configurePreset": "macos",
+      "configuration": "Debug"
+    },
+    {
+      "name": "windows-core-debug",
+      "configurePreset": "windows-core",
+      "configuration": "Debug"
+    }
   ],
   "testPresets": [
-    { "name": "windows-debug", "configurePreset": "windows", "configuration": "Debug", "output": { "outputOnFailure": true } },
-    { "name": "windows-release", "configurePreset": "windows", "configuration": "Release", "output": { "outputOnFailure": true } },
-    { "name": "linux-debug", "configurePreset": "linux", "configuration": "Debug", "output": { "outputOnFailure": true } },
-    { "name": "macos-debug", "configurePreset": "macos", "configuration": "Debug", "output": { "outputOnFailure": true } }
+    {
+      "name": "windows-debug",
+      "configurePreset": "windows",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "windows-release",
+      "configurePreset": "windows",
+      "configuration": "Release",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "linux-debug",
+      "configurePreset": "linux",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "macos-debug",
+      "configurePreset": "macos",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "windows-core-debug",
+      "configurePreset": "windows-core",
+      "configuration": "Debug",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
   ]
 }

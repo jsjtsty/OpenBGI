@@ -18,7 +18,7 @@ TEST_CASE("dsc rejects garbage") {
 }
 
 // Byte-exact check against SHA-256 values produced by the original exe's decoder (analysis/DSC格式.md).
-TEST_CASE("dsc matches vectors from the original decoder") {
+TEST_CASE("dsc matches vectors from the original decoder" * doctest::test_suite("game")) {
     fs::path game = OPENBGI_GAME_DIR;
     if (!fs::exists(game)) {
         MESSAGE("game directory not found, skipping: ", game.string());

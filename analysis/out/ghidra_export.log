@@ -1,0 +1,208 @@
+2026-10-28 00:12:51 INFO  (LoggingInitialization) Using log config file: jar:file:/D:/CodeSpace/ghidra_12.2_PUBLIC/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml  
+2026-10-28 00:12:51 INFO  (LoggingInitialization) Using log file: D:\Projects\C++\OpenBGI\analysis\out\ghidra_export.log  
+2026-10-28 00:12:51 DEBUG (GhidraObjectInputFilter) Including serial input filter: FileSystem/data/client.rmi.serial.filter  
+2026-10-28 00:12:51 INFO  (Preferences) Loading user preferences: C:\Users\NULL\AppData\Roaming\ghidra\ghidra_12.2_PUBLIC\preferences  
+2026-10-28 00:12:51 INFO  (Preferences) Loading previous preferences: C:\Users\NULL\AppData\Roaming\ghidra\ghidra_12.1.2_PUBLIC\preferences  
+2026-10-28 00:12:51 INFO  (ClassSearcher) Searching for classes...  
+2026-10-28 00:12:52 INFO  (ClassSearcher) Class search complete (953 ms)  
+2026-10-28 00:12:52 INFO  (DefaultSSLContextInitializer) Initializing SSL Context  
+2026-10-28 00:12:52 INFO  (SecureRandomFactory) Initializing Random Number Generator...  
+2026-10-28 00:12:52 INFO  (SecureRandomFactory) Random Number Generator initialization complete: SHA1PRNG  
+2026-10-28 00:12:53 INFO  (DefaultTrustManagerFactory) Loaded 59 trusted CA certificates from the OS trust store.  
+2026-10-28 00:12:53 INFO  (DefaultTrustManagerFactory) Loaded 113 trusted CA certificates from the Java default trust store.  
+2026-10-28 00:12:53 INFO  (AnalyzeHeadless) Headless startup complete (2226 ms)  
+2026-10-28 00:12:53 INFO  (ClassSearcher) Class searcher loaded 60 extension points (19 false positives)  
+2026-10-28 00:12:53 INFO  (HeadlessAnalyzer) HEADLESS Script Paths:
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\SystemEmulation\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\PDB\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Debug\Debugger\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\BSim\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Processors\Atmel\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\MicrosoftCodeAnalyzer\ghidra_scripts
+    D:\Projects\C++\OpenBGI\analysis\scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\DecompilerDependent\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Processors\DATA\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\FunctionID\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\WildcardAssembler\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Processors\PIC\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\PyGhidra\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Processors\JVM\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Processors\8051\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\Base\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Debug\Debugger-rmi-trace\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\Swift\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\GnuDemangler\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\VersionTracking\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\BytePatterns\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\Decompiler\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\FileFormats\ghidra_scripts  
+2026-10-28 00:12:53 INFO  (HeadlessAnalyzer) HEADLESS: execution starts  
+2026-10-28 00:12:53 INFO  (HeadlessAnalyzer) Opening existing project: D:\Projects\C++\OpenBGI\analysis\ghidra_project\OpenBGI  
+2026-10-28 00:12:53 INFO  (HeadlessProject) Opening project: D:\Projects\C++\OpenBGI\analysis\ghidra_project\OpenBGI  
+2026-10-28 00:12:55 DEBUG (SleighLanguage) Took 438ms (188ms inside lock) to initialize language D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Processors\x86\data\languages\x86.slaspec -> D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Processors\x86\data\languages\x86.sla  
+2026-10-28 00:12:56 INFO  (HeadlessAnalyzer) REPORT: Processing project file: /ac2_ML.exe  
+2026-10-28 00:12:56 INFO  (HeadlessAnalyzer) REPORT: Execute script: ExportAll.java 'D:\Projects\C++\OpenBGI\analysis\out'   
+2026-10-28 00:12:57 ERROR (HeadlessAnalyzer) ExportAll.java:26: error: cannot find symbol
+            for (Data d : DefinedDataIterator.definedStrings(currentProgram)) {
+                          ^
+  symbol:   variable DefinedDataIterator
+  location: class ExportAll
+skipping D:\Projects\C++\OpenBGI\analysis\scripts\ExportAll.java
+  
+2026-10-28 00:12:57 ERROR (HeadlessAnalyzer) REPORT SCRIPT ERROR: ExportAll.java : The class could not be found. It must be the public class of the .java file: ExportAll not found by c6c6ef9f [1] ghidra.app.script.GhidraScriptLoadException: The class could not be found. It must be the public class of the .java file: ExportAll not found by c6c6ef9f [1]
+	at ghidra.app.script.JavaScriptProvider.getScriptInstance(JavaScriptProvider.java:114)
+	at ghidra.app.util.headless.HeadlessAnalyzer.runScriptsList(HeadlessAnalyzer.java:929)
+	at ghidra.app.util.headless.HeadlessAnalyzer.analyzeProgram(HeadlessAnalyzer.java:1107)
+	at ghidra.app.util.headless.HeadlessAnalyzer.processFileNoImport(HeadlessAnalyzer.java:1206)
+	at ghidra.app.util.headless.HeadlessAnalyzer.processFolderNoImport(HeadlessAnalyzer.java:1376)
+	at ghidra.app.util.headless.HeadlessAnalyzer.processNoImport(HeadlessAnalyzer.java:1405)
+	at ghidra.app.util.headless.HeadlessAnalyzer.processLocal(HeadlessAnalyzer.java:461)
+	at ghidra.app.util.headless.AnalyzeHeadless.launch(AnalyzeHeadless.java:211)
+	at ghidra.GhidraLauncher.launch(GhidraLauncher.java:78)
+	at ghidra.Ghidra.main(Ghidra.java:41)
+Caused by: java.lang.ClassNotFoundException: ExportAll not found by c6c6ef9f [1]
+	at org.apache.felix.framework.BundleWiringImpl.findClassOrResourceByDelegation(BundleWiringImpl.java:1591)
+	at org.apache.felix.framework.BundleWiringImpl.access$300(BundleWiringImpl.java:79)
+	at org.apache.felix.framework.BundleWiringImpl$BundleClassLoader.loadClass(BundleWiringImpl.java:1976)
+	at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:490)
+	at org.apache.felix.framework.Felix.loadBundleClass(Felix.java:2116)
+	at org.apache.felix.framework.BundleImpl.loadClass(BundleImpl.java:986)
+	at ghidra.app.script.JavaScriptProvider.loadClass(JavaScriptProvider.java:166)
+	at ghidra.app.script.JavaScriptProvider.getScriptInstance(JavaScriptProvider.java:97)
+	... 9 more
+ 
+2026-10-28 00:12:57 INFO  (HeadlessAnalyzer) REPORT: Save succeeded for processed file: /ac2_ML.exe  
+2026-10-28 00:13:12 INFO  (LoggingInitialization) Using log config file: jar:file:/D:/CodeSpace/ghidra_12.2_PUBLIC/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml  
+2026-10-28 00:13:12 INFO  (LoggingInitialization) Using log file: D:\Projects\C++\OpenBGI\analysis\out\ghidra_export.log  
+2026-10-28 00:13:12 DEBUG (GhidraObjectInputFilter) Including serial input filter: FileSystem/data/client.rmi.serial.filter  
+2026-10-28 00:13:12 INFO  (Preferences) Loading user preferences: C:\Users\NULL\AppData\Roaming\ghidra\ghidra_12.2_PUBLIC\preferences  
+2026-10-28 00:13:12 INFO  (Preferences) Loading previous preferences: C:\Users\NULL\AppData\Roaming\ghidra\ghidra_12.1.2_PUBLIC\preferences  
+2026-10-28 00:13:12 INFO  (ClassSearcher) Searching for classes...  
+2026-10-28 00:13:13 INFO  (ClassSearcher) Class search complete (919 ms)  
+2026-10-28 00:13:13 INFO  (DefaultSSLContextInitializer) Initializing SSL Context  
+2026-10-28 00:13:13 INFO  (SecureRandomFactory) Initializing Random Number Generator...  
+2026-10-28 00:13:13 INFO  (SecureRandomFactory) Random Number Generator initialization complete: SHA1PRNG  
+2026-10-28 00:13:13 INFO  (DefaultTrustManagerFactory) Loaded 59 trusted CA certificates from the OS trust store.  
+2026-10-28 00:13:13 INFO  (DefaultTrustManagerFactory) Loaded 113 trusted CA certificates from the Java default trust store.  
+2026-10-28 00:13:13 INFO  (AnalyzeHeadless) Headless startup complete (2070 ms)  
+2026-10-28 00:13:13 INFO  (ClassSearcher) Class searcher loaded 60 extension points (19 false positives)  
+2026-10-28 00:13:14 INFO  (HeadlessAnalyzer) HEADLESS Script Paths:
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\SystemEmulation\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\PDB\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Debug\Debugger\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\BSim\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Processors\Atmel\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\MicrosoftCodeAnalyzer\ghidra_scripts
+    D:\Projects\C++\OpenBGI\analysis\scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\DecompilerDependent\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Processors\DATA\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\FunctionID\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\WildcardAssembler\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Processors\PIC\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\PyGhidra\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Processors\JVM\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Processors\8051\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\Base\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Debug\Debugger-rmi-trace\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\Swift\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\GnuDemangler\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\VersionTracking\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\BytePatterns\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\Decompiler\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\FileFormats\ghidra_scripts  
+2026-10-28 00:13:14 INFO  (HeadlessAnalyzer) HEADLESS: execution starts  
+2026-10-28 00:13:14 INFO  (HeadlessAnalyzer) Opening existing project: D:\Projects\C++\OpenBGI\analysis\ghidra_project\OpenBGI  
+2026-10-28 00:13:14 INFO  (HeadlessProject) Opening project: D:\Projects\C++\OpenBGI\analysis\ghidra_project\OpenBGI  
+2026-10-28 00:13:15 DEBUG (SleighLanguage) Took 525ms (233ms inside lock) to initialize language D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Processors\x86\data\languages\x86.slaspec -> D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Processors\x86\data\languages\x86.sla  
+2026-10-28 00:13:16 INFO  (HeadlessAnalyzer) REPORT: Processing project file: /ac2_ML.exe  
+2026-10-28 00:13:16 INFO  (HeadlessAnalyzer) REPORT: Execute script: ExportAll.java 'D:\Projects\C++\OpenBGI\analysis\out'   
+2026-10-28 00:13:18 ERROR (HeadlessAnalyzer) ExportAll.java:27: error: cannot find symbol
+            for (Data d : DefinedDataIterator.definedStrings(currentProgram)) {
+                                             ^
+  symbol:   method definedStrings(ghidra.program.model.listing.Program)
+  location: class ghidra.program.util.DefinedDataIterator
+skipping D:\Projects\C++\OpenBGI\analysis\scripts\ExportAll.java
+  
+2026-10-28 00:13:18 ERROR (HeadlessAnalyzer) REPORT SCRIPT ERROR: ExportAll.java : The class could not be found. It must be the public class of the .java file: ExportAll not found by c6c6ef9f [1] ghidra.app.script.GhidraScriptLoadException: The class could not be found. It must be the public class of the .java file: ExportAll not found by c6c6ef9f [1]
+	at ghidra.app.script.JavaScriptProvider.getScriptInstance(JavaScriptProvider.java:114)
+	at ghidra.app.util.headless.HeadlessAnalyzer.runScriptsList(HeadlessAnalyzer.java:929)
+	at ghidra.app.util.headless.HeadlessAnalyzer.analyzeProgram(HeadlessAnalyzer.java:1107)
+	at ghidra.app.util.headless.HeadlessAnalyzer.processFileNoImport(HeadlessAnalyzer.java:1206)
+	at ghidra.app.util.headless.HeadlessAnalyzer.processFolderNoImport(HeadlessAnalyzer.java:1376)
+	at ghidra.app.util.headless.HeadlessAnalyzer.processNoImport(HeadlessAnalyzer.java:1405)
+	at ghidra.app.util.headless.HeadlessAnalyzer.processLocal(HeadlessAnalyzer.java:461)
+	at ghidra.app.util.headless.AnalyzeHeadless.launch(AnalyzeHeadless.java:211)
+	at ghidra.GhidraLauncher.launch(GhidraLauncher.java:78)
+	at ghidra.Ghidra.main(Ghidra.java:41)
+Caused by: java.lang.ClassNotFoundException: ExportAll not found by c6c6ef9f [1]
+	at org.apache.felix.framework.BundleWiringImpl.findClassOrResourceByDelegation(BundleWiringImpl.java:1591)
+	at org.apache.felix.framework.BundleWiringImpl.access$300(BundleWiringImpl.java:79)
+	at org.apache.felix.framework.BundleWiringImpl$BundleClassLoader.loadClass(BundleWiringImpl.java:1976)
+	at java.base/java.lang.ClassLoader.loadClass(ClassLoader.java:490)
+	at org.apache.felix.framework.Felix.loadBundleClass(Felix.java:2116)
+	at org.apache.felix.framework.BundleImpl.loadClass(BundleImpl.java:986)
+	at ghidra.app.script.JavaScriptProvider.loadClass(JavaScriptProvider.java:166)
+	at ghidra.app.script.JavaScriptProvider.getScriptInstance(JavaScriptProvider.java:97)
+	... 9 more
+ 
+2026-10-28 00:13:18 INFO  (HeadlessAnalyzer) REPORT: Save succeeded for processed file: /ac2_ML.exe  
+2026-10-28 00:13:40 INFO  (LoggingInitialization) Using log config file: jar:file:/D:/CodeSpace/ghidra_12.2_PUBLIC/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml  
+2026-10-28 00:13:40 INFO  (LoggingInitialization) Using log file: D:\Projects\C++\OpenBGI\analysis\out\ghidra_export.log  
+2026-10-28 00:13:40 DEBUG (GhidraObjectInputFilter) Including serial input filter: FileSystem/data/client.rmi.serial.filter  
+2026-10-28 00:13:40 INFO  (Preferences) Loading user preferences: C:\Users\NULL\AppData\Roaming\ghidra\ghidra_12.2_PUBLIC\preferences  
+2026-10-28 00:13:40 INFO  (Preferences) Loading previous preferences: C:\Users\NULL\AppData\Roaming\ghidra\ghidra_12.1.2_PUBLIC\preferences  
+2026-10-28 00:13:40 INFO  (ClassSearcher) Searching for classes...  
+2026-10-28 00:13:41 INFO  (ClassSearcher) Class search complete (918 ms)  
+2026-10-28 00:13:41 INFO  (DefaultSSLContextInitializer) Initializing SSL Context  
+2026-10-28 00:13:41 INFO  (SecureRandomFactory) Initializing Random Number Generator...  
+2026-10-28 00:13:41 INFO  (SecureRandomFactory) Random Number Generator initialization complete: SHA1PRNG  
+2026-10-28 00:13:41 INFO  (DefaultTrustManagerFactory) Loaded 59 trusted CA certificates from the OS trust store.  
+2026-10-28 00:13:41 INFO  (DefaultTrustManagerFactory) Loaded 113 trusted CA certificates from the Java default trust store.  
+2026-10-28 00:13:41 INFO  (AnalyzeHeadless) Headless startup complete (2032 ms)  
+2026-10-28 00:13:41 INFO  (ClassSearcher) Class searcher loaded 60 extension points (19 false positives)  
+2026-10-28 00:13:42 INFO  (HeadlessAnalyzer) HEADLESS Script Paths:
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\SystemEmulation\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\PDB\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Debug\Debugger\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\BSim\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Processors\Atmel\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\MicrosoftCodeAnalyzer\ghidra_scripts
+    D:\Projects\C++\OpenBGI\analysis\scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\DecompilerDependent\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Processors\DATA\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\FunctionID\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\WildcardAssembler\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Processors\PIC\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\PyGhidra\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Processors\JVM\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Processors\8051\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\Base\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Debug\Debugger-rmi-trace\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\Swift\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\GnuDemangler\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\VersionTracking\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\BytePatterns\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\Decompiler\ghidra_scripts
+    D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Features\FileFormats\ghidra_scripts  
+2026-10-28 00:13:42 INFO  (HeadlessAnalyzer) HEADLESS: execution starts  
+2026-10-28 00:13:42 INFO  (HeadlessAnalyzer) Opening existing project: D:\Projects\C++\OpenBGI\analysis\ghidra_project\OpenBGI  
+2026-10-28 00:13:42 INFO  (HeadlessProject) Opening project: D:\Projects\C++\OpenBGI\analysis\ghidra_project\OpenBGI  
+2026-10-28 00:13:43 DEBUG (SleighLanguage) Took 537ms (226ms inside lock) to initialize language D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Processors\x86\data\languages\x86.slaspec -> D:\CodeSpace\ghidra_12.2_PUBLIC\Ghidra\Processors\x86\data\languages\x86.sla  
+2026-10-28 00:13:44 INFO  (HeadlessAnalyzer) REPORT: Processing project file: /ac2_ML.exe  
+2026-10-28 00:13:44 INFO  (HeadlessAnalyzer) REPORT: Execute script: ExportAll.java 'D:\Projects\C++\OpenBGI\analysis\out'   
+2026-10-28 00:13:46 INFO  (HeadlessAnalyzer) SCRIPT: D:\Projects\C++\OpenBGI\analysis\scripts\ExportAll.java  
+2026-10-28 00:14:57 INFO  (GhidraScript) ExportAll.java> decompiled 500/7105  
+2026-10-28 00:15:00 INFO  (GhidraScript) ExportAll.java> decompiled 1000/7105  
+2026-10-28 00:15:09 INFO  (GhidraScript) ExportAll.java> decompiled 1500/7105  
+2026-10-28 00:15:13 INFO  (GhidraScript) ExportAll.java> decompiled 2000/7105  
+2026-10-28 00:15:17 INFO  (GhidraScript) ExportAll.java> decompiled 2500/7105  
+2026-10-28 00:15:20 INFO  (GhidraScript) ExportAll.java> decompiled 3000/7105  
+2026-10-28 00:15:23 INFO  (GhidraScript) ExportAll.java> decompiled 3500/7105  
+2026-10-28 00:15:26 INFO  (GhidraScript) ExportAll.java> decompiled 4000/7105  
+2026-10-28 00:15:29 INFO  (GhidraScript) ExportAll.java> decompiled 4500/7105  
+2026-10-28 00:15:35 INFO  (GhidraScript) ExportAll.java> decompiled 5000/7105  
+2026-10-28 00:15:38 INFO  (GhidraScript) ExportAll.java> decompiled 5500/7105  
+2026-10-28 00:15:42 INFO  (GhidraScript) ExportAll.java> decompiled 6000/7105  
+2026-10-28 00:15:45 INFO  (GhidraScript) ExportAll.java> decompiled 6500/7105  
+2026-10-28 00:15:45 INFO  (GhidraScript) ExportAll.java> done: 6739 functions  
+2026-10-28 00:15:45 INFO  (HeadlessAnalyzer) REPORT: Save succeeded for processed file: /ac2_ML.exe  

@@ -1,0 +1,14 @@
+T1 80:17 returned,returned,returned
+T1 81:0F returned,returned,returned
+T1 80:1C returned,returned,returned
+T1 80:12 returned,returned,blocked
+T1 80:14 returned,returned,returned
+T1 80:18 returned,returned,returned
+T1 80:19 returned,returned,returned
+T1 80:0F returned,returned,returned
+T1 91:96 returned,returned,native_error
+T1 91:B8 returned,returned,blocked
+T1 91:BA returned,returned,returned
+T1 90:B9 returned,returned,returned
+T1 90:05 returned,returned,native_error
+T1 90:20 returned,returned,native_error

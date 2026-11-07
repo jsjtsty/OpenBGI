@@ -138,14 +138,21 @@ Result<int> Vm::step(Thread& t) {
         if (!c.ok()) return fail(c.error->code, def->name + " (" + subop_name(id) + "): " + c.error->message);
         const std::int64_t ring = static_cast<std::int64_t>(t.expr.size());
         const std::int64_t moved = ((static_cast<std::int64_t>(t.depth) - static_cast<std::int64_t>(depth_before)) % ring + ring) % ring;
-        const std::int64_t expected = ((std::int64_t(def->pushes) - std::int64_t(def->pops)) % ring + ring) % ring;
+        const auto deferred = t.wait.result_count;
+        if (deferred > def->completion_pushes || deferred > def->pushes)
+            return fail(Errc::Format, "invalid completion signature for " + subop_name(id));
+        const std::int64_t expected = ((std::int64_t(def->pushes) - deferred - std::int64_t(def->pops)) % ring + ring) % ring;
         if (moved != expected)
             return fail(Errc::Format, "sub-opcode " + subop_name(id) + " moved the expression stack by " +
                                           std::to_string(static_cast<int>(moved)) +
                                           ", registry says " + std::to_string(def->pushes - def->pops));
+        if (t.wait.kind != WaitObject::Kind::None) {
+            t.wait.opcode = id;
+            t.wait.resume_depth = t.depth;
+        }
         if (trace) {
             std::vector<Word> out;
-            for (unsigned i = 0; i < def->pushes; ++i) out.insert(out.begin(), t.expr[(t.depth + t.expr.size() - 1 - i) % t.expr.size()]);
+            for (unsigned i = 0; i < unsigned(def->pushes - deferred); ++i) out.insert(out.begin(), t.expr[(t.depth + t.expr.size() - 1 - i) % t.expr.size()]);
             trace(t, id, out);
         }
         return rc;

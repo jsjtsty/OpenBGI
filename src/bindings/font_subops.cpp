@@ -1,6 +1,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include "bindings/font_subops.hpp"
+#include "resources/archive_store.hpp"
 
 #include <algorithm>
 
@@ -32,7 +33,16 @@ std::optional<std::string> optional_string(Ctx& c, Word addr) {
 
 } // namespace
 
-void register_font_subops(vm::SubopRegistry& r, FontHost& host) {
+void register_font_subops(vm::SubopRegistry& r, FontHost& host, ArcResourceFinder* resources) {
+    r.add({0xB0C3, "add font resource", 2, 1, [&host, resources](vm::Ctx& c) {
+        const auto name = c.cstring(c.pop()), archive = c.cstring(c.pop());
+        if (!c.ok()) return 0;
+        if (!resources || !host.fonts) { c.push(0); return 0; }
+        auto bytes = resources->read(archive, name);
+        if (!bytes) { c.push(0); return 0; }
+        c.push(host.fonts->register_file(name, std::move(*bytes)) ? 1 : 0);
+        return 0;
+    }});
     FontHost* h = &host;
 
     // (name, charset): the id of a font name, registering it first when new

@@ -66,7 +66,7 @@ def gen_bm():
 def gen_sdc():
     import sdc_decode
     rows = ['path\tconsumed\tsize\tsha256']
-    for rel in ['BGI.gdb', r'全CG存档\BGI.gdb']:
+    for rel in [r'全CG存档\BGI.gdb']: # root BGI.gdb is mutable user state, not a golden fixture
         p = os.path.join(GAME, rel)
         if os.path.exists(p):
             out, osz, ok, end = sdc_decode.sdc_decode(open(p, 'rb').read())

@@ -37,11 +37,28 @@ std::shared_ptr<Font> open_font(FontLibrary& lib, int size) {
 
 } // namespace
 
-TEST_CASE("text layout with a system font") {
+TEST_CASE("embedded fonts and their glyphs outlive the registering library" * doctest::test_suite("host")) {
+    auto library = FontLibrary::create(); REQUIRE(library);
+    auto source = (*library)->resolve("MS Gothic"); REQUIRE(source);
+    std::ifstream file(*source, std::ios::binary);
+    REQUIRE(file.good());
+    std::vector<std::uint8_t> bytes(std::istreambuf_iterator<char>(file), {});
+    REQUIRE((*library)->register_file("embedded-font", std::move(bytes)));
+    CHECK((*library)->has_exact("embedded-font"));
+    auto font = (*library)->open("embedded-font", 24); REQUIRE(font);
+    auto reused = (*library)->open("embedded-font", 24); REQUIRE(reused);
+    CHECK(font->get() == reused->get());
+    CHECK((*font)->glyph(U'\U0010FFFF') == nullptr);
+    library->reset();
+    REQUIRE((*font)->glyph(U'A'));
+    CHECK((*font)->glyph(U'A')->advance > 0);
+}
+
+TEST_CASE("text layout with a system font" * doctest::test_suite("host")) {
     auto lib = FontLibrary::create();
     REQUIRE(lib.has_value());
     auto font = open_font(**lib, 24);
-    if (!font) return;
+    REQUIRE(font);
     CHECK(font->line_height() >= 24);
 
     auto plain = render_text(*font, U"あいう", {}, 0);
@@ -96,7 +113,7 @@ class OneProgram final : public vm::ProgramProvider {
 
 } // namespace
 
-TEST_CASE("92:9C draws text into an image slot") {
+TEST_CASE("92:9C draws text into an image slot" * doctest::test_suite("gpu")) {
     auto fonts = FontLibrary::create();
     REQUIRE(fonts.has_value());
     if (!open_font(**fonts, 24)) return;
@@ -104,7 +121,7 @@ TEST_CASE("92:9C draws text into an image slot") {
     RendererOptions ro;
     ro.headless = true;
     auto renderer = Renderer::create(ro);
-    if (!renderer) return;
+    REQUIRE(renderer);
     auto display = Display::create(**renderer);
     REQUIRE(display.has_value());
     TextHost host{display->get(), fonts->get()};

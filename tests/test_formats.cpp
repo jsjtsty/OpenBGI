@@ -35,8 +35,8 @@ struct ArcCache {
 };
 } // namespace
 
-TEST_CASE("cbg matches the Python reference (itself checked against the original exe)") {
-    if (!have_game()) return;
+TEST_CASE("cbg matches the Python reference (itself checked against the original exe)" * doctest::test_suite("game")) {
+    REQUIRE(have_game());
     ArcCache cache;
     auto rows = read_tsv("cbg_manifest.tsv");
     REQUIRE(!rows.empty());
@@ -55,8 +55,8 @@ TEST_CASE("cbg rejects garbage") {
     CHECK_FALSE(obgi::cbg_decode(junk).has_value());
 }
 
-TEST_CASE("bm frames match the Python reference (checked against the original decoder)") {
-    if (!have_game()) return;
+TEST_CASE("bm frames match the Python reference (checked against the original decoder)" * doctest::test_suite("game")) {
+    REQUIRE(have_game());
     ArcCache cache;
     std::map<std::string, obgi::BmDecoder> decoders;
     for (const auto& r : read_tsv("bm_manifest.tsv")) {
@@ -74,8 +74,8 @@ TEST_CASE("bm frames match the Python reference (checked against the original de
     }
 }
 
-TEST_CASE("sdc and gdb decode global data") {
-    if (!have_game()) return;
+TEST_CASE("sdc and gdb decode global data" * doctest::test_suite("game")) {
+    REQUIRE(have_game());
     for (const auto& r : read_tsv("sdc_manifest.tsv")) {
         std::string rel(r[0]);
         auto mf = obgi::MappedFile::open(game_dir() / std::filesystem::path(std::u8string(rel.begin(), rel.end())));
@@ -102,8 +102,15 @@ TEST_CASE("sdc rejects a corrupted payload") {
     CHECK_FALSE(obgi::sdc_decode(d).has_value());
 }
 
-TEST_CASE("every bw member in the game archives parses") {
-    if (!have_game()) return;
+TEST_CASE("current mutable global data round trips without a historical hash" * doctest::test_suite("game")) {
+    auto file = obgi::MappedFile::open(game_dir() / "BGI.gdb"); REQUIRE(file);
+    auto decoded = obgi::sdc_decode(file->bytes()); REQUIRE(decoded);
+    auto data = obgi::gdb_decode(decoded->data); REQUIRE(data);
+    CHECK(obgi::gdb_encode(*data) == decoded->data);
+}
+
+TEST_CASE("every bw member in the game archives parses" * doctest::test_suite("game")) {
+    REQUIRE(have_game());
     std::size_t count = 0;
     for (const auto& de : fs::directory_iterator(game_dir())) {
         if (de.path().extension() != ".arc") continue;

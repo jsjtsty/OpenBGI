@@ -1,0 +1,457 @@
+opcode	program	handler	direct_bs_read_counts	other_direct_calls	unresolved
+0000	sysprg/00010_scrctrl._bp	0005AC	1	43b	
+0001	sysprg/00010_scrctrl._bp	0005BB	1	43b	
+0002	sysprg/00010_scrctrl._bp	0005E0	1	43b,577	
+0003	sysprg/00010_scrctrl._bp	00062D	1	43b	
+0008	sysprg/00010_scrctrl._bp	000652	1	40e,43b,46e,577	
+0009	sysprg/00010_scrctrl._bp	000705	1	40e,46e,577	
+000A	sysprg/00010_scrctrl._bp	0007BB	1	40e,46e	
+0010	sysprg/00010_scrctrl._bp	000806	0	43b	
+0011	sysprg/00010_scrctrl._bp	000816	0	40e	
+0018	sysprg/00010_scrctrl._bp	000828	0	40e	
+0019	sysprg/00010_scrctrl._bp	00084A	1	40e	
+001A	sysprg/00010_scrctrl._bp	00089E	0	40e	
+001B	sysprg/00010_scrctrl._bp	0008FB	0		
+001C	sysprg/00010_scrctrl._bp	0009B5	0	4a6	indirect_call
+001D	sysprg/00010_scrctrl._bp	000A60	0	40e	
+001E	sysprg/00010_scrctrl._bp	000A7B	0	40e	
+001F	sysprg/00010_scrctrl._bp	000AF1	0	43b	indirect_call
+0020	sysprg/00010_scrctrl._bp	000B70	0	40e,43b	
+0021	sysprg/00010_scrctrl._bp	000B90	0	40e,43b	
+0022	sysprg/00010_scrctrl._bp	000BB0	0	40e,43b	
+0023	sysprg/00010_scrctrl._bp	000BCF	0	40e,43b	
+0024	sysprg/00010_scrctrl._bp	000BEE	0	40e,43b	
+0025	sysprg/00010_scrctrl._bp	000C0E	0	40e,43b	
+0026	sysprg/00010_scrctrl._bp	000C2E	0	40e,43b	
+0027	sysprg/00010_scrctrl._bp	000C4E	0	40e,43b	
+0028	sysprg/00010_scrctrl._bp	000C6E	0	40e,43b	
+0029	sysprg/00010_scrctrl._bp	000C84	0	40e,43b	
+002A	sysprg/00010_scrctrl._bp	000CA4	0	40e,43b	
+002B	sysprg/00010_scrctrl._bp	000CC4	0	40e,43b	
+0030	sysprg/00010_scrctrl._bp	000CE4	0	40e,43b	
+0031	sysprg/00010_scrctrl._bp	000D04	0	40e,43b	
+0032	sysprg/00010_scrctrl._bp	000D24	0	40e,43b	
+0033	sysprg/00010_scrctrl._bp	000D44	0	40e,43b	
+0034	sysprg/00010_scrctrl._bp	000D64	0	40e,43b	
+0035	sysprg/00010_scrctrl._bp	000D84	0	40e,43b	
+0038	sysprg/00010_scrctrl._bp	000DA4	0	40e,43b	
+0039	sysprg/00010_scrctrl._bp	000DC4	0	40e,43b	
+003A	sysprg/00010_scrctrl._bp	000DE4	0	40e,43b	
+003F	sysprg/00010_scrctrl._bp	000DFA	1	40e,43b	loop
+0040	sysprg/00010_scrctrl._bp	000E58	0	40e,4a6	
+0048	sysprg/00010_scrctrl._bp	000E7E	0	4a6	
+007B	sysprg/00010_scrctrl._bp	000E9A	3		
+007F	sysprg/00010_scrctrl._bp	000F16	2		
+0080	sysprg/00010_scrctrl._bp	000F6D	0	40e,4a6	
+0081	sysprg/00010_scrctrl._bp	000F93	0	40e,4a6	
+0082	sysprg/00010_scrctrl._bp	000FAF	0	40e,4a6	
+0083	sysprg/00010_scrctrl._bp	000FD5	0	40e,43b,4a6	
+0090	sysprg/00010_scrctrl._bp	000FFF	0	4a6	
+0091	sysprg/00010_scrctrl._bp	00101B	0	4a6	
+0092	sysprg/00010_scrctrl._bp	001041	0	4a6	
+0093	sysprg/00010_scrctrl._bp	001061	0	4a6	
+0094	sysprg/00010_scrctrl._bp	001091	0	43b,4a6	
+0095	sysprg/00010_scrctrl._bp	0010A7	0	43b,4a6	
+0098	sysprg/00010_scrctrl._bp	0010C7	0	40e,4a6,4b9	
+0099	sysprg/00010_scrctrl._bp	001138	0	40e,43b,4a6,4b9	loop
+00A0	sysprg/00010_scrctrl._bp	0011DC	0	40e,43b	
+00A8	sysprg/00010_scrctrl._bp	0011F3	0	43b,4a6	loop
+00AA	sysprg/00010_scrctrl._bp	00127F	0	40e,43b	
+00AC	sysprg/00010_scrctrl._bp	001299	0	40e,43b	
+00C0	sysprg/00010_scrctrl._bp	0012CE	0	40e,43b,13c6	
+00C1	sysprg/00010_scrctrl._bp	0012FF	0	40e,43b,13c6	
+00C2	sysprg/00010_scrctrl._bp	001338	0	40e,13c6	indirect_call
+00E0	sysprg/00010_scrctrl._bp	0013F3	0	40e,4b9	
+00E1	sysprg/00010_scrctrl._bp	00143B	0	40e,43b,4b9	
+00E2	sysprg/00010_scrctrl._bp	001475	0	40e,4b9	
+00E3	sysprg/00010_scrctrl._bp	0014BA	0	40e,43b,4b9	
+00E4	sysprg/00010_scrctrl._bp	0014F1	0	40e,4b9	
+00E5	sysprg/00010_scrctrl._bp	00156A	0	40e,43b,4b9	
+00E6	sysprg/00010_scrctrl._bp	0015B7	0	40e,4b9	
+00E7	sysprg/00010_scrctrl._bp	00162E	0	40e,43b,4b9	
+00E8	sysprg/00010_scrctrl._bp	001679	0	40e,43b,4b9	
+00E9	sysprg/00010_scrctrl._bp	0016A7	0	40e,4b9	
+00EA	sysprg/00010_scrctrl._bp	00171E	0	40e,43b,4b9	
+00EC	sysprg/00010_scrctrl._bp	0017A2	0	43b,1769	indirect_call
+00F0	sysprg/00010_scrctrl._bp	00194A	0	4a6,1894	
+00F1	sysprg/00010_scrctrl._bp	00195F	0	4a6,1894	loop
+00F3	sysprg/00010_scrctrl._bp	0019C5	0	4a6	indirect_call
+00F4	sysprg/00010_scrctrl._bp	001AA4	0		
+00F5	sysprg/00010_scrctrl._bp	001AAB	0	1aa4	
+00F6	sysprg/00010_scrctrl._bp	001ACC	0	4a6	
+00F7	sysprg/00010_scrctrl._bp	001AF9	0	43b,4a6	
+00F8	sysprg/00010_scrctrl._bp	001B2D	0	40e,577	
+00F9	sysprg/00010_scrctrl._bp	001B67	0	4a6,577,1cbb	
+00FA	sysprg/00010_scrctrl._bp	001BAF	0	40e,4a6,4b9,577	
+00FC	sysprg/00010_scrctrl._bp	001BF4	0	43b,4a6	loop
+00FE	sysprg/00010_scrctrl._bp	001C6F	0	40e,4a6	
+00FF	sysprg/00010_scrctrl._bp	0003D9	0		
+0100	sysprg/00011_scrsys._bp	00041B	0		indirect_call
+0101	sysprg/00011_scrsys._bp	000477	0		indirect_call
+0104	sysprg/00011_scrsys._bp	000486	0		indirect_call
+0106	sysprg/00011_scrsys._bp	00049A	0		indirect_call
+0108	sysprg/00011_scrsys._bp	0004DF	0		indirect_call
+0109	sysprg/00011_scrsys._bp	000507	0		indirect_call
+010A	sysprg/00011_scrsys._bp	0004F3	0		indirect_call
+010B	sysprg/00011_scrsys._bp	0036A6	0		indirect_call
+010C	sysprg/00011_scrsys._bp	000533	0		indirect_call
+010D	sysprg/00011_scrsys._bp	00054D	0		indirect_call
+010E	sysprg/00011_scrsys._bp	00055D	0		
+010F	sysprg/00011_scrsys._bp	000564	0	84e,38d0	indirect_call,loop
+0110	sysprg/00011_scrsys._bp	000971	0		indirect_call
+0111	sysprg/00011_scrsys._bp	0009CD	0		
+0112	sysprg/00011_scrsys._bp	0009E3	0		indirect_call
+0113	sysprg/00011_scrsys._bp	000A19	0		indirect_call,loop
+0114	sysprg/00011_scrsys._bp	000AB6	0		indirect_call
+0115	sysprg/00011_scrsys._bp	000ACA	0		indirect_call
+0116	sysprg/00011_scrsys._bp	000ADE	0		indirect_call
+0117	sysprg/00011_scrsys._bp	000B15	0		indirect_call
+0118	sysprg/00011_scrsys._bp	000B22	0		indirect_call
+0119	sysprg/00011_scrsys._bp	000B66	0		indirect_call
+011A	sysprg/00011_scrsys._bp	000B75	0		indirect_call
+011B	sysprg/00011_scrsys._bp	000C1B	0		indirect_call
+011C	sysprg/00011_scrsys._bp	000C70	0		indirect_call
+011D	sysprg/00011_scrsys._bp	000CB4	0		indirect_call
+011E	sysprg/00011_scrsys._bp	000CC1	0		indirect_call,loop
+011F	sysprg/00011_scrsys._bp	000D2B	0		indirect_call
+0120	sysprg/00011_scrsys._bp	000D57	0		indirect_call
+0121	sysprg/00011_scrsys._bp	000DBD	0		indirect_call
+0122	sysprg/00011_scrsys._bp	000DF3	0		indirect_call
+0123	sysprg/00011_scrsys._bp	000E13	0		indirect_call
+0124	sysprg/00011_scrsys._bp	000E33	0		indirect_call
+0125	sysprg/00011_scrsys._bp	000E4D	0		indirect_call
+0126	sysprg/00011_scrsys._bp	000F01	0		indirect_call
+0127	sysprg/00011_scrsys._bp	000F19	0		indirect_call
+0128	sysprg/00011_scrsys._bp	000EE9	0		indirect_call
+0129	sysprg/00011_scrsys._bp	000F31	0		indirect_call
+012C	sysprg/00011_scrsys._bp	000F49	0		indirect_call
+012D	sysprg/00011_scrsys._bp	000F58	0		indirect_call
+012E	sysprg/00011_scrsys._bp	000F76	0		indirect_call
+012F	sysprg/00011_scrsys._bp	000F91	0		indirect_call
+0130	sysprg/00011_scrsys._bp	000FAF	0		
+0131	sysprg/00011_scrsys._bp	000FB6	0		
+0132	sysprg/00011_scrsys._bp	000FBD	0		
+0133	sysprg/00011_scrsys._bp	000FC4	0		indirect_call
+0134	sysprg/00011_scrsys._bp	000FD9	0		indirect_call
+0135	sysprg/00011_scrsys._bp	0036D2	0		indirect_call
+0136	sysprg/00011_scrsys._bp	000FFA	0		indirect_call
+0137	sysprg/00011_scrsys._bp	001007	0	3dc6	indirect_call
+0138	sysprg/00011_scrsys._bp	00106B	0		indirect_call
+0139	sysprg/00011_scrsys._bp	001090	0		indirect_call
+013A	sysprg/00011_scrsys._bp	0010B5	0		indirect_call
+013B	sysprg/00011_scrsys._bp	0010D1	0		indirect_call
+013C	sysprg/00011_scrsys._bp	00114A	0		indirect_call
+013D	sysprg/00011_scrsys._bp	001162	0		indirect_call
+013E	sysprg/00011_scrsys._bp	0021B0	0		indirect_call
+013F	sysprg/00011_scrsys._bp	002311	0		indirect_call
+0140	sysprg/00012_scrmsg._bp	000EC2	0	29f,24f7,34f9,4c4d	indirect_call,loop
+0141	sysprg/00012_scrmsg._bp	00117D	0	1c0,26e,1d9e	indirect_call
+0142	sysprg/00012_scrmsg._bp	0012DF	0		indirect_call
+0143	sysprg/00012_scrmsg._bp	001352	0		
+0144	sysprg/00012_scrmsg._bp	001359	0		indirect_call
+0145	sysprg/00012_scrmsg._bp	001373	0		indirect_call
+0146	sysprg/00012_scrmsg._bp	00167C	0	14bb	indirect_call
+0147	sysprg/00012_scrmsg._bp	0016A1	0	14bb	indirect_call
+0148	sysprg/00012_scrmsg._bp	0016D0	0		indirect_call
+0149	sysprg/00012_scrmsg._bp	0016F7	0		indirect_call
+014A	sysprg/00012_scrmsg._bp	001712	0		
+014B	sysprg/00012_scrmsg._bp	001719	0		indirect_call
+014C	sysprg/00012_scrmsg._bp	001760	0	4d26	indirect_call
+014D	sysprg/00012_scrmsg._bp	001820	0	4d26	indirect_call
+014E	sysprg/00012_scrmsg._bp	00192C	0		indirect_call
+014F	sysprg/00012_scrmsg._bp	0019A1	0		indirect_call,loop
+0150	sysprg/00012_scrmsg._bp	001A77	0		indirect_call
+0151	sysprg/00012_scrmsg._bp	001AA0	0		indirect_call
+0152	sysprg/00012_scrmsg._bp	001A87	0		indirect_call
+0153	sysprg/00012_scrmsg._bp	001AB0	0		indirect_call
+0156	sysprg/00012_scrmsg._bp	00248D	0	2327	indirect_call
+0157	sysprg/00012_scrmsg._bp	001B3F	0		indirect_call
+0158	sysprg/00012_scrmsg._bp	001CB9	0	1aa0,1d9e,42f9	indirect_call
+0159	sysprg/00012_scrmsg._bp	001D9E	0		indirect_call
+015A	sysprg/00012_scrmsg._bp	0020B5	0	20e8	indirect_call
+015C	sysprg/00012_scrmsg._bp	001DD6	0		indirect_call
+015D	sysprg/00012_scrmsg._bp	001DFA	0	26a8,4125,42f9	indirect_call
+015E	sysprg/00012_scrmsg._bp	00200F	0	26a8	indirect_call
+015F	sysprg/00012_scrmsg._bp	002084	0		indirect_call
+0160	sysprg/00014_scrslct._bp	00022D	0	24c	
+0161	sysprg/00016_scrslct3._bp	0000CC	0		
+0162	sysprg/00014_scrslct._bp	001741	0	87,fa,186,15bf,1f6b,2f90,3028,4497,44d9	indirect_call,loop
+0163	sysprg/00015_scrslct2._bp	000023	0		indirect_call
+0164	sysprg/00014_scrslct._bp	0015F5	0		
+0165	sysprg/00014_scrslct._bp	001629	0		indirect_call
+0166	sysprg/00014_scrslct._bp	001673	0		indirect_call
+0167	sysprg/00014_scrslct._bp	0016BD	0		indirect_call
+0168	sysprg/00014_scrslct._bp	002176	0	87,15bf,276c,2eea,2f90,3028,4497	indirect_call,loop
+0169	sysprg/00014_scrslct._bp	00288F	0	87,15bf,2d7b,2f90,41c5,4497	indirect_call,loop
+016A	sysprg/00016_scrslct3._bp	000F1F	0	2727,2769	indirect_call,loop
+016C	sysprg/00014_scrslct._bp	002ED6	0		indirect_call
+016D	sysprg/00015_scrslct2._bp	001D54	0		indirect_call
+016E	sysprg/00015_scrslct2._bp	001DC4	0		indirect_call
+016F	sysprg/00014_scrslct._bp	002F41	0		indirect_call
+0170	sysprg/00017_scrslct4._bp	000041	0		
+0171	sysprg/00017_scrslct4._bp	000051	0		indirect_call
+0172	sysprg/00017_scrslct4._bp	0002D8	0	9a0	indirect_call
+0173	sysprg/00017_scrslct4._bp	0003B8	0		indirect_call,loop
+0174	sysprg/00017_scrslct4._bp	00045B	0		indirect_call,loop
+0175	sysprg/00017_scrslct4._bp	00024A	0		indirect_call
+0180	sysprg/00019_scrsnd._bp	000745	0	315	
+0181	sysprg/00019_scrsnd._bp	000754	0	39e	
+0184	sysprg/00019_scrsnd._bp	000763	0	57d	
+0185	sysprg/00019_scrsnd._bp	000770	0	64e	
+0186	sysprg/00019_scrsnd._bp	00077D	0	6d8	
+0188	sysprg/00019_scrsnd._bp	000814	0	1f4	indirect_call
+0189	sysprg/00019_scrsnd._bp	0008B2	0	54f	
+018A	sysprg/00019_scrsnd._bp	0008CA	0	5af	indirect_call
+018B	sysprg/00019_scrsnd._bp	000914	0	69e	indirect_call
+018E	sysprg/00019_scrsnd._bp	000B01	0	2f6f	indirect_call
+018F	sysprg/00019_scrsnd._bp	000C52	0	2f6f	indirect_call
+0190	sysprg/00019_scrsnd._bp	00078A	0	315	
+0191	sysprg/00019_scrsnd._bp	000799	0	39e	
+0194	sysprg/00019_scrsnd._bp	0007A8	0	57d	
+0195	sysprg/00019_scrsnd._bp	0007B5	0	64e	
+0196	sysprg/00019_scrsnd._bp	0007C2	0	6d8	
+0198	sysprg/00019_scrsnd._bp	0007CF	0	315	
+0199	sysprg/00019_scrsnd._bp	0007DE	0	39e	
+019C	sysprg/00019_scrsnd._bp	0007ED	0	57d	
+019D	sysprg/00019_scrsnd._bp	0007FA	0	64e	
+019E	sysprg/00019_scrsnd._bp	000807	0	6d8	
+01A0	sysprg/00019_scrsnd._bp	000A4C	0	96d	indirect_call
+01A1	sysprg/00019_scrsnd._bp	000AC5	0	96d	indirect_call
+01A2	sysprg/00019_scrsnd._bp	000DB3	0	d71	indirect_call
+01A3	sysprg/00019_scrsnd._bp	000DE1	0	d71	indirect_call
+01A4	sysprg/00019_scrsnd._bp	000E1E	0	2120,2256	indirect_call
+01A6	sysprg/00019_scrsnd._bp	001B96	0	d71,2188	indirect_call,loop
+01A8	sysprg/00019_scrsnd._bp	00123C	0	ed9	indirect_call
+01A9	sysprg/00019_scrsnd._bp	001298	0	ed9	indirect_call
+01AA	sysprg/00019_scrsnd._bp	001354	0	22cd,3e2a	indirect_call
+01AB	sysprg/00019_scrsnd._bp	0012D8	0	ed9	indirect_call
+01AC	sysprg/00019_scrsnd._bp	00139A	0	22cd,3e2a	indirect_call,loop
+01AD	sysprg/00019_scrsnd._bp	001471	0		indirect_call,loop
+01AE	sysprg/00019_scrsnd._bp	0012B8	0	ed9	indirect_call
+01AF	sysprg/00019_scrsnd._bp	001334	0	ed9	indirect_call
+01BF	sysprg/00019_scrsnd._bp	001A30	0	1956	indirect_call,loop
+020C	sysprg/00012_scrmsg._bp	0024BC	0		indirect_call
+020E	sysprg/00012_scrmsg._bp	001EF8	0	4125,42f9	indirect_call
+020F	sysprg/00012_scrmsg._bp	002698	0		
+0220	sysprg/00020_scrgrp1._bp	0002D7	0	253	indirect_call
+0222	sysprg/00020_scrgrp1._bp	000311	0	496a	indirect_call
+0228	sysprg/00020_scrgrp1._bp	0003A0	0	4890	indirect_call
+0229	sysprg/00020_scrgrp1._bp	00045D	0	4833,4856	indirect_call
+022A	sysprg/00020_scrgrp1._bp	000480	0		indirect_call
+0230	sysprg/00020_scrgrp1._bp	00061E	0	4b6	indirect_call,loop
+0231	sysprg/00020_scrgrp1._bp	00077B	0	5ea,4501	indirect_call,loop
+0232	sysprg/00020_scrgrp1._bp	000850	0	4b6	indirect_call
+0233	sysprg/00020_scrgrp1._bp	000914	0	5ea	indirect_call
+0234	sysprg/00020_scrgrp1._bp	00093F	0	4b6	indirect_call
+0235	sysprg/00020_scrgrp1._bp	0009FE	0	5ea	indirect_call
+0236	sysprg/00020_scrgrp1._bp	000A29	0	4b6	indirect_call
+0237	sysprg/00020_scrgrp1._bp	000B22	0	5ea	indirect_call
+0238	sysprg/00020_scrgrp1._bp	000B6E	0	4b6	indirect_call
+0239	sysprg/00020_scrgrp1._bp	000C67	0	5ea	indirect_call
+023C	sysprg/00020_scrgrp1._bp	000CB3	0	3bda,46a3	indirect_call
+023D	sysprg/00020_scrgrp1._bp	000DBC	0	3bda,46a3	indirect_call
+0240	sysprg/00022_scrgrp3._bp	000477	0	178	indirect_call
+0241	sysprg/00022_scrgrp3._bp	0004DA	0	178	indirect_call
+0242	sysprg/00022_scrgrp3._bp	000575	0	178	indirect_call
+0244	sysprg/00022_scrgrp3._bp	000795	0	619	indirect_call
+0245	sysprg/00022_scrgrp3._bp	0007BF	0	619	indirect_call
+0248	sysprg/00022_scrgrp3._bp	000821	0	29d7,2a1e,2cac	indirect_call
+024C	sysprg/00022_scrgrp3._bp	000BFE	0	ad2,2cac	indirect_call
+024D	sysprg/00022_scrgrp3._bp	000E89	0	ad2,2cac	indirect_call
+024E	sysprg/00022_scrgrp3._bp	001157	0	29d7,2cac	indirect_call
+0250	sysprg/00022_scrgrp3._bp	00144B	0		indirect_call,loop
+0251	sysprg/00022_scrgrp3._bp	0015E4	0		indirect_call
+0252	sysprg/00022_scrgrp3._bp	001682	0		indirect_call,loop
+0258	sysprg/00022_scrgrp3._bp	001B12	0	2c39,2d34	indirect_call,loop
+025E	sysprg/00022_scrgrp3._bp	001F3F	0	2cac	
+025F	sysprg/00022_scrgrp3._bp	001F4C	0	2878	indirect_call
+0260	sysprg/00022_scrgrp3._bp	001F65	0		indirect_call
+0262	sysprg/00022_scrgrp3._bp	001FB9	0		indirect_call
+0266	sysprg/00022_scrgrp3._bp	001FE8	0		indirect_call
+0268	sysprg/00022_scrgrp3._bp	00201E	0		indirect_call
+027F	sysprg/00022_scrgrp3._bp	00205A	0	3c9a	indirect_call
+0280	sysprg/00021_scrgrp2._bp	001D9A	0	faa	indirect_call
+0281	sysprg/00021_scrgrp2._bp	001DE1	0	faa	indirect_call
+0284	sysprg/00021_scrgrp2._bp	001E6E	0	faa	indirect_call
+0288	sysprg/00021_scrgrp2._bp	001ED6	0	faa	indirect_call
+0289	sysprg/00021_scrgrp2._bp	001F03	0	faa	indirect_call
+028A	sysprg/00021_scrgrp2._bp	001F76	0	faa	indirect_call
+0290	sysprg/00021_scrgrp2._bp	001FB1	0	faa	indirect_call
+02C0	sysprg/00024_scrgrp5._bp	001339	0	2e2,4585	indirect_call
+02C1	sysprg/00024_scrgrp5._bp	001514	0	2e2,4585	indirect_call
+02C2	sysprg/00024_scrgrp5._bp	0018F7	0	173c	
+02C3	sysprg/00024_scrgrp5._bp	001B38	0	1907	
+02C4	sysprg/00024_scrgrp5._bp	001CB6	0	1b48	
+02C5	sysprg/00024_scrgrp5._bp	001E9D	0	1cc6	
+02C6	sysprg/00024_scrgrp5._bp	002005	0	1ead	
+02C7	sysprg/00024_scrgrp5._bp	0021A8	0	2015	
+02C8	sysprg/00024_scrgrp5._bp	0021B8	0	2e2,4585	indirect_call
+02CA	sysprg/00024_scrgrp5._bp	0023FB	0	2e2,4585	indirect_call
+02CB	sysprg/00024_scrgrp5._bp	0024F0	0	2e2,4585	indirect_call
+02CC	sysprg/00024_scrgrp5._bp	0001F0	0		indirect_call
+02CE	sysprg/00024_scrgrp5._bp	002614	0	2e2,4585	indirect_call
+02CF	sysprg/00024_scrgrp5._bp	0022EF	0	2e2,4585	indirect_call
+02D0	sysprg/00024_scrgrp5._bp	0027D5	0	2e2,4585	indirect_call
+02D2	sysprg/00024_scrgrp5._bp	00289F	0	2e2,4585	indirect_call
+02D4	sysprg/00024_scrgrp5._bp	0029B1	0	293f	
+02D5	sysprg/00024_scrgrp5._bp	0029BE	0	293f	
+02D6	sysprg/00024_scrgrp5._bp	002CA6	0	34c8	indirect_call
+02D7	sysprg/00025_scrgrp6._bp	000B5F	0	a99	indirect_call
+02D8	sysprg/00024_scrgrp5._bp	0029CB	0	2e2,4585	indirect_call,loop
+02D9	sysprg/00024_scrgrp5._bp	002C32	0		indirect_call
+02DA	sysprg/00024_scrgrp5._bp	002DEE	0		
+02DB	sysprg/00024_scrgrp5._bp	002DFE	0		
+02DC	sysprg/00024_scrgrp5._bp	002E0E	0	2e2	indirect_call
+02DD	sysprg/00024_scrgrp5._bp	002C64	0		indirect_call
+02DE	sysprg/00024_scrgrp5._bp	002C78	0		indirect_call
+02DF	sysprg/00024_scrgrp5._bp	002E31	0	43cc,43f9	indirect_call
+02E0	sysprg/00024_scrgrp5._bp	002E76	0		indirect_call
+02E1	sysprg/00025_scrgrp6._bp	001D0D	0		indirect_call,loop
+02E2	sysprg/00024_scrgrp5._bp	002EFB	0		indirect_call
+02E3	sysprg/00024_scrgrp5._bp	002F63	0		indirect_call,loop
+02E4	sysprg/00024_scrgrp5._bp	002FB3	0		indirect_call
+02E5	sysprg/00024_scrgrp5._bp	003024	0		indirect_call
+02E6	sysprg/00024_scrgrp5._bp	0030C8	0		indirect_call
+02E7	sysprg/00024_scrgrp5._bp	003130	0		indirect_call
+02E8	sysprg/00024_scrgrp5._bp	003198	0		indirect_call
+02E9	sysprg/00024_scrgrp5._bp	003212	0		indirect_call
+02EA	sysprg/00024_scrgrp5._bp	00328C	0	4e69	indirect_call
+02EB	sysprg/00025_scrgrp6._bp	001ECE	0		indirect_call,loop
+02EC	sysprg/00025_scrgrp6._bp	000D0E	0	c26	indirect_call
+02F0	sysprg/00024_scrgrp5._bp	003402	0		indirect_call
+02F4	sysprg/00024_scrgrp5._bp	00343D	0		indirect_call
+0300	sysprg/00023_scrgrp4._bp	0007DA	0	4ff	indirect_call
+0301	sysprg/00023_scrgrp4._bp	00091A	0	4ff	indirect_call
+0302	sysprg/00023_scrgrp4._bp	000AA5	0	c3,2179,21e8,2856,2948,2efb,3715,38d6,3a3c	indirect_call
+0303	sysprg/00023_scrgrp4._bp	000E14	0	c3,2179,21e8,2856,2efb,3715,38d6,3a3c	indirect_call,loop
+0304	sysprg/00023_scrgrp4._bp	001258	0	4ff	indirect_call
+0306	sysprg/00023_scrgrp4._bp	001389	0	21e8,2d59,2efb	indirect_call
+0307	sysprg/00023_scrgrp4._bp	0014AC	0	21e8,2d59,2efb,3a3c	indirect_call
+0308	sysprg/00023_scrgrp4._bp	001678	0	21e8,2c34,2e73	indirect_call
+0309	sysprg/00023_scrgrp4._bp	001867	0	21e8,2c34,2efb	indirect_call,loop
+030C	sysprg/00023_scrgrp4._bp	001AC4	0	21e8,2dab,2e73	indirect_call
+030E	sysprg/00023_scrgrp4._bp	001B89	0	2e00,2efb,314e	indirect_call,loop
+0310	sysprg/00025_scrgrp6._bp	0005D8	0	331b	indirect_call
+0311	sysprg/00025_scrgrp6._bp	0007BC	0	331b	indirect_call
+0314	sysprg/00025_scrgrp6._bp	0008C1	0	331b	indirect_call
+031F	sysprg/00023_scrgrp4._bp	001ECF	0	2a3f,2fd2	indirect_call
+0320	sysprg/00023_scrgrp4._bp	001F2E	0		indirect_call
+0328	sysprg/00023_scrgrp4._bp	001FB3	0		indirect_call
+032C	sysprg/00023_scrgrp4._bp	0020B0	0		indirect_call
+032E	sysprg/00023_scrgrp4._bp	002026	0	2138	indirect_call
+033F	sysprg/00023_scrgrp4._bp	0020EB	0	3dbd	indirect_call
+0340	sysprg/00020_scrgrp1._bp	000F80	0	ed0	indirect_call
+0341	sysprg/00020_scrgrp1._bp	000FF6	0	ed0	indirect_call
+0348	sysprg/00020_scrgrp1._bp	00109E	0	37a6	indirect_call
+0350	sysprg/00020_scrgrp1._bp	00122A	0	112b	indirect_call
+0351	sysprg/00020_scrgrp1._bp	00133D	0	112b	indirect_call
+0352	sysprg/00020_scrgrp1._bp	0013F9	0	112b	indirect_call
+0353	sysprg/00020_scrgrp1._bp	001539	0	112b	indirect_call
+0354	sysprg/00020_scrgrp1._bp	001678	0	112b	indirect_call
+0355	sysprg/00020_scrgrp1._bp	00178E	0	112b	indirect_call
+0358	sysprg/00020_scrgrp1._bp	0018A5	0	37a6	indirect_call
+0380	sysprg/00020_scrgrp1._bp	001A1D	0	1937	indirect_call
+0388	sysprg/00020_scrgrp1._bp	001B0E	0	3c62	indirect_call
+0390	sysprg/00020_scrgrp1._bp	001B99	0	1937	indirect_call
+0391	sysprg/00020_scrgrp1._bp	001BCB	0	1937	indirect_call
+0392	sysprg/00020_scrgrp1._bp	001C00	0	1937	indirect_call
+0393	sysprg/00020_scrgrp1._bp	001C35	0	1937	indirect_call
+0394	sysprg/00020_scrgrp1._bp	001C6A	0	1937	indirect_call
+03AF	sysprg/00020_scrgrp1._bp	001C9F	0	37a6	indirect_call
+03C0	sysprg/00020_scrgrp1._bp	001CB8	0		indirect_call
+03C1	sysprg/00020_scrgrp1._bp	001D7A	0		indirect_call
+03C2	sysprg/00020_scrgrp1._bp	001DEC	0		indirect_call
+03C4	sysprg/00020_scrgrp1._bp	001E9D	0		indirect_call
+03C5	sysprg/00020_scrgrp1._bp	001F1E	0		indirect_call
+03C6	sysprg/00020_scrgrp1._bp	001FBD	0		indirect_call
+03C7	sysprg/00020_scrgrp1._bp	0020F1	0		
+03C8	sysprg/00020_scrgrp1._bp	002108	0		indirect_call
+03C9	sysprg/00020_scrgrp1._bp	002423	0		indirect_call
+03CA	sysprg/00020_scrgrp1._bp	00249A	0		indirect_call
+03D0	sysprg/00020_scrgrp1._bp	0027CD	0		indirect_call
+03D2	sysprg/00020_scrgrp1._bp	002904	0		indirect_call
+03D4	sysprg/00020_scrgrp1._bp	0029BC	0		indirect_call
+03D5	sysprg/00020_scrgrp1._bp	002A10	0		indirect_call
+03D6	sysprg/00020_scrgrp1._bp	002B94	0		indirect_call
+03D8	sysprg/00020_scrgrp1._bp	002BC1	0		indirect_call
+03DC	sysprg/00020_scrgrp1._bp	002A7A	0		indirect_call,loop
+03F0	sysprg/00020_scrgrp1._bp	002C49	0	2bf2	indirect_call
+03F1	sysprg/00020_scrgrp1._bp	002CF6	0	2bf2	indirect_call
+03F4	sysprg/00025_scrgrp6._bp	001860	0		
+03F5	sysprg/00025_scrgrp6._bp	001870	0		
+03F6	sysprg/00025_scrgrp6._bp	001991	0	1880	indirect_call
+03F7	sysprg/00025_scrgrp6._bp	0019DA	0	1880	indirect_call
+03F8	sysprg/00025_scrgrp6._bp	001A05	0		indirect_call
+03FA	sysprg/00025_scrgrp6._bp	001A1F	0		
+03FB	sysprg/00025_scrgrp6._bp	001A59	0		indirect_call
+03FC	sysprg/00025_scrgrp6._bp	001B14	0		
+03FD	sysprg/00025_scrgrp6._bp	001B41	0		indirect_call,loop
+03FE	sysprg/00025_scrgrp6._bp	001CB6	0		indirect_call
+03FF	sysprg/00025_scrgrp6._bp	001CD9	0		indirect_call
+0400	sysprg/00011_scrsys._bp	0011BB	0	117a	indirect_call
+0401	sysprg/00011_scrsys._bp	0011D4	0	117a	indirect_call
+0404	sysprg/00011_scrsys._bp	0011ED	0		
+0405	sysprg/00011_scrsys._bp	0011FD	0		
+0408	sysprg/00011_scrsys._bp	00120D	0		indirect_call
+0409	sysprg/00011_scrsys._bp	001272	0		indirect_call
+040A	sysprg/00011_scrsys._bp	0012C2	0		indirect_call,loop
+040B	sysprg/00011_scrsys._bp	001431	0		indirect_call
+040C	sysprg/00011_scrsys._bp	001500	0		indirect_call
+040D	sysprg/00011_scrsys._bp	001596	0		indirect_call
+040F	sysprg/00011_scrsys._bp	001D11	0		indirect_call,loop
+0410	sysprg/00011_scrsys._bp	0015FE	0		indirect_call,loop
+0411	sysprg/00011_scrsys._bp	0017F3	0		indirect_call
+0412	sysprg/00011_scrsys._bp	0019BA	0		indirect_call,loop
+0413	sysprg/00011_scrsys._bp	001B09	0		indirect_call
+0418	sysprg/00011_scrsys._bp	001CE5	0		indirect_call
+0427	sysprg/00011_scrsys._bp	0023C1	0	1007	indirect_call
+0428	sysprg/00011_scrsys._bp	0023FF	0		indirect_call
+0429	sysprg/00011_scrsys._bp	002527	0		indirect_call,loop
+042A	sysprg/00011_scrsys._bp	00270D	0		indirect_call
+042B	sysprg/00011_scrsys._bp	0027BC	0		indirect_call,loop
+042C	sysprg/00011_scrsys._bp	002929	0	1007,3de8	indirect_call
+042D	sysprg/00011_scrsys._bp	002982	0	3de8	indirect_call,loop
+042F	sysprg/00011_scrsys._bp	002A75	0		indirect_call,loop
+0444	sysprg/00025_scrgrp6._bp	0001BD	0	22a7	indirect_call
+0450	sysprg/00011_scrsys._bp	002AD4	0		indirect_call,loop
+0451	sysprg/00011_scrsys._bp	002B56	0		loop
+0452	sysprg/00011_scrsys._bp	002B7A	0		indirect_call
+0453	sysprg/00011_scrsys._bp	002B8C	0	2b56	
+0454	sysprg/00011_scrsys._bp	002BCF	0		indirect_call
+0455	sysprg/00011_scrsys._bp	002E8A	0	2d3a	indirect_call,loop
+0458	sysprg/00011_scrsys._bp	00316E	0		indirect_call
+0459	sysprg/00011_scrsys._bp	00334C	0		indirect_call
+045C	sysprg/00011_scrsys._bp	0033E5	0		indirect_call
+045D	sysprg/00011_scrsys._bp	00354E	0		indirect_call
+045E	sysprg/00011_scrsys._bp	002BA0	0		loop
+0480	sysprg/00011_scrsys._bp	002007	0	1f12	
+0481	sysprg/00011_scrsys._bp	00201C	0	1db5,1f12	indirect_call
+0482	sysprg/00011_scrsys._bp	00206D	0	1db5,1f12	indirect_call
+0483	sysprg/00011_scrsys._bp	0020BD	0	1db5,1f12	indirect_call
+0484	sysprg/00011_scrsys._bp	00210E	0	1db5,1f12	indirect_call
+0485	sysprg/00011_scrsys._bp	00215F	0	1db5,1f12	indirect_call
+04C0	sysprg/00025_scrgrp6._bp	000EA5	0	d4d	
+04C1	sysprg/00025_scrgrp6._bp	000EB2	0	d4d	
+04C2	sysprg/00025_scrgrp6._bp	000EBF	0	d4d	
+04C3	sysprg/00025_scrgrp6._bp	000ECC	0		loop
+04C4	sysprg/00025_scrgrp6._bp	000F6D	0	2643,26e9,2797	loop
+04C5	sysprg/00025_scrgrp6._bp	000FC0	0	2676,271c,27ca	loop
+04C6	sysprg/00025_scrgrp6._bp	00101C	0	261c	indirect_call
+04C7	sysprg/00025_scrgrp6._bp	001054	0	2676	indirect_call
+04C8	sysprg/00025_scrgrp6._bp	00108C	0	26c2	indirect_call
+04C9	sysprg/00025_scrgrp6._bp	0010C4	0	271c	indirect_call
+04CA	sysprg/00025_scrgrp6._bp	0010FC	0	2768	indirect_call
+04CB	sysprg/00025_scrgrp6._bp	001134	0	27ca	indirect_call
+04D0	sysprg/00025_scrgrp6._bp	00116C	0	290b	loop
+04D1	sysprg/00025_scrgrp6._bp	001193	0	290b	indirect_call
+04D5	sysprg/00025_scrgrp6._bp	0011BE	0		indirect_call
+04D8	sysprg/00025_scrgrp6._bp	0011E5	0	261c,2676,3162	indirect_call
+04D9	sysprg/00025_scrgrp6._bp	0012F0	0	26c2,271c,3162	indirect_call
+04DA	sysprg/00025_scrgrp6._bp	0013FD	0	2768,27ca,3162	indirect_call
+04E0	sysprg/00025_scrgrp6._bp	00150A	0		indirect_call
+04E4	sysprg/00025_scrgrp6._bp	001661	0		loop
+04E5	sysprg/00025_scrgrp6._bp	001724	0		loop
+04E8	sysprg/00020_scrgrp1._bp	002D9F	0		indirect_call
+04E9	sysprg/00020_scrgrp1._bp	002E89	0		indirect_call
+04EA	sysprg/00020_scrgrp1._bp	002EF9	0	2f66	indirect_call
+04EB	sysprg/00020_scrgrp1._bp	002F3B	0	2f66	indirect_call

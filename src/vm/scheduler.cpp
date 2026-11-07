@@ -63,21 +63,49 @@ Result<int> Vm::run_slice(Thread& t) {
     return static_cast<int>(Continue); // slice budget used up; the thread keeps its place for next frame
 }
 
-static bool ready(const Thread& t, const Vm& vm) {
-    switch (t.wait.kind) {
-    case WaitObject::Kind::None: return true;
-    case WaitObject::Kind::Time: return vm.now_ms >= t.wait.until;
-    case WaitObject::Kind::Frame: return static_cast<std::int64_t>(vm.frame) >= t.wait.until;
-    case WaitObject::Kind::Poll: return !t.wait.poll || t.wait.poll();
+Vm::~Vm() {
+    for (auto& t : threads_) cancel_wait(*t);
+}
+
+void Vm::cancel_wait(Thread& t) {
+    if (t.wait.cleanup) t.wait.cleanup();
+    if (t.wait.kind == WaitObject::Kind::InputTime && t.wait.interrupt_input && wait_input)
+        wait_input->end(t.wait.input_priority);
+    t.wait = {};
+}
+
+void Vm::collect_dead() {
+    for (auto& t : threads_)
+        if (t->dead) {
+            cancel_wait(*t);
+            if (exclusive_thread == t->id) exclusive_thread = 0;
+        }
+    std::erase_if(threads_, [](const auto& t) { return t->dead; });
+}
+
+Result<WaitUpdate> Vm::update_wait(Thread& t) {
+    auto& w = t.wait;
+    switch (w.kind) {
+    case WaitObject::Kind::None: return WaitUpdate::complete();
+    case WaitObject::Kind::Time:
+        return now_ms >= w.until ? WaitUpdate::complete(w.values) : WaitUpdate::pending();
+    case WaitObject::Kind::Frame:
+        return static_cast<std::int64_t>(frame) >= w.until ? WaitUpdate::complete(w.values) : WaitUpdate::pending();
+    case WaitObject::Kind::InputTime:
+        if (now_ms >= w.until || w.notified) return WaitUpdate::complete({0});
+        if (w.interrupt_input && wait_input && wait_input->triggered(w.input_priority)) return WaitUpdate::complete({1});
+        return WaitUpdate::pending();
+    case WaitObject::Kind::Poll:
+        if (!w.poll) return fail(Errc::Format, "wait has no update function");
+        return w.poll({now_ms, frame, w.notified});
     }
-    return true;
+    return fail(Errc::Format, "unknown wait kind");
 }
 
 Result<FrameStatus> Vm::run_frame(std::int64_t now) {
     now_ms = now;
     if (frame_hook) frame_hook(now);
     bool skip_rest = false;
-    unsigned spins = 0;
     std::size_t i = 0;
     while (i < threads_.size()) {
         Thread& t = *threads_[i];
@@ -85,12 +113,19 @@ Result<FrameStatus> Vm::run_frame(std::int64_t now) {
             ++i;
             continue;
         }
+        if (exclusive_thread && t.id != exclusive_thread) { ++i; continue; }
         if (t.wait.kind != WaitObject::Kind::None) {
-            if (!ready(t, *this)) {
-                ++i;
-                continue;
-            }
-            t.wait = {};
+            auto update = update_wait(t);
+            if (!update) return std::unexpected(update.error());
+            if (update->status == WaitUpdate::Status::Pending) { ++i; continue; }
+            if (update->values.size() != t.wait.result_count || t.depth != t.wait.resume_depth)
+                return fail(Errc::Format, "completion stack mismatch for " + subop_name(t.wait.opcode));
+            const auto opcode = t.wait.opcode;
+            Ctx context(*this, t);
+            for (Word value : update->values) context.push(value);
+            if (trace_completion) trace_completion(t, opcode, update->values);
+            if (update->status == WaitUpdate::Status::SuppressFrame) skip_rest = true;
+            cancel_wait(t);
         }
         if (skip_rest) {
             ++i;
@@ -104,11 +139,11 @@ Result<FrameStatus> Vm::run_frame(std::int64_t now) {
         switch (*rc) {
         case ExitThread:
             t.dead = true;
+            if (exclusive_thread == t.id) exclusive_thread = 0;
             ++i;
             break;
         case StayThread:
-            if (++spins > kSpinLimit)
-                return fail(Errc::Format, "thread " + std::to_string(t.id) + " spins on rc=2 without a wait object");
+            // Recheck this thread, including a newly installed wait, in this pass.
             break;
         case SwitchThread: {
             if (switch_target == 0) { // the real game's native root thread: control goes back to its main loop (end of frame)
@@ -118,7 +153,7 @@ Result<FrameStatus> Vm::run_frame(std::int64_t now) {
             }
             auto it = std::find_if(threads_.begin(), threads_.end(),
                                    [&](auto& p) { return p->id == switch_target && !p->dead; });
-            if (it == threads_.end()) return fail(Errc::Range, "switch to missing thread");
+            if (it == threads_.end()) { i = threads_.size(); break; }
             i = static_cast<std::size_t>(it - threads_.begin());
             break;
         }
@@ -130,8 +165,8 @@ Result<FrameStatus> Vm::run_frame(std::int64_t now) {
         }
     }
     ++frame;
-    bool alive = std::any_of(threads_.begin(), threads_.end(), [](auto& p) { return !p->dead; });
-    if (!alive) return FrameStatus::AllThreadsDead;
+    collect_dead();
+    if (threads_.empty()) return FrameStatus::AllThreadsDead;
     return FrameStatus::Ok;
 }
 

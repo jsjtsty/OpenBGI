@@ -36,6 +36,7 @@ class Font {
   private:
     friend class FontLibrary;
     Font() = default;
+    const Glyph* native_glyph(char32_t cp);
     struct Impl;
     std::unique_ptr<Impl> impl_;
     int ascent_ = 0, descent_ = 0, line_height_ = 0;
@@ -50,15 +51,19 @@ class FontLibrary {
     ~FontLibrary();
 
     void add_search_dir(std::filesystem::path dir);
+    Result<void> register_file(const std::string& name, std::vector<std::uint8_t> bytes);
     // The file a script font name resolves to, falling back to any installed CJK-capable font.
     Result<std::filesystem::path> resolve(const std::string& cp932_name) const;
-    Result<std::shared_ptr<Font>> open(const std::string& cp932_name, int pixel_size);
+    // charset is a Windows charset hint (for example 0x86 = GB2312). It selects
+    // region-appropriate CJK glyphs when the script's face is a generic Japanese font.
+    Result<std::shared_ptr<Font>> open(const std::string& cp932_name, int pixel_size, int charset = -1);
     // Whether a font file exists for exactly this name (no fallback to another font).
     bool has_exact(const std::string& cp932_name) const;
 
   private:
-    Result<std::filesystem::path> resolve_impl(const std::string& cp932_name, bool fallback) const;
-    Result<std::shared_ptr<Font>> open_path(const std::filesystem::path& path, int pixel_size);
+    Result<std::filesystem::path> resolve_uncached(const std::string& name, bool fallback, int charset) const;
+    Result<std::filesystem::path> resolve_impl(const std::string& cp932_name, bool fallback, int charset = -1) const;
+    Result<std::shared_ptr<Font>> open_path(const std::filesystem::path& path, int pixel_size, bool cache = true);
     FontLibrary() = default;
     struct Impl;
     std::unique_ptr<Impl> impl_;

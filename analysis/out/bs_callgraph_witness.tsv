@@ -1,0 +1,54 @@
+compiled_opcode	subop	depth	candidate_function_path
+013F	90:56	0	sysprg/00011_scrsys._bp+0x2311
+0140	A0:25	1	sysprg/00012_scrmsg._bp+0xEC2 -> sysprg/00012_scrmsg._bp+0x29F
+0140	90:56	3	sysprg/00012_scrmsg._bp+0xEC2 -> sysprg/00012_scrmsg._bp+0x29F -> sysprg/00012_scrmsg._bp+0x1C0 -> sysprg/00012_scrmsg._bp+0x2327
+0141	90:56	2	sysprg/00012_scrmsg._bp+0x117D -> sysprg/00012_scrmsg._bp+0x1C0 -> sysprg/00012_scrmsg._bp+0x2327
+0156	90:56	1	sysprg/00012_scrmsg._bp+0x248D -> sysprg/00012_scrmsg._bp+0x2327
+015D	90:56	0	sysprg/00012_scrmsg._bp+0x1DFA
+01A0	A0:26	2	sysprg/00019_scrsnd._bp+0xA4C -> sysprg/00019_scrsnd._bp+0x96D -> sysprg/00019_scrsnd._bp+0x2120
+01A1	A0:26	2	sysprg/00019_scrsnd._bp+0xAC5 -> sysprg/00019_scrsnd._bp+0x96D -> sysprg/00019_scrsnd._bp+0x2120
+01A2	A0:26	1	sysprg/00019_scrsnd._bp+0xDB3 -> sysprg/00019_scrsnd._bp+0xD71
+01A3	A0:26	1	sysprg/00019_scrsnd._bp+0xDE1 -> sysprg/00019_scrsnd._bp+0xD71
+01A4	A0:26	0	sysprg/00019_scrsnd._bp+0xE1E
+01A6	A0:26	1	sysprg/00019_scrsnd._bp+0x1B96 -> sysprg/00019_scrsnd._bp+0xD71
+01AA	A0:25	0	sysprg/00019_scrsnd._bp+0x1354
+01AC	A0:25	0	sysprg/00019_scrsnd._bp+0x139A
+0240	90:38	1	sysprg/00022_scrgrp3._bp+0x477 -> sysprg/00022_scrgrp3._bp+0x178
+0241	90:38	1	sysprg/00022_scrgrp3._bp+0x4DA -> sysprg/00022_scrgrp3._bp+0x178
+0242	90:38	1	sysprg/00022_scrgrp3._bp+0x575 -> sysprg/00022_scrgrp3._bp+0x178
+0244	90:38	1	sysprg/00022_scrgrp3._bp+0x795 -> sysprg/00022_scrgrp3._bp+0x619
+0245	90:38	1	sysprg/00022_scrgrp3._bp+0x7BF -> sysprg/00022_scrgrp3._bp+0x619
+0248	90:38	0	sysprg/00022_scrgrp3._bp+0x821
+024C	90:38	1	sysprg/00022_scrgrp3._bp+0xBFE -> sysprg/00022_scrgrp3._bp+0xAD2
+024D	90:38	1	sysprg/00022_scrgrp3._bp+0xE89 -> sysprg/00022_scrgrp3._bp+0xAD2
+024E	90:38	0	sysprg/00022_scrgrp3._bp+0x1157
+0250	90:56	0	sysprg/00022_scrgrp3._bp+0x144B
+0258	90:38	0	sysprg/00022_scrgrp3._bp+0x1B12
+0268	90:38	0	sysprg/00022_scrgrp3._bp+0x201E
+0280	90:38	1	sysprg/00021_scrgrp2._bp+0x1D9A -> sysprg/00021_scrgrp2._bp+0xFAA
+0280	90:56	1	sysprg/00021_scrgrp2._bp+0x1D9A -> sysprg/00021_scrgrp2._bp+0xFAA
+0281	90:38	1	sysprg/00021_scrgrp2._bp+0x1DE1 -> sysprg/00021_scrgrp2._bp+0xFAA
+0281	90:56	1	sysprg/00021_scrgrp2._bp+0x1DE1 -> sysprg/00021_scrgrp2._bp+0xFAA
+0284	90:38	1	sysprg/00021_scrgrp2._bp+0x1E6E -> sysprg/00021_scrgrp2._bp+0xFAA
+0284	90:56	1	sysprg/00021_scrgrp2._bp+0x1E6E -> sysprg/00021_scrgrp2._bp+0xFAA
+0288	90:38	1	sysprg/00021_scrgrp2._bp+0x1ED6 -> sysprg/00021_scrgrp2._bp+0xFAA
+0288	90:56	1	sysprg/00021_scrgrp2._bp+0x1ED6 -> sysprg/00021_scrgrp2._bp+0xFAA
+0289	90:38	1	sysprg/00021_scrgrp2._bp+0x1F03 -> sysprg/00021_scrgrp2._bp+0xFAA
+0289	90:56	1	sysprg/00021_scrgrp2._bp+0x1F03 -> sysprg/00021_scrgrp2._bp+0xFAA
+028A	90:38	1	sysprg/00021_scrgrp2._bp+0x1F76 -> sysprg/00021_scrgrp2._bp+0xFAA
+028A	90:56	1	sysprg/00021_scrgrp2._bp+0x1F76 -> sysprg/00021_scrgrp2._bp+0xFAA
+0290	90:38	1	sysprg/00021_scrgrp2._bp+0x1FB1 -> sysprg/00021_scrgrp2._bp+0xFAA
+0290	90:56	1	sysprg/00021_scrgrp2._bp+0x1FB1 -> sysprg/00021_scrgrp2._bp+0xFAA
+02E8	90:38	0	sysprg/00024_scrgrp5._bp+0x3198
+02E9	90:38	0	sysprg/00024_scrgrp5._bp+0x3212
+02EA	90:38	0	sysprg/00024_scrgrp5._bp+0x328C
+0300	90:38	2	sysprg/00023_scrgrp4._bp+0x7DA -> sysprg/00023_scrgrp4._bp+0x4FF -> sysprg/00023_scrgrp4._bp+0xC3
+0301	90:38	2	sysprg/00023_scrgrp4._bp+0x91A -> sysprg/00023_scrgrp4._bp+0x4FF -> sysprg/00023_scrgrp4._bp+0xC3
+0302	90:38	1	sysprg/00023_scrgrp4._bp+0xAA5 -> sysprg/00023_scrgrp4._bp+0xC3
+0303	90:38	1	sysprg/00023_scrgrp4._bp+0xE14 -> sysprg/00023_scrgrp4._bp+0xC3
+0304	90:38	2	sysprg/00023_scrgrp4._bp+0x1258 -> sysprg/00023_scrgrp4._bp+0x4FF -> sysprg/00023_scrgrp4._bp+0xC3
+0307	90:38	1	sysprg/00023_scrgrp4._bp+0x14AC -> sysprg/00023_scrgrp4._bp+0x3A3C
+0308	90:38	0	sysprg/00023_scrgrp4._bp+0x1678
+0309	90:38	0	sysprg/00023_scrgrp4._bp+0x1867
+0328	90:38	0	sysprg/00023_scrgrp4._bp+0x1FB3
+0444	90:38	0	sysprg/00025_scrgrp6._bp+0x1BD

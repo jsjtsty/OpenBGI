@@ -14,21 +14,6 @@
 namespace obgi {
 
 namespace {
-constexpr std::uint32_t kPlaneHandleBase = 0xB0000000u;
-}
-
-// Windows are created hidden; one shows when 90:84 turned it on and 90:0C has not hidden all of them. Its transparency
-// is its own (90:85) combined with the global one: 0x100 - (0x100 - own) * (0x100 - global) / 0x100.
-void SystemState::refresh_planes() {
-    if (!display) return;
-    for (std::size_t i = 0; i < planes.size(); ++i) {
-        if (!planes[i]) continue;
-        const std::uint32_t h = kPlaneHandleBase + static_cast<std::uint32_t>(i);
-        display->set_visible(h, plane_shown[i]);
-    }
-}
-
-namespace {
 
 using vm::Ctx;
 using vm::Word;
@@ -36,8 +21,8 @@ using vm::Word;
 constexpr Word kHandleBase = 0xB0000000u;
 constexpr Word kPlaneSlotBase = 0x10000u; // image slots above the scripts' own range (0..0x3fff)
 
-void add(vm::SubopRegistry& r, std::uint16_t id, const char* name, int pops, int pushes, vm::SubopFn fn) {
-    r.add({id, name, static_cast<std::uint8_t>(pops), static_cast<std::uint8_t>(pushes), std::move(fn)});
+void add(vm::SubopRegistry& r, std::uint16_t id, const char* name, int pops, int pushes, vm::SubopFn fn, int deferred = 0) {
+    r.add({id, name, static_cast<std::uint8_t>(pops), static_cast<std::uint8_t>(pushes), std::move(fn), static_cast<std::uint8_t>(deferred)});
 }
 
 // the plane a handle names, or a script error
@@ -253,8 +238,8 @@ void register_object_settings(vm::SubopRegistry& r, SystemState& state, Display*
         Sprite* g = group_of(c, h);
         if (!g) return 0;
         if (level > 0x100) { c.fail(Errc::Range, "alpha out of range"); return 0; }
-        g->x = x, g->y = y, g->alpha = level;
-        for (Word m : members(h)) display->find_sprite(m)->alpha = level;
+        g->x = x, g->y = y;
+        display->set_level(h, level);
         return 0;
     });
     add(r, 0x90E8, "add object to group", 4, 0, [display, group_of](Ctx& c) {
@@ -270,7 +255,6 @@ void register_object_settings(vm::SubopRegistry& r, SystemState& state, Display*
         if (o->has_master) { c.fail(Errc::Range, "the object already has an owner"); return 0; }
         o->has_master = true, o->master = h, o->master_dx = dx, o->master_dy = dy, o->moved = false;
         o->x = g->x + dx, o->y = g->y + dy;
-        o->visible = g->visible;
         return 0;
     });
     add(r, 0x90E9, "remove object from group", 2, 0, [display, group_of](Ctx& c) {
@@ -531,11 +515,11 @@ std::array<double, 3> spline_at(const std::vector<std::array<double, 3>>& pts, d
 // Starts a timed change of display object `id`: to (x, y) along `curve` and to alpha `level` along `level_curve`, over
 // `duration` ms. The object becomes visible; scripts wait for the end with 80:5C. `move` = false leaves the position alone.
 // With a `path` the position follows the object's start followed by those points (90:29).
-void start_motion(SystemState& s, Display& display, Ctx& c, Word id, bool move, std::int32_t x, std::int32_t y, int curve, Word level,
+std::int64_t start_motion(SystemState& s, Display& display, Ctx& c, Word id, bool move, std::int32_t x, std::int32_t y, int curve, Word level,
                   int level_curve, Word duration, std::int32_t progress = -1, std::vector<std::array<double, 3>> path = {}) {
     Sprite* sp = display.find_sprite(id);
-    if (!sp && id >= 0x90000000u) return; // filters, effectors, windows and the like are not drawn objects here
-    if (!sp) { c.fail(Errc::Range, "no display object " + std::to_string(id)); return; }
+    if (!sp && id >= 0x90000000u) return 0; // filters, effectors, windows and the like are not drawn objects here
+    if (!sp) { c.fail(Errc::Range, "no display object " + std::to_string(id)); return 0; }
     SystemState::Motion m;
     m.object = id;
     m.start_ms = c.vm.now_ms;
@@ -554,18 +538,29 @@ void start_motion(SystemState& s, Display& display, Ctx& c, Word id, bool move, 
         m.to_z = static_cast<std::int32_t>(path.back()[2] * 65536.0);
     }
     m.from_level = static_cast<std::int32_t>(sp->level());
-    sp->visible = true;
+    display.set_visible(id, true);
     if (std::getenv("OBGI_DBGOBJ"))
         std::fprintf(stderr, "motion object %X: %d,%d -> %d,%d level %d -> %d over %u ms\n", id, m.from_x, m.from_y, m.to_x, m.to_y, m.from_level, m.to_level, duration);
     std::erase_if(s.motions, [&](const auto& o) { return o.object == id; });
     if (m.duration_ms <= 0) {
         if (move) sp->script_move_to(m.to_x, m.to_y), sp->depth = m.to_z;
-        sp->set_level(level);
+        display.set_level(id, level);
         if (m.to_progress != m.from_progress) display.set_progress(id, static_cast<std::uint32_t>(m.to_progress));
-        return;
+        return 1;
     }
     s.motions.push_back(m);
     c.t.objects_until = std::max(c.t.objects_until, m.start_ms + m.duration_ms);
+    return m.duration_ms;
+}
+
+void wait_for_motion(Ctx& c, std::int64_t duration_ms) {
+    const auto duration = std::max<std::int64_t>(duration_ms, 1);
+    const auto updates = (duration + 15) / 16;
+    vm::WaitObject wait;
+    wait.kind = vm::WaitObject::Kind::Time;
+    wait.until = c.vm.now_ms + duration;
+    wait.values = {static_cast<Word>(updates * 1000 / duration), 0};
+    c.suspend(std::move(wait), 2);
 }
 
 // Round half away from zero (wait_tween.c: RoundToInt); a non-finite value (a via point with the same x as the start) gives 0.
@@ -609,12 +604,12 @@ bool build_via_curve(std::vector<std::array<std::int32_t, 2>>& out, std::int32_t
 
 // 90:24 (wait_tween.c: WaitMove2_Start): frames = duration * fps / 1000 (at least 1), one point of the curve per frame plus one,
 // the alpha going linearly to `level`. A script error for a rate below 1 and for x values that are not monotonic.
-void start_via_motion(SystemState& s, Display& display, Ctx& c, Word id, std::int32_t via_x, std::int32_t via_y, std::int32_t x, std::int32_t y, int curve,
+std::int64_t start_via_motion(SystemState& s, Display& display, Ctx& c, Word id, std::int32_t via_x, std::int32_t via_y, std::int32_t x, std::int32_t y, int curve,
                       Word level, Word duration, Word fps) {
-    if (fps < 1) { c.fail(Errc::Range, "invalid frame rate"); return; }
+    if (fps < 1) { c.fail(Errc::Range, "invalid frame rate"); return 0; }
     Sprite* sp = display.find_sprite(id);
-    if (!sp && id >= 0x90000000u) return;
-    if (!sp) { c.fail(Errc::Range, "no display object " + std::to_string(id)); return; }
+    if (!sp && id >= 0x90000000u) return 0;
+    if (!sp) { c.fail(Errc::Range, "no display object " + std::to_string(id)); return 0; }
     SystemState::Motion m;
     m.kind = SystemState::Motion::Kind::Via;
     m.object = id, m.start_ms = c.vm.now_ms;
@@ -624,31 +619,32 @@ void start_via_motion(SystemState& s, Display& display, Ctx& c, Word id, std::in
     m.from_x = sp->script_x(), m.from_y = sp->script_y(), m.to_x = x, m.to_y = y;
     if (!build_via_curve(m.via_points, m.from_x, m.from_y, via_x, via_y, x, y, static_cast<std::uint32_t>(m.frames) + 1)) {
         c.fail(Errc::Range, "90:24: the x values of the start, via point and end must advance in one direction");
-        return;
+        return 0;
     }
     m.curve = curve;
     m.from_level = static_cast<std::int32_t>(sp->alpha), m.to_level = static_cast<std::int32_t>(level);
-    sp->visible = true;
+    display.set_visible(id, true);
     std::erase_if(s.motions, [&](const auto& o) { return o.object == id; });
     if (m.duration_ms <= 0) {
-        sp->script_move_to(x, y), sp->set_level(level);
-        return;
+        sp->script_move_to(x, y), display.set_level(id, level);
+        return 1;
     }
     s.motions.push_back(m);
     c.t.objects_until = std::max(c.t.objects_until, m.start_ms + m.duration_ms);
+    return m.duration_ms;
 }
 
 // 90:2C (wait_tween.c: WaitObjQuake_Start): shakes the object about where it is. Pattern 0..5 (0, 1, 4 vertical, 2, 3, 5 horizontal;
 // 0 and 2 start towards the negative side, 4 and 5 half a cycle in); the amplitude loses `decay` percent per cycle. An object that
 // does not exist is not reported.
-void start_quake(SystemState& s, Display& display, Ctx& c, Word id, Word pattern, std::int32_t amplitude, Word frequency, Word repeat, std::int32_t decay, Word fps) {
+std::int64_t start_quake(SystemState& s, Display& display, Ctx& c, Word id, Word pattern, std::int32_t amplitude, Word frequency, Word repeat, std::int32_t decay, Word fps) {
     Sprite* sp = display.find_sprite(id);
-    if (!sp && id < 0x90000000u) return;
-    if (pattern >= 6) { c.fail(Errc::Range, "invalid shake pattern " + std::to_string(pattern)); return; }
-    if (frequency < 1) { c.fail(Errc::Range, "invalid shake frequency " + std::to_string(frequency)); return; }
-    if (repeat < 1) { c.fail(Errc::Range, "invalid shake repeat count " + std::to_string(repeat)); return; }
-    if (fps < 1 || fps < frequency) { c.fail(Errc::Range, "invalid frame rate " + std::to_string(fps)); return; }
-    if (!sp) return;
+    if (!sp && id < 0x90000000u) return 0;
+    if (pattern >= 6) { c.fail(Errc::Range, "invalid shake pattern " + std::to_string(pattern)); return 0; }
+    if (frequency < 1) { c.fail(Errc::Range, "invalid shake frequency " + std::to_string(frequency)); return 0; }
+    if (repeat < 1) { c.fail(Errc::Range, "invalid shake repeat count " + std::to_string(repeat)); return 0; }
+    if (fps < 1 || fps < frequency) { c.fail(Errc::Range, "invalid frame rate " + std::to_string(fps)); return 0; }
+    if (!sp) return 0;
     SystemState::Motion m;
     m.kind = SystemState::Motion::Kind::Quake;
     m.object = id, m.start_ms = c.vm.now_ms;
@@ -672,14 +668,15 @@ void start_quake(SystemState& s, Display& display, Ctx& c, Word id, Word pattern
         if (phase <= 0) step = -step, phase = -phase;
         m.quake_wave.push_back(pattern == 0 || pattern == 2 ? phase0 - phase : phase - phase0);
     }
-    sp->visible = true;
+    display.set_visible(id, true);
     std::erase_if(s.motions, [&](const auto& o) { return o.object == id; });
     s.motions.push_back(m);
     c.t.objects_until = std::max(c.t.objects_until, m.start_ms + m.duration_ms);
+    return m.duration_ms;
 }
 
 // One step of the frame-stepped motions: the frame is the time elapsed over the frame interval, at most the last one.
-void step_framed(const SystemState::Motion& m, Sprite& sp, std::int64_t elapsed) {
+void step_framed(const SystemState::Motion& m, Sprite& sp, Display& display, std::int64_t elapsed) {
     const std::int32_t cur = m.frame_ms > 0 ? static_cast<std::int32_t>(std::min<std::int64_t>(elapsed / m.frame_ms, m.frames)) : m.frames;
     const bool done = cur >= m.frames;
     if (m.kind == SystemState::Motion::Kind::Via) {
@@ -691,7 +688,7 @@ void step_framed(const SystemState::Motion& m, Sprite& sp, std::int64_t elapsed)
             level = (m.to_level - m.from_level) * cur / m.frames + m.from_level;
         }
         sp.script_move_to(x, y);
-        sp.alpha = static_cast<std::uint32_t>(level);
+        display.set_level(m.object, static_cast<std::uint32_t>(level));
         return;
     }
     std::int32_t x = m.from_x, y = m.from_y;
@@ -710,7 +707,7 @@ void advance_motions(SystemState& state, Display& display, std::int64_t now_ms) 
         Sprite* sp = display.find_sprite(it->object);
         const std::int64_t elapsed = std::min(now_ms - it->start_ms, it->duration_ms);
         if (sp && it->duration_ms > 0 && it->kind != SystemState::Motion::Kind::Tween) {
-            step_framed(*it, *sp, elapsed);
+            step_framed(*it, *sp, display, elapsed);
         } else if (sp && it->duration_ms > 0) {
             const bool done = elapsed >= it->duration_ms;
             const auto t = static_cast<std::int32_t>(elapsed * 0x1000000 / it->duration_ms);
@@ -727,12 +724,9 @@ void advance_motions(SystemState& state, Display& display, std::int64_t now_ms) 
                 sp->script_move_to(it->from_x + static_cast<std::int32_t>((std::int64_t{it->to_x} - it->from_x) * fp >> 16),
                             it->from_y + static_cast<std::int32_t>((std::int64_t{it->to_y} - it->from_y) * fp >> 16));
             }
-            sp->set_level(static_cast<std::uint32_t>(it->from_level + static_cast<std::int32_t>((std::int64_t{it->to_level} - it->from_level) * fl >> 16)));
+            display.set_level(it->object, static_cast<std::uint32_t>(it->from_level + static_cast<std::int32_t>((std::int64_t{it->to_level} - it->from_level) * fl >> 16)));
             if (it->to_progress != it->from_progress) // linear in time, whatever the curves
                 display.set_progress(it->object, static_cast<std::uint32_t>(it->from_progress + (std::int64_t{it->to_progress} - it->from_progress) * elapsed / it->duration_ms));
-            if (sp->slot == 0xFFFFFFFFu) // a group (90:E0): its members take its level
-                for (auto& [mid, m] : display.sprites())
-                    if (m.has_master && m.master == it->object) m.alpha = sp->alpha;
         }
         it = (!sp || now_ms - it->start_ms >= it->duration_ms) ? state.motions.erase(it) : it + 1;
     }
@@ -751,61 +745,48 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
     add_plane_setting(r, state, 0x9188, "window object font", 7);
     add_plane_setting(r, state, 0x9189, "window object line gap", 2);
     add_plane_setting(r, state, 0x918A, "window object text direction", 2);
-    add_plane_setting(r, state, 0x928A, "window object frame fill", 2);
-    add_plane_setting(r, state, 0x928D, "window object text layer bitmap", 6);
     add_plane_setting(r, state, 0x918B, "window object text sway", 2);
-    add_plane_setting(r, state, 0x918C, "window object setting 91:8C", 3);
-    add_plane_setting(r, state, 0x9288, "window object setting 92:88", 2);
-    add_plane_setting(r, state, 0x9289, "window object background bitmap", 6);
-    add_plane_setting(r, state, 0x928C, "window object setting 92:8C", 2);
-    add_plane_setting(r, state, 0x928E, "window object setting 92:8E", 1);
-    // (handle): pushes ok, and two numbers; what they are is not known (zeros for now)
-    add(r, 0x918D, "window object query 91:8D", 1, 3, [s](Ctx& c) {
-        const Word handle = c.pop();
-        if (!c.ok() || !plane_of(*s, c, handle)) return 0;
-        c.push(1), c.push(0), c.push(0);
-        return 0;
-    });
     // 90:28, popped in this order: priority, input-skip flag, total, rate, step, three more values (alpha-like, not
     // modelled), a value, y, x, object. The object moves to (x, y) linearly over total * 1000 / rate ms; 80:5C waits for it.
     // (analysis: FUN_0048a0e0 -> FUN_004a1070 -> CProcCtrlDspObj FUN_00437d60). A rate of 0 or a missing object is a script error.
     // Popped in this order: prio, skip, max skip, fps, duration (ms), progress, level curve, level, curve, y, x, object (the
     // reference engine's layout, docs/vm.md of the other project). A rate of 0 or a missing object is a script error.
-    if (display) add(r, 0x9028, "move object over time", 12, 0, [s, display](Ctx& c) {
+    if (display) add(r, 0x9028, "move object over time", 12, 2, [s, display](Ctx& c) {
         Word a[12];
         for (Word& w : a) w = c.pop();
         if (!c.ok()) return 0;
         if (a[3] == 0) { c.fail(Errc::Range, "90:28: rate 0"); return 0; }
-        start_motion(*s, *display, c, a[11], true, static_cast<std::int32_t>(a[10]), static_cast<std::int32_t>(a[9]), static_cast<int>(a[8]), a[7],
-                     static_cast<int>(a[6]), a[4], static_cast<std::int32_t>(a[5]));
-        return 0;
-    });
+        const auto duration = start_motion(*s, *display, c, a[11], true, static_cast<std::int32_t>(a[10]), static_cast<std::int32_t>(a[9]), static_cast<int>(a[8]), a[7],
+                                            static_cast<int>(a[6]), a[4], static_cast<std::int32_t>(a[5]));
+        if (c.ok()) wait_for_motion(c, duration);
+        return c.ok() ? vm::StayThread : 0;
+    }, 2);
     // 90:20 fade: prio, skip, fps, duration, level, object. 90:22 adds max skip after skip.
     // 90:21 move: prio, skip, fps, duration, level, curve, y, x, object. 90:23 adds max skip after skip.
     if (display) {
         for (auto [id, n] : {std::pair{0x9020, 6}, {0x9022, 7}, {0x9021, 9}, {0x9023, 10}}) {
             const bool move = id == 0x9021 || id == 0x9023;
             const bool has_max = id == 0x9022 || id == 0x9023;
-            add(r, static_cast<std::uint16_t>(id), move ? "move object (timed)" : "fade object (timed)", n, 0, [s, display, n, move, has_max](Ctx& c) {
+            add(r, static_cast<std::uint16_t>(id), move ? "move object (timed)" : "fade object (timed)", n, 2, [s, display, n, move, has_max](Ctx& c) {
                 std::vector<Word> a(static_cast<std::size_t>(n));
                 for (Word& w : a) w = c.pop();
                 if (!c.ok()) return 0;
                 const std::size_t i = has_max ? 3 : 2; // index of fps
                 if (a[i] == 0) { c.fail(Errc::Range, "invalid frame rate"); return 0; }
                 if (a[i + 2] > 0x100) { c.fail(Errc::Range, "alpha out of range"); return 0; }
-                if (move)
-                    start_motion(*s, *display, c, a[std::size_t(n) - 1], true, static_cast<std::int32_t>(a[std::size_t(n) - 2]),
-                                 static_cast<std::int32_t>(a[std::size_t(n) - 3]), static_cast<int>(a[std::size_t(n) - 4]), a[i + 2], 0, a[i + 1]);
-                else
-                    start_motion(*s, *display, c, a[std::size_t(n) - 1], false, 0, 0, 0, a[i + 2], 0, a[i + 1]);
-                return 0;
-            });
+                const auto duration = move
+                    ? start_motion(*s, *display, c, a[std::size_t(n) - 1], true, static_cast<std::int32_t>(a[std::size_t(n) - 2]),
+                                   static_cast<std::int32_t>(a[std::size_t(n) - 3]), static_cast<int>(a[std::size_t(n) - 4]), a[i + 2], 0, a[i + 1])
+                    : start_motion(*s, *display, c, a[std::size_t(n) - 1], false, 0, 0, 0, a[i + 2], 0, a[i + 1]);
+                if (c.ok()) wait_for_motion(c, duration);
+                return c.ok() ? vm::StayThread : 0;
+            }, 2);
         }
     }
     // 90:29: the same over a path of n points (four 16.16 words each: x, y, z, padding); popped in this order: priority, skip,
     // max skip, fps, duration (frames), progress, level curve, level, curve, point address, n, object. The path is the object's
     // position followed by the points; one point is a line, more are a natural cubic spline, walked along the eased time.
-    if (display) add(r, 0x9029, "move object along a path", 12, 0, [s, display](Ctx& c) {
+    if (display) add(r, 0x9029, "move object along a path", 12, 2, [s, display](Ctx& c) {
         Word a[12];
         for (Word& w : a) w = c.pop();
         if (!c.ok()) return 0;
@@ -824,10 +805,11 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
             path.push_back({static_cast<std::int32_t>(c.read(points + 16 * i, 4, false)) / 65536.0, static_cast<std::int32_t>(c.read(points + 16 * i + 4, 4, false)) / 65536.0,
                             static_cast<std::int32_t>(c.read(points + 16 * i + 8, 4, false)) / 65536.0});
         if (!c.ok()) return 0;
-        start_motion(*s, *display, c, id, true, to_x, to_y, static_cast<int>(a[8]), a[7], static_cast<int>(a[6]), duration, static_cast<std::int32_t>(a[5]),
-                     std::move(path));
-        return 0;
-    });
+        const auto actual_duration = start_motion(*s, *display, c, id, true, to_x, to_y, static_cast<int>(a[8]), a[7], static_cast<int>(a[6]), duration,
+                                                   static_cast<std::int32_t>(a[5]), std::move(path));
+        if (c.ok()) wait_for_motion(c, actual_duration);
+        return c.ok() ? vm::StayThread : 0;
+    }, 2);
     // 90:F8-FD: click targets (sysobj/targets.c). F8 clears the list, FA registers a sprite (an error for anything else), FB removes it
     // (an error when it was not registered), FC answers the index of the newest target whose screen rectangle holds the pointer
     // (0xFFFFFFFF for none), FD the left-button state sampled on a target by index (an error for an unknown index).
@@ -872,22 +854,24 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
         });
     }
     // 90:24: through a via point on a cubic curve; popped: prio, skip, max skip, fps, duration, level, curve, y, x, via y, via x, object.
-    if (display) add(r, 0x9024, "move object through a point", 12, 0, [s, display](Ctx& c) {
+    if (display) add(r, 0x9024, "move object through a point", 12, 2, [s, display](Ctx& c) {
         Word a[12];
         for (Word& w : a) w = c.pop();
         if (!c.ok()) return 0;
-        start_via_motion(*s, *display, c, a[11], static_cast<std::int32_t>(a[10]), static_cast<std::int32_t>(a[9]), static_cast<std::int32_t>(a[8]),
-                         static_cast<std::int32_t>(a[7]), static_cast<int>(a[6]), a[5], a[4], a[3]);
-        return 0;
-    });
+        const auto duration = start_via_motion(*s, *display, c, a[11], static_cast<std::int32_t>(a[10]), static_cast<std::int32_t>(a[9]),
+                                                static_cast<std::int32_t>(a[8]), static_cast<std::int32_t>(a[7]), static_cast<int>(a[6]), a[5], a[4], a[3]);
+        if (c.ok()) wait_for_motion(c, duration);
+        return c.ok() ? vm::StayThread : 0;
+    }, 2);
     // 90:2C: shake an object; popped: prio, skip, fps, decay, repeat, frequency, amplitude, pattern, object.
-    if (display) add(r, 0x902C, "shake object", 9, 0, [s, display](Ctx& c) {
+    if (display) add(r, 0x902C, "shake object", 9, 2, [s, display](Ctx& c) {
         Word a[9];
         for (Word& w : a) w = c.pop();
         if (!c.ok()) return 0;
-        start_quake(*s, *display, c, a[8], a[7], static_cast<std::int32_t>(a[6]), a[5], a[4], static_cast<std::int32_t>(a[3]), a[2]);
-        return 0;
-    });
+        const auto duration = start_quake(*s, *display, c, a[8], a[7], static_cast<std::int32_t>(a[6]), a[5], a[4], static_cast<std::int32_t>(a[3]), a[2]);
+        if (c.ok()) wait_for_motion(c, duration);
+        return c.ok() ? vm::StayThread : 0;
+    }, 2);
     // (handle): pushes one number (zero for now)
     add(r, 0x918E, "window object query 91:8E", 1, 1, [s](Ctx& c) {
         const Word handle = c.pop();
@@ -938,9 +922,17 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
     add(r, 0x9081, "remove window object", 1, 0, [s, display](Ctx& c) {
         const Word handle = c.pop();
         if (!c.ok() || !plane_of(*s, c, handle)) return 0;
+        for (auto it = s->icon_controls.begin(); it != s->icon_controls.end();) {
+            if (it->second.window == handle && it->second.paint_only) {
+                panel_stop(*s, it->first);
+                it = s->icon_controls.erase(it);
+            } else ++it;
+        }
         if (display) {
             display->remove_sprite(handle);
             display->free_slot(kPlaneSlotBase + (handle & 0xFFFFFFu));
+            (void)display->free_slot(0x20000u + (handle & 0xFFFFFFu));
+            (void)display->free_slot(0x30000u + (handle & 0xFFFFFFu));
         }
         s->planes[handle & 0xFFFFFFu].reset();
         return 0;
@@ -971,7 +963,26 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
         const Word plane_slot = kPlaneSlotBase + (handle & 0xFFFFFFu);
         if (d && image < 0x4000 && d->slot(plane_slot) && p->width && p->height) {
             auto made = d->create_slot(image, p->width, p->height, SlotFormat::Bgra);
-            if (made) (void)d->blit(image, 0, 0, plane_slot, 0, 0, p->width, p->height, 0, 0x100);
+            if (!made) { c.fail(made.error().code, made.error().message); return 0; }
+            if (auto copy = d->blit(image, 0, 0, plane_slot, 0, 0, p->width, p->height, 0, 0x100); !copy) {
+                c.fail(copy.error().code, copy.error().message); return 0;
+            }
+            // Panels are drawn as separate sprites in this runtime, but the
+            // original window capture includes its painted items/sub-sprites.
+            for (const auto& [id, panel] : s->icon_controls) {
+                if (panel.window != handle) continue;
+                for (const auto& group : panel.groups) for (const auto& button : group.buttons) {
+                    if (!button.shown || !button.sprite) continue;
+                    const Sprite* sp = d->find_sprite(button.sprite);
+                    const SlotInfo* info = sp ? d->slot(sp->slot) : nullptr;
+                    if (!info) continue;
+                    const auto x = button.x + (panel.basic ? p->area[0] : 0);
+                    const auto y = button.y + (panel.basic ? p->area[1] : 0);
+                    if (auto drawn = d->blit(image, x, y, sp->slot, 0, 0, info->width, info->height, 1, 0); !drawn) {
+                        c.fail(drawn.error().code, drawn.error().message); return 0;
+                    }
+                }
+            }
         }
         return 0;
     });
@@ -982,7 +993,7 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
         if (SystemState::Plane* p = plane_of(*s, c, handle)) {
             p->flag = value;
             s->plane_shown[handle & 0xFFFFFFu] = value != 0;
-            s->refresh_planes();
+            if (s->display) s->display->set_visible(handle, value != 0);
         }
         return 0;
     });
@@ -1006,16 +1017,6 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
                 sp->alpha = std::min<Word>(a[4], 0x100); // the window's own transparency
             }
             s->plane_effect[a[0] & 0xFFFFFFu] = a[3], s->plane_level[a[0] & 0xFFFFFFu] = a[4];
-        }
-        return 0;
-    });
-    // (handle, ?, ?, bitmap id): the plane's border bitmap, -1 clears it
-    add(r, 0x9086, "window object border", 4, 0, [s](Ctx& c) {
-        const Word image = c.pop(), b = c.pop(), a = c.pop(), handle = c.pop();
-        if (!c.ok()) return 0;
-        if (SystemState::Plane* p = plane_of(*s, c, handle)) {
-            p->image = image;
-            p->extra = {a, b};
         }
         return 0;
     });

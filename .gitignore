@@ -2,7 +2,7 @@ build/
 .vs/
 .cache/
 compile_commands.json
-analysis/out/
-analysis/ghidra_project/
 analysis/.venv/
+analysis/out/uv-cache/
 __pycache__/
+tmp_shots/

@@ -1,0 +1,300 @@
+584 ref ops; 367 mine; 246 missing; 50 record-only
+MISSING
+8005 out ¡ú ok
+800A dst ¡ú
+800B ¡ú v
+800E ¡ú f
+8010 f ¡ú
+801D prio, vk ¡ú v
+801E v ¡ú ok
+8024 pattern, recurse ¡ú n
+8027 newPath, existing ¡ú ok
+8029 path ¡ú ok
+802C path ¡ú attr
+802D path, attr ¡ú ok
+802F dst, src ¡ú ok
+8036 v ¡ú
+803C file, title, msg ¡ú ok
+803E path ¡ú ok
+8052 ms ¡ú
+8054 msg ¡ú (pushes 2 values later)
+8059 ms ¡ú f
+805D f ¡ú
+8063 v ¡ú
+8067 80 66): n ¡ú
+8068 v ¡ú
+806B path, name ¡ú
+806C f ¡ú
+806D buf ¡ú f
+806E on ¡ú
+806F ¡ú f
+8074 f ¡ú
+8078 slot, comment ¡ú
+8079 slot ¡ú code
+807A buf, slot ¡ú code
+807B slot ¡ú code
+8090 max ¡ú
+8091 ¡ú n
+8094 a1 .. a9, arc, file, name, msg ¡ú
+8095 buf, idx ¡ú ok
+8096 rec ¡ú
+8097 buf, idx ¡ú ok
+80A9 id, out ¡ú f
+80AF mode ¡ú ok
+80B0 name, max ¡ú ok
+80B1 name ¡ú code
+80B4 name, prio ¡ú (pushes later)
+80B5 name ¡ú code
+80B6 name, prio ¡ú code
+80DE outLen, id, idx ¡ú code
+80E0 p1, p2, p3, a ¡ú r
+80E2 p1, p2, p3 ¡ú r
+80E9 out, path ¡ú ok
+80EC out, name ¡ú code
+80ED id ¡ú code
+80EE out, id, no, b, a, kinds ¡ú code
+80EF x ¡ú v
+80F0 p1, p2, p3, p4, n5, n6, p7, p8 ¡ú r
+80F1 p1, p2, p3, p4, n5, n6 ¡ú r
+80F2 p14, l13, l12, v11, s10, l9, l8, v7, s6, s5, s4, s3, s2, v1 ¡ú r
+80F3 p1 .. p6, n1, n2 ¡ú r
+80F4 dir, list ¡ú r
+80F5 dir, list ¡ú r
+80F6 p1, p2, p3, f ¡ú
+80F7 p1, p2, p3 ¡ú r
+80F8 buf, p1, p2 ¡ú ok
+80F9 p1, p2 ¡ú ok
+80FA buf, name ¡ú ok
+80FB buf ¡ú
+80FC p5 .. p1 ¡ú ok
+80FE ¡ú f
+8102 lang ¡ú lang
+8103 ¡ú lang
+8104 ms ¡ú ok
+810A out ¡ú ok
+810B desc, ver, x ¡ú
+810C ver, csd ¡ú
+810D total, avail ¡ú
+8110 vk, on ¡ú old
+8111 buf ¡ú
+8114 on ¡ú
+8116 count, distance ¡ú ok
+8117 xy, dist, first, count ¡ú n
+811B index, key ¡ú ok
+811E kind ¡ú ok
+811F mask ¡ú
+8120 dst, src, mode ¡ú 1
+8128 out, path, mode ¡ú code
+8129 handle ¡ú code
+812A status, handle, buf, size ¡ú code
+812B status, handle, pos ¡ú code
+8131 buf, url, off, size ¡ú code
+8138 out, count, descs, patterns, title, initialDir, kind ¡ú code
+813A out, title, initial ¡ú ok
+813B p1, p2, p3, p4 ¡ú r
+813C name ¡ú r
+8144 stackEntries, codeSize, dataSize, ip ¡ú id
+8162 mode ¡ú ok
+8163 mode ¡ú ok
+8165 on ¡ú
+8166 on ¡ú
+8167 out ¡ú
+8168 on ¡ú previous
+8169 on ¡ú
+816A on ¡ú
+816B buf ¡ú n
+816C w, h ¡ú ok
+816D ¡ú f
+816E ¡ú f
+8180 globals, gSize, sysarea, sSize, image ¡ú ok
+9003 bytes ¡ú
+900A onWait, full ¡ú
+900B v ¡ú
+900D level ¡ú
+900E fontNo, size, widthPct, bold, amount ¡ú
+900F v ¡ú
+901A dst, src, vec1, vec2, level, amount ¡ú
+901B dst, src, type, level ¡ú
+901C dst, x, y, w, h, src, sx, sy, sw, sh ¡ú
+901D dst, src, zoom, angle ¡ú
+9020 h, level, duration, fps, skip, prio ¡ú
+9021 h, x, y, curve, level, duration, fps, skip, prio ¡ú
+9022 h, level, duration, fps, maxSkip, skip, prio ¡ú
+9023 h, x, y, curve, level, duration, fps, maxSkip, skip, prio ¡ú
+902C h, pattern, amplitude, frequency, repeat, decay, fps, skip, prio ¡ú
+9036 h, dx, dy ¡ú
+9037 h, dx, dy ¡ú
+9058 h, x, y, bmp1, bmp2, mixRatio, level, prio, levelRoute ¡ú
+9059 h, x, y, bmp, ox, oy, angle, sx, sy, smooth, effect, level, prio ¡ú
+905B h, x, y, bmp, map, rings, rippleNo, level, fade, prio ¡ú
+905D h, fx, fy, fz, bmp1, bmp2, mixRatio, levelRoute, ox, oy, angle, rotX, rotY, rotZ
+9070 ¡ú h
+9071 h ¡ú
+9074 h, f ¡ú
+9075 h, x, y, bmp, effect, level, prio ¡ú
+9076 h, cols, rows, chipW, chipH ¡ú
+9078 h, w, hgt, data ¡ú
+9079 h, col, row, offX, offY, wrap ¡ú
+907A h, tile ¡ú
+9091 mode, layerNo ¡ú
+909F f ¡ú
+90A0 h, n, items, cols, centre, colour, init, allowCancel ¡ú
+90A1 h, n, items, cols, centre, colour ¡ú
+90A2 h, n, items, cols, centre, colour, init, allowCancel, bmp1, dx1, dy1, bmp2, dx2,
+90A3 h, n, items, cols, centre, colour, init, allowCancel, bmp1, dx1, dy1, bmp2, dx2,
+90A4 c0, c1 ¡ú
+90A5 ms ¡ú
+90A6 on, curve, duration, fps ¡ú
+90A7 h, table ¡ú
+90AF f ¡ú
+90B0 h, n, icons, hotkeys, mode, allowCancel, useHitMask ¡ú
+90B1 h, n, icons, hotkeys, mode, allowCancel, useHitMask ¡ú
+90B4 h, n, icons ¡ú
+90B5 h, n, icons64 ¡ú
+90C0 bmp, arc, name ¡ú
+90C3 dst, src ¡ú
+90C4 bmp, path, mode ¡ú r
+90C5 path, format, quality, bmp ¡ú r
+90CA dst, src ¡ú
+90F0 file, x, y, w, h ¡ú length
+90F8 ¡ú
+90FA h ¡ú
+90FB h ¡ú
+90FC ¡ú index
+90FD index ¡ú pressed
+9110 slot, ox, oy, rw, rh ¡ú
+9111 slot, amplitude ¡ú
+9112 slot, cx, cy, period, phase, amplitude ¡ú
+9113 slot, cx, cy, angle, k ¡ú
+9114 slot, cx, cy, angle, radius ¡ú
+9115 slot, cx, cy, radius, height ¡ú
+9118 dst, x, y, src, cx, cy, angle, sx, sy, level, smooth ¡ú
+9119 dst, x, y, src, cx, cy, angle, sx, sy, level, smooth ¡ú
+911E dst, gray, x, y ¡ú
+9165 h, vec1, vec2, level, amount, prio ¡ú
+9166 h, type, level, prio ¡ú
+9167 h, map, rings, ripple, level, prio ¡ú
+9168 h, cx, cy, angle, sx, sy, smooth, level, prio ¡ú
+918A h, style ¡ú
+91BF no, actions ¡ú
+91F1 bmp, &out ¡ú code
+91F2 bmp ¡ú code
+91F3 bmp, v ¡ú code
+91F4 bmp, &p, a, b, c ¡ú code
+9200 no, period, amplitude, count, rings ¡ú
+9210 slot, type, cx, cy, range ¡ú
+9211 slot, type ¡ú
+921F slot, path ¡ú r
+928A h, colour ¡ú
+928D h, x, y, bmp, effect, level ¡ú ("91 8D" of 1.58 .. 1.64)
+A000 ¡ú 0x14 (the library's "not running" code, always)
+A010 ch, name, vol ¡ú
+A015 ch, outLength ¡ú position
+A01C ch, vol ¡ú
+A02C slot, vol ¡ú
+A02F slot ¡ú length
+A080 ¡ú
+A081 ¡ú
+A084 track, loop ¡ú r
+A085 ¡ú
+A086 out ¡ú r
+A0C0 name ¡ú r
+B000 x, y, bmp ¡ú
+B004 sprite, dx, dy ¡ú
+B008 pattern, amplitude, frequency, repeat, decay, fps, skip ¡ú
+B020 x, y, w, h, fontNo, size, maxLen, focus ¡ú
+B021 ¡ú 0
+B022 pct ¡ú ok
+B023 ¡ú open
+B024 show ¡ú
+B025 colour ¡ú
+B026 str ¡ú
+B027 buf ¡ú length
+B028 on ¡ú
+B029 on ¡ú
+B081 text, defaultYes ¡ú yes
+B082 text, style, defaultYes ¡ú confirmed
+B084 out, title, initial, maxLen ¡ú ok
+B085 out1, out2, title, label1, initial1, maxLen1, label2, initial2, maxLen2 ¡ú ok
+B087 layout, out1, out2, title, label1, initial1, maxLen1, digits1, label2, initial2,
+B08C out, size, caption, items ¡ú chosen
+B08F surname, givenName, nickname, pronoun, &month, &day ¡ú ok
+B0C0 name ¡ú no
+B0C2 file ¡ú ok
+B0C3 arc, file ¡ú ok
+B0C4 buf ¡ú n
+B0F0 path, stretch, tile ¡ú
+C018 type, pattern, count, firstBmp, a, b, frames ¡ú
+C01A type, pattern, count, firstBmp, a, b, frames, level ¡ú
+C020 handle, pattern, max, spawnEvery ¡ú
+C024 pattern, bmp ¡ú
+C028 handle, pattern, max, spawnEvery ¡ú
+C02C pattern, bmp ¡ú
+C047 handle, n ¡ú
+C048 handle, n ¡ú
+C04B handle, ms ¡ú
+C04C handle, x, y, z ¡ú
+C04D handle, a, b, c ¡ú
+C04E handle, n ¡ú
+C0F0 out, &count, arc, name, base ¡ú result
+EF00 ¡ú level
+EF01 mode ¡ú
+EF02 mode ¡ú
+EF03 on ¡ú
+EF08 on, msPerLine ¡ú
+EF09 bmpUp, upX, upY, bmpDown, downX, downY ¡ú
+EF0A h, dst, src, lines, maxBytes, rubyOn, hang ¡ú used
+EF0B str, fontNo, size, widthPct, bold, prop ¡ú width
+EF0C h ¡ú y
+RECORD-ONLY
+8064 f ¡ú
+8164 w, h ¡ú
+9000 full ¡ú
+9007 ms ¡ú
+9009 prio ¡ú
+9035 h, v ¡ú
+903C h, bmp ¡ú
+903D h ¡ú hit
+903F h ¡ú
+9041 bmp, second, level ¡ú
+9042 b0, b1, b2, b3, x, y ¡ú
+9044 n, list, level ¡ú
+9045 bmp, vec1, vec2, level, amount ¡ú
+9046 bmp, type, level ¡ú
+9048 bmp, x, y, w, h ¡ú
+9049 bmp, scale, option ¡ú
+9053 h, x, y, w, hgt ¡ú
+9055 h, bmp ¡ú
+9065 h, colour, level, prio ¡ú
+9066 h, kind, colour, bmp, param, level, prio ¡ú
+9094 ms ¡ú
+9095 steps, ms ¡ú
+9096 steps, ms ¡ú
+9097 on, ms ¡ú
+9099 ms ¡ú
+909A mode, x, y ¡ú
+909B on, ms ¡ú
+909C on ¡ú
+909E count, bmp ¡ú
+9131 h, v ¡ú
+9133 h, fx, fy, fz ¡ú
+9140 x, y, bmp, cx, cy, angle, sx, sy, smooth ¡ú
+9141 layer ¡ú
+9142 layer, on ¡ú
+9143 layer, x, y ¡ú
+9144 layer, effect ¡ú
+9145 layer, level ¡ú
+9146 layer, bmp, cx, cy ¡ú
+9147 layer, angle, sx, sy, smooth ¡ú
+9148 layer, angleCurve, scaleCurve ¡ú
+9149 layer, dcx, dcy ¡ú
+914A layer, dAngle, dsx, dsy ¡ú
+9188 h, fontNo, size, widthPct, bold, prop, rubyReserve ¡ú
+9189 h, pct ¡ú
+918B h, style ¡ú
+918C h, x, y ¡ú
+9288 h, on ¡ú
+9289 h, x, y, bmp, effect, level ¡ú ("90 8D" of 1.58 .. 1.64)
+928C h, on ¡ú
+928E h ¡ú
+MINE NOT IN REF ['8016', '805F', '8069', '806A', '80D8', '9106', '910E', '9136', '9137', '9138', '913D', '913E', '913F', '9155', '9190', '9198', '9199', '919A', '919B', '9212', '9214', '9216', '9217', '9290', '9297', '9299', '92F0', 'A021', 'A024']

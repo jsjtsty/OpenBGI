@@ -1,0 +1,257 @@
+opcode	candidate_sites	programs	examples	limits
+00	33615	109	autoload/00000_ipl._bp+0x5,sysprg/00000_environ._bp+0x6D,sysprg/00000_environ._bp+0x6F	candidate native function ranges; not runtime executions; compiled _bs is separate
+01	11574	105	autoload/00000_ipl._bp+0x2,sysprg/00000_environ._bp+0x52,sysprg/00000_environ._bp+0x55	candidate native function ranges; not runtime executions; compiled _bs is separate
+02	7060	99	sysprg/00000_environ._bp+0x103,sysprg/00000_environ._bp+0x5DF,sysprg/00001_kana._bp+0x30	candidate native function ranges; not runtime executions; compiled _bs is separate
+03	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+04	23886	109	sysprg/00000_environ._bp+0x6,sysprg/00000_environ._bp+0x2A,sysprg/00000_environ._bp+0x3C	candidate native function ranges; not runtime executions; compiled _bs is separate
+05	3525	80	autoload/00000_ipl._bp+0x9,autoload/00000_ipl._bp+0xC,sysprg/00000_environ._bp+0x700	candidate native function ranges; not runtime executions; compiled _bs is separate
+06	7179	108	sysprg/00000_environ._bp+0x9,sysprg/00000_environ._bp+0xC,sysprg/00000_environ._bp+0xF	candidate native function ranges; not runtime executions; compiled _bs is separate
+07	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+08	7247	103	sysprg/00000_environ._bp+0x43,sysprg/00000_environ._bp+0x15E,sysprg/00000_environ._bp+0x1B3	candidate native function ranges; not runtime executions; compiled _bs is separate
+09	20587	107	autoload/00000_ipl._bp+0x7,sysprg/00000_environ._bp+0x5E,sysprg/00000_environ._bp+0xD2	candidate native function ranges; not runtime executions; compiled _bs is separate
+0A	659	74	sysprg/00000_environ._bp+0x6A4,sysprg/00004_title._bp+0x801,sysprg/00004_title._bp+0x890	candidate native function ranges; not runtime executions; compiled _bs is separate
+0B	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+0C	1139	79	sysprg/00000_environ._bp+0x27,sysprg/00000_environ._bp+0x39,sysprg/00000_environ._bp+0x154	candidate native function ranges; not runtime executions; compiled _bs is separate
+0D	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+0E	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+0F	13685	105	autoload/00000_ipl._bp+0x11,sysprg/00000_environ._bp+0x3,sysprg/00000_environ._bp+0x4C	candidate native function ranges; not runtime executions; compiled _bs is separate
+10	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+11	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+12	7018	110	autoload/00000_ipl._bp+0x0,autoload/00000_ipl._bp+0x1A,sysprg/00000_environ._bp+0x0	candidate native function ranges; not runtime executions; compiled _bs is separate
+13	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+14	2222	100	sysprg/00001_kana._bp+0x80,sysprg/00001_kana._bp+0xFE,sysprg/00002_bitmap._bp+0xA5D	candidate native function ranges; not runtime executions; compiled _bs is separate
+15	5094	105	sysprg/00000_environ._bp+0x278,sysprg/00000_environ._bp+0x2C4,sysprg/00001_kana._bp+0x50	candidate native function ranges; not runtime executions; compiled _bs is separate
+16	7028	93	autoload/00000_ipl._bp+0x17,sysprg/00000_environ._bp+0x45,sysprg/00000_environ._bp+0x135	candidate native function ranges; not runtime executions; compiled _bs is separate
+17	3509	110	autoload/00000_ipl._bp+0x1C,sysprg/00000_environ._bp+0x49,sysprg/00000_environ._bp+0xBE	candidate native function ranges; not runtime executions; compiled _bs is separate
+18	9281	102	sysprg/00001_kana._bp+0x86,sysprg/00001_kana._bp+0xE8,sysprg/00001_kana._bp+0x104	candidate native function ranges; not runtime executions; compiled _bs is separate
+19	32141	109	autoload/00000_ipl._bp+0x14,sysprg/00000_environ._bp+0x66,sysprg/00000_environ._bp+0x87	candidate native function ranges; not runtime executions; compiled _bs is separate
+1A	8338	99	sysprg/00000_environ._bp+0x26C,sysprg/00000_environ._bp+0x2B8,sysprg/00000_environ._bp+0x2DD	candidate native function ranges; not runtime executions; compiled _bs is separate
+1B	7228	105	sysprg/00000_environ._bp+0x3F,sysprg/00000_environ._bp+0x91,sysprg/00000_environ._bp+0x15A	candidate native function ranges; not runtime executions; compiled _bs is separate
+1C	488	54	sysprg/00000_environ._bp+0x60,sysprg/00000_environ._bp+0x69,sysprg/00002_bitmap._bp+0x2CA4	candidate native function ranges; not runtime executions; compiled _bs is separate
+1D	240	48	sysprg/00000_environ._bp+0x58,sysprg/00002_bitmap._bp+0x2BA9,sysprg/00002_bitmap._bp+0x2C0C	candidate native function ranges; not runtime executions; compiled _bs is separate
+1E	131	39	sysprg/00002_bitmap._bp+0x2B90,sysprg/00002_bitmap._bp+0x2BF3,sysprg/00002_bitmap._bp+0x2C58	candidate native function ranges; not runtime executions; compiled _bs is separate
+1F	1038	69	sysprg/00002_bitmap._bp+0x2DCA,sysprg/00002_bitmap._bp+0x2E83,sysprg/00002_bitmap._bp+0x2EAC	candidate native function ranges; not runtime executions; compiled _bs is separate
+20	569	75	sysprg/00002_bitmap._bp+0x1109,sysprg/00002_bitmap._bp+0x1166,sysprg/00002_bitmap._bp+0x15AC	candidate native function ranges; not runtime executions; compiled _bs is separate
+21	295	58	sysprg/00000_environ._bp+0x5D,sysprg/00000_environ._bp+0x277,sysprg/00000_environ._bp+0x2C3	candidate native function ranges; not runtime executions; compiled _bs is separate
+22	121	34	sysprg/00002_bitmap._bp+0x3379,sysprg/00002_bitmap._bp+0x338C,sysprg/00007_scrdrv._bp+0x1036	candidate native function ranges; not runtime executions; compiled _bs is separate
+23	29	13	sysprg/00007_scrdrv._bp+0x1042,sysprg/00007_scrdrv._bp+0x1062,sysprg/00007_scrdrv._bp+0x10F0	candidate native function ranges; not runtime executions; compiled _bs is separate
+24	185	39	sysprg/00002_bitmap._bp+0x1108,sysprg/00002_bitmap._bp+0x1165,sysprg/00002_bitmap._bp+0x15AB	candidate native function ranges; not runtime executions; compiled _bs is separate
+25	362	50	sysprg/00000_environ._bp+0x554,sysprg/00000_environ._bp+0x572,sysprg/00000_environ._bp+0x5B9	candidate native function ranges; not runtime executions; compiled _bs is separate
+26	105	28	sysprg/00002_bitmap._bp+0x2D2E,sysprg/00004_title._bp+0x3C0,sysprg/00004_title._bp+0x1003	candidate native function ranges; not runtime executions; compiled _bs is separate
+27	31	17	sysprg/00004_title._bp+0x3D0C,sysprg/00007_scrdrv._bp+0x4F4F,sysprg/00009_scrmain._bp+0x6DB	candidate native function ranges; not runtime executions; compiled _bs is separate
+28	169	36	sysprg/00004_title._bp+0x3BB,sysprg/00007_scrdrv._bp+0x146E,sysprg/00007_scrdrv._bp+0x1478	candidate native function ranges; not runtime executions; compiled _bs is separate
+29	60	23	sysprg/00002_bitmap._bp+0x2CB8,sysprg/00002_bitmap._bp+0x3504,sysprg/00004_title._bp+0x39E	candidate native function ranges; not runtime executions; compiled _bs is separate
+2A	1	1	sysprg/00010_scrctrl._bp+0xCBA	candidate native function ranges; not runtime executions; compiled _bs is separate
+2B	43	20	sysprg/00002_bitmap._bp+0x3529,sysprg/00004_title._bp+0x41C,sysprg/00004_title._bp+0x3CB2	candidate native function ranges; not runtime executions; compiled _bs is separate
+2C	1591	91	sysprg/00000_environ._bp+0x97,sysprg/00001_kana._bp+0x8B,sysprg/00001_kana._bp+0x109	candidate native function ranges; not runtime executions; compiled _bs is separate
+2D	303	62	sysprg/00000_environ._bp+0xCD,sysprg/00000_environ._bp+0x60D,sysprg/00000_environ._bp+0x61E	candidate native function ranges; not runtime executions; compiled _bs is separate
+2E	711	74	sysprg/00002_bitmap._bp+0x3046,sysprg/00002_bitmap._bp+0x31F1,sysprg/00002_bitmap._bp+0x3219	candidate native function ranges; not runtime executions; compiled _bs is separate
+2F	207	46	sysprg/00000_environ._bp+0x95,sysprg/00000_environ._bp+0x610,sysprg/00000_environ._bp+0x621	candidate native function ranges; not runtime executions; compiled _bs is separate
+30	1530	71	sysprg/00002_bitmap._bp+0xE38,sysprg/00002_bitmap._bp+0x1441,sysprg/00002_bitmap._bp+0x2B80	candidate native function ranges; not runtime executions; compiled _bs is separate
+31	760	63	sysprg/00002_bitmap._bp+0x2CBC,sysprg/00002_bitmap._bp+0x3508,sysprg/00004_title._bp+0x3A6	candidate native function ranges; not runtime executions; compiled _bs is separate
+32	76	38	sysprg/00004_title._bp+0x3E90,sysprg/00007_scrdrv._bp+0xC19,sysprg/00007_scrdrv._bp+0x2E2C	candidate native function ranges; not runtime executions; compiled _bs is separate
+33	415	71	sysprg/00000_environ._bp+0x24D,sysprg/00000_environ._bp+0x28D,sysprg/00000_environ._bp+0x304	candidate native function ranges; not runtime executions; compiled _bs is separate
+34	815	80	sysprg/00000_environ._bp+0x8D,sysprg/00000_environ._bp+0xA5,sysprg/00002_bitmap._bp+0x10F8	candidate native function ranges; not runtime executions; compiled _bs is separate
+35	402	73	sysprg/00002_bitmap._bp+0x6FB,sysprg/00002_bitmap._bp+0x704,sysprg/00002_bitmap._bp+0x10A6	candidate native function ranges; not runtime executions; compiled _bs is separate
+36	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+37	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+38	1235	76	sysprg/00003_bitmap2._bp+0x218,sysprg/00003_bitmap2._bp+0x23A,sysprg/00003_bitmap2._bp+0x280	candidate native function ranges; not runtime executions; compiled _bs is separate
+39	596	64	sysprg/00002_bitmap._bp+0x2FE7,sysprg/00004_title._bp+0xCEB,sysprg/00004_title._bp+0xCF3	candidate native function ranges; not runtime executions; compiled _bs is separate
+3A	944	67	sysprg/00004_title._bp+0x7E,sysprg/00004_title._bp+0x59C,sysprg/00004_title._bp+0xCA2	candidate native function ranges; not runtime executions; compiled _bs is separate
+3B	5467	107	sysprg/00000_environ._bp+0x128,sysprg/00000_environ._bp+0x2E8,sysprg/00000_environ._bp+0x33A	candidate native function ranges; not runtime executions; compiled _bs is separate
+3C	484	63	sysprg/00000_environ._bp+0x5B,sysprg/00000_environ._bp+0xD0,sysprg/00002_bitmap._bp+0x2EEA	candidate native function ranges; not runtime executions; compiled _bs is separate
+3D	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+3E	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+3F	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+40	2558	86	sysprg/00000_environ._bp+0x9B,sysprg/00000_environ._bp+0xAA,sysprg/00000_environ._bp+0xE5	candidate native function ranges; not runtime executions; compiled _bs is separate
+41	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+42	89	22	sysprg/00004_title._bp+0x2A89,sysprg/00011_scrsys._bp+0x1C0B,sysprg/00011_scrsys._bp+0x1C1A	candidate native function ranges; not runtime executions; compiled _bs is separate
+43	10	6	sysprg/00010_scrctrl._bp+0x12E4,sysprg/00017_scrslct4._bp+0x1601,sysprg/00017_scrslct4._bp+0x1616	candidate native function ranges; not runtime executions; compiled _bs is separate
+44	26	7	sysprg/00003_bitmap2._bp+0x582,sysprg/00010_scrctrl._bp+0x131F,sysprg/00011_scrsys._bp+0x2DCB	candidate native function ranges; not runtime executions; compiled _bs is separate
+45	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+46	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+47	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+48	13	10	sysprg/00010_scrctrl._bp+0x1399,sysprg/00014_scrslct._bp+0x14F8,sysprg/00017_scrslct4._bp+0x1792	candidate native function ranges; not runtime executions; compiled _bs is separate
+49	11	8	sysprg/00010_scrctrl._bp+0x1384,sysprg/00014_scrslct._bp+0x14FF,sysprg/00017_scrslct4._bp+0x1799	candidate native function ranges; not runtime executions; compiled _bs is separate
+4A	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+4B	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+4C	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+4D	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+4E	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+4F	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+50	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+51	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+52	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+53	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+54	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+55	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+56	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+57	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+58	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+59	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+5A	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+5B	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+5C	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+5D	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+5E	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+5F	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+60	1084	67	sysprg/00002_bitmap._bp+0x2F24,sysprg/00004_title._bp+0x1EDD,sysprg/00004_title._bp+0x1EE6	candidate native function ranges; not runtime executions; compiled _bs is separate
+61	651	82	sysprg/00001_kana._bp+0x9C,sysprg/00001_kana._bp+0x119,sysprg/00001_kana._bp+0x12D	candidate native function ranges; not runtime executions; compiled _bs is separate
+62	1	1	sysprg/00010_scrctrl._bp+0xFCF	candidate native function ranges; not runtime executions; compiled _bs is separate
+63	52	27	sysprg/00007_scrdrv._bp+0x3C,sysprg/00007_scrdrv._bp+0x23A6,sysprg/00009_scrmain._bp+0xD7	candidate native function ranges; not runtime executions; compiled _bs is separate
+64	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+65	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+66	19	10	sysprg/00007_scrdrv._bp+0xDA,sysprg/00007_scrdrv._bp+0x444,sysprg/00011_scrsys._bp+0x266D	candidate native function ranges; not runtime executions; compiled _bs is separate
+67	19	14	sysprg/00004_title._bp+0x3FA9,sysprg/00010_scrctrl._bp+0x108B,sysprg/00010_scrctrl._bp+0x1D49	candidate native function ranges; not runtime executions; compiled _bs is separate
+68	191	38	sysprg/00004_title._bp+0x3516,sysprg/00007_scrdrv._bp+0x43A,sysprg/00009_scrmain._bp+0xCA	candidate native function ranges; not runtime executions; compiled _bs is separate
+69	65	26	sysprg/00001_kana._bp+0x4F,sysprg/00001_kana._bp+0xD7,sysprg/00004_title._bp+0x3BC5	candidate native function ranges; not runtime executions; compiled _bs is separate
+6A	509	54	sysprg/00001_kana._bp+0xA3,sysprg/00001_kana._bp+0xAB,sysprg/00002_bitmap._bp+0x2CCF	candidate native function ranges; not runtime executions; compiled _bs is separate
+6B	11	4	sysprg/00010_scrctrl._bp+0x103B,sysprg/00011_scrsys._bp+0x1902,sysprg/00011_scrsys._bp+0x1970	candidate native function ranges; not runtime executions; compiled _bs is separate
+6C	3	2	sysprg/00037_cnfgsmpltxt2._bp+0x6F,sysprg/00037_cnfgsmpltxt2._bp+0x16C,sysprg/00047_userdata._bp+0x327	candidate native function ranges; not runtime executions; compiled _bs is separate
+6D	139	34	sysprg/00002_bitmap._bp+0x2CD3,sysprg/00004_title._bp+0x3B4F,sysprg/00004_title._bp+0x3BBE	candidate native function ranges; not runtime executions; compiled _bs is separate
+6E	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+6F	290	54	sysprg/00001_kana._bp+0x78,sysprg/00002_bitmap._bp+0x3468,sysprg/00003_bitmap2._bp+0xFC	candidate native function ranges; not runtime executions; compiled _bs is separate
+70	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+71	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+72	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+73	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+74	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+75	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+76	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+77	1	1	sysprg/00079_dbgmngr._bp+0x11D	candidate native function ranges; not runtime executions; compiled _bs is separate
+78	1	1	sysprg/00008_scrdrv2._bp+0x14F	candidate native function ranges; not runtime executions; compiled _bs is separate
+79	142	52	sysprg/00001_kana._bp+0x7C,sysprg/00003_bitmap2._bp+0x100,sysprg/00003_bitmap2._bp+0x3AB	candidate native function ranges; not runtime executions; compiled _bs is separate
+7A	4	4	sysprg/00010_scrctrl._bp+0x3E0,sysprg/00071_omakecg._bp+0x1D8A,sysprg/00072_omakemusic._bp+0x21A9	candidate native function ranges; not runtime executions; compiled _bs is separate
+7B	1	1	sysprg/00010_scrctrl._bp+0x1BED	candidate native function ranges; not runtime executions; compiled _bs is separate
+7C	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+7D	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+7E	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+7F	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+80	3656	101	autoload/00000_ipl._bp+0xF,autoload/00000_ipl._bp+0x18,sysprg/00000_environ._bp+0x11D	candidate native function ranges; not runtime executions; compiled _bs is separate
+81	141	36	sysprg/00000_environ._bp+0x1BE,sysprg/00000_environ._bp+0x74F,sysprg/00003_bitmap2._bp+0x12C	candidate native function ranges; not runtime executions; compiled _bs is separate
+82	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+83	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+84	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+85	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+86	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+87	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+88	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+89	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+8A	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+8B	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+8C	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+8D	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+8E	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+8F	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+90	4084	88	sysprg/00000_environ._bp+0x64,sysprg/00000_environ._bp+0xB4,sysprg/00000_environ._bp+0xBA	candidate native function ranges; not runtime executions; compiled _bs is separate
+91	549	66	sysprg/00000_environ._bp+0x75,sysprg/00001_kana._bp+0x95,sysprg/00001_kana._bp+0x112	candidate native function ranges; not runtime executions; compiled _bs is separate
+92	206	45	sysprg/00000_environ._bp+0x85,sysprg/00002_bitmap._bp+0x2E94,sysprg/00002_bitmap._bp+0x2EF2	candidate native function ranges; not runtime executions; compiled _bs is separate
+93	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+94	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+95	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+96	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+97	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+98	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+99	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+9A	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+9B	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+9C	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+9D	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+9E	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+9F	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+A0	151	32	sysprg/00000_environ._bp+0x267,sysprg/00000_environ._bp+0x2B3,sysprg/00000_environ._bp+0x2D8	candidate native function ranges; not runtime executions; compiled _bs is separate
+A1	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+A2	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+A3	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+A4	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+A5	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+A6	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+A7	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+A8	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+A9	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+AA	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+AB	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+AC	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+AD	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+AE	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+AF	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+B0	123	31	sysprg/00000_environ._bp+0xEC,sysprg/00004_title._bp+0x1DC0,sysprg/00004_title._bp+0x2F3D	candidate native function ranges; not runtime executions; compiled _bs is separate
+B1	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+B2	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+B3	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+B4	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+B5	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+B6	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+B7	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+B8	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+B9	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+BA	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+BB	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+BC	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+BD	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+BE	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+BF	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+C0	58	11	sysprg/00000_environ._bp+0x6F7,sysprg/00007_scrdrv._bp+0x1203,sysprg/00007_scrdrv._bp+0x1FC2	candidate native function ranges; not runtime executions; compiled _bs is separate
+C1	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+C2	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+C3	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+C4	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+C5	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+C6	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+C7	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+C8	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+C9	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+CA	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+CB	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+CC	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+CD	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+CE	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+CF	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+D0	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+D1	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+D2	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+D3	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+D4	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+D5	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+D6	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+D7	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+D8	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+D9	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+DA	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+DB	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+DC	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+DD	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+DE	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+DF	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+E0	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+E1	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+E2	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+E3	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+E4	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+E5	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+E6	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+E7	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+E8	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+E9	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+EA	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+EB	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+EC	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+ED	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+EE	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+EF	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+F0	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+F1	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+F2	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+F3	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+F4	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+F5	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+F6	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+F7	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+F8	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+F9	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+FA	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+FB	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+FC	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+FD	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+FE	0	0		candidate native function ranges; not runtime executions; compiled _bs is separate
+FF	80	22	sysprg/00002_bitmap._bp+0xCC,sysprg/00002_bitmap._bp+0x128,sysprg/00002_bitmap._bp+0x133	candidate native function ranges; not runtime executions; compiled _bs is separate

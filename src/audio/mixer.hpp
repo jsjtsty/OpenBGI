@@ -58,6 +58,7 @@ class Mixer {
     void mix(std::int16_t* out, std::uint32_t frames);
 
   private:
+    void mix_block(std::int16_t* out, std::uint32_t frames);
     struct Channel {
         std::shared_ptr<const Pcm> pcm;
         bool loop = false;

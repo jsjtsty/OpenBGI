@@ -1,8 +1,11 @@
 // obgi_run: boots the game scripts headless and runs them until something stops them.
 //   obgi_run <game dir> [--frames N] [--driver d] [--entry arc member]
-// Time is virtual (16 ms per frame, no sleeping), so waits finish at once. The first script error, usually a
+// Headless time is virtual (16 ms per pass); windowed time follows the monotonic host clock. The first script error, usually a
 // sub-opcode that is not implemented yet, is printed with the frame it happened in.
 #include <cstdio>
+#include <chrono>
+#include <thread>
+#include "runtime/session.hpp"
 #include <cstring>
 #include <iomanip>
 #include <deque>
@@ -14,24 +17,9 @@
 #include <filesystem>
 #include <string>
 
-#include "audio/mixer.hpp"
-#include "bindings/arc_image_source.hpp"
 #include "bindings/arc_program_provider.hpp"
-#include "bindings/arc_resource_finder.hpp"
-#include "bindings/sequence_subops.hpp"
-#include "bindings/bitmap_effect_subops.hpp"
-#include "bindings/particle_subops.hpp"
-#include "bindings/audio_subops.hpp"
-#include "bindings/font_subops.hpp"
-#include "bindings/graphics_subops.hpp"
-#include "bindings/message_subops.hpp"
-#include "bindings/movie_subops.hpp"
 #include "bindings/system_subops.hpp"
-#include "bindings/text_subops.hpp"
 #include "render/display.hpp"
-#include "render/renderer.hpp"
-#include "text/encoding.hpp"
-#include "text/font.hpp"
 #include "vm/vm.hpp"
 
 namespace {
@@ -95,7 +83,6 @@ int main(int argc, char** argv) {
     using namespace obgi;
     if (std::getenv("OBGI_UNBUF")) std::setvbuf(stdout, nullptr, _IONBF, 0); // keep the log of a crashing run
     std::string game, driver_s, entry_arc = "autoload.arc", entry_name = "ipl._bp";
-    const char* driver = nullptr;
     long frames = 20000;
     std::string effects_path, shot_path;
     long shot_frame = -1;
@@ -113,7 +100,7 @@ int main(int argc, char** argv) {
         else if (a == "--window") window = true, frames = 0x7FFFFFFF;
         else if (a == "--effects" && i + 1 < argc) effects_path = argv[++i];
         else if (a == "--survey" && i + 1 < argc) survey = argv[++i];
-        else if (a == "--driver" && i + 1 < argc) driver_s = argv[++i], driver = driver_s.c_str();
+        else if (a == "--driver" && i + 1 < argc) driver_s = argv[++i];
         else if (a == "--entry" && i + 2 < argc) entry_arc = argv[++i], entry_name = argv[++i];
         else game = a;
     }
@@ -128,60 +115,19 @@ int main(int argc, char** argv) {
         std::printf("wrote %zu bytes\n", bytes->size());
         return 0;
     }
-    RendererOptions ro;
-    ro.headless = !window;
-    ro.logical_width = 1280, ro.logical_height = 720;
-    ro.driver = driver;
-    auto renderer = Renderer::create(ro);
-    if (!renderer) return die(renderer.error().message);
-    auto display = Display::create(**renderer, 1280, 720);
-    if (!display) return die(display.error().message);
-    auto fonts = FontLibrary::create();
-    if (!fonts) return die(fonts.error().message);
-
-    std::filesystem::path dir(std::u8string(game.begin(), game.end()));
-    ArcResourceFinder finder(dir);
-    ArcImageSource images(finder);
-    Mixer mixer;
-    GraphicsHost gh{display->get(), &images};
-    TextHost th{display->get(), fonts->get()};
-    SoundHost sh{&mixer, &finder};
-    MovieHost mh;
-    mh.resources = &finder;
-
-    vm::SubopRegistry registry;
-    vm::register_core_subops(registry);
-    register_graphics_subops(registry, gh);
-    register_text_subops(registry, th);
-    FontHost fh;
-    fh.fonts = fonts->get();
-    register_font_subops(registry, fh);
-    th.font_ids = &fh.table.ids;
-    register_audio_subops(registry, sh);
-    register_movie_subops(registry, mh);
-    SystemState system;
-    system.game_dir = dir;
-    system.game_path = dir.string();
-    if (!system.game_path.empty() && system.game_path.back() != '\\' && system.game_path.back() != '/') system.game_path += '\\';
-    system.data_dir = data_dir.empty() ? std::filesystem::temp_directory_path() / "obgi_data" : std::filesystem::path(data_dir);
-    std::filesystem::create_directories(system.data_dir);
-    system.message_box = [](const std::string& text) { // script text is UTF-8
-        std::fprintf(stderr, "message box: %s\n", text.c_str());
-    };
-    system.confirm_box = [](const std::string& text, bool, bool default_yes) { // no dialog: the default button answers
-        std::fprintf(stderr, "question box: %s -> %s\n", text.c_str(), default_yes ? "yes" : "no");
-        return default_yes;
-    };
-    th.code_page = &system.code_page;
-    register_system_subops(registry, system, finder);
-    register_window_subops(registry, system, display->get());
-    register_table_subops(registry, system);
-    register_knob_subops(registry, system);
-    register_sequence_subops(registry, display->get(), finder);
-    register_bitmap_effect_subops(registry, display->get());
-    register_particle_subops(registry, system, display->get());
-    register_plane_subops(registry, system, display->get());
-    register_message_subops(registry, system, th, fh);
+    SessionOptions options;
+    options.game_dir = std::filesystem::path(std::u8string(game.begin(), game.end()));
+    if (!data_dir.empty()) options.data_dir = std::filesystem::path(data_dir);
+    options.window = window;
+    options.deterministic = !window;
+    options.driver = driver_s;
+    auto created = EngineSession::create(std::move(options));
+    if (!created) return die(created.error().message);
+    auto session = std::move(*created);
+    auto& vm = session->machine();
+    auto& registry = session->registry();
+    auto& system = session->system();
+    auto* display = &session->display();
     if (!effects_path.empty()) { // id, pops, pushes of every registered sub-opcode (for comparing with the real game)
         std::ofstream ef(effects_path);
         for (unsigned id = 0x8000; id <= 0xFFFF; ++id)
@@ -225,12 +171,7 @@ int main(int argc, char** argv) {
         for (const auto& [id, text] : hit_order) std::printf("  stub hit x%ld: %s\n", hits[id], text.c_str());
     };
 
-    ArcProgramProvider provider(dir);
-    vm::Vm vm(provider, registry);
-    vm.global_ready = false; // the original has no global memory before the first 80:70
-    vm.frame_hook = [&](std::int64_t now) { advance_motions(system, **display, now); };
-    auto t = vm.spawn(vm::ThreadConfig{}, entry_arc, entry_name);
-    if (!t) return die(t.error().message);
+    if (auto boot = session->boot(entry_arc, entry_name); !boot) return die(boot.error().message);
 
     // the last sub-opcodes run, printed when something stops the scripts
     std::deque<std::string> recent;
@@ -287,25 +228,25 @@ int main(int argc, char** argv) {
         };
     }
     const bool progress = std::getenv("OBGI_PROGRESS") != nullptr; // one line per frame on stderr, for finding a stuck frame
+    const auto started = std::chrono::steady_clock::now();
     for (long f = 0; f < frames; ++f) {
         if (progress) {
             std::fprintf(stderr, "frame %ld\n", f);
             std::fflush(stderr);
         }
-        if (window) {
-            if (!(*renderer)->poll_events()) break;
-            for (std::uint32_t vk : (*renderer)->take_presses()) system.press_input(vk);
-            std::tie(system.mouse_x, system.mouse_y) = (*renderer)->mouse_position();
-            system.left_down = (*renderer)->left_button_down();
-            system.wheel += (*renderer)->take_wheel();
-        }
+        if (!session->pump_events()) break;
         if (const char* wh = std::getenv("OBGI_WHEEL")) // "frame:notches,...": scripted wheel turns (negative = towards the user)
             for (std::stringstream ss(wh); ss.good();) {
                 std::string tok;
                 std::getline(ss, tok, ',');
                 long at = 0;
                 int n = 0;
-                if (std::sscanf(tok.c_str(), "%ld:%d", &at, &n) == 2 && at == f) system.wheel += n;
+                if (std::sscanf(tok.c_str(), "%ld:%d", &at, &n) == 2 && at == f) {
+                    for (std::int64_t count = n < 0 ? -std::int64_t(n) : std::int64_t(n); count > 0; --count) {
+                        system.wheel_events.push_back(n > 0 ? 1 : -1);
+                        ++system.input_serial;
+                    }
+                }
             }
         if (const char* hold = std::getenv("OBGI_HOLD")) // "frame:1|0,...": scripted left button held (1) or released (0) for headless drags
             for (std::stringstream ss(hold); ss.good();) {
@@ -335,9 +276,11 @@ int main(int argc, char** argv) {
                 int mx = 0, my = 0;
                 if (std::sscanf(tok.c_str(), "%ld:%d:%d", &at, &mx, &my) == 3 && at <= f) system.mouse_x = mx, system.mouse_y = my;
             }
-        auto st = vm.run_frame(f * 16);
-        if (window)
-            if (auto r = (*display)->present(); !r) return die(r.error().message);
+        const auto now_ms = window
+            ? std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started).count()
+            : f * std::int64_t{16};
+        auto st = session->tick(now_ms);
+        if (st) if (auto shown = session->present(); !shown) return die(shown.error().message);
         if (const char* dm = std::getenv("OBGI_DUMPMEM")) { // "offset,length,frame,path": script global memory after that frame
             unsigned long off = 0, len = 0, fr = 0;
             char path[512] = {};
@@ -348,17 +291,18 @@ int main(int argc, char** argv) {
             }
         }
         if (f == shot_frame) {
-            if (auto r = (*display)->compose(); !r) std::fprintf(stderr, "shot: %s\n", r.error().message.c_str());
-            else if (auto px = (*display)->read_screen(); px) write_png(shot_path, *px, (*display)->screen_width(), (*display)->screen_height());
+            auto capture = session->capture();
+            if (!capture) std::fprintf(stderr, "shot: %s\n", capture.error().message.c_str());
+            else write_png(shot_path, *capture, display->screen_width(), display->screen_height());
             if (const char* l = std::getenv("OBGI_SHOTSLOTS")) // slot ids to save next to the shot, e.g. 1263,1151
                 for (std::stringstream ss(l); ss.good();) {
                     std::string tok;
                     std::getline(ss, tok, ',');
                     if (tok.empty()) continue;
                     const auto id = static_cast<std::uint32_t>(std::stoul(tok));
-                    const SlotInfo* info = (*display)->slot(id);
+                    const SlotInfo* info = display->slot(id);
                     if (!info) { std::fprintf(stderr, "slot %u missing\n", id); continue; }
-                    if (auto px = (*display)->read_slot(id); px) write_png(shot_path + "." + tok + ".png", *px, info->width, info->height);
+                    if (auto px = display->read_slot(id); px) write_png(shot_path + "." + tok + ".png", *px, info->width, info->height);
                 }
         }
         if (!st) {
@@ -387,6 +331,7 @@ int main(int argc, char** argv) {
             report_hits();
             return 0;
         }
+        if (window) std::this_thread::sleep_until(started + std::chrono::milliseconds(vm.now_ms + std::max(system.frame_ms, 1u)));
     }
     std::printf("ran %ld frames without stopping\n", frames);
     report_hits();

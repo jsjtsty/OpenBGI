@@ -1,0 +1,327 @@
+; program offset=0x10 size=0x4b0; linear hypothesis
+00000000: 12 24                    adjust_sp            36
+00000002: 0f 24 80                 store_stack          0x8024
+00000005: 04 20 00                 addr_stack           0x0020
+00000008: 06 16 00                 ip_relative          0x0016
+0000000b: 06 4a 03                 ip_relative          0x034A
+0000000e: 0c 02 02                 store_many           2 2
+00000011: 04 20 00                 addr_stack           0x0020
+00000014: 1b 24 80 04              load_stack_muladd    0x8024 4
+00000018: 08 02                    load                 2
+0000001a: 16                       call                 
+0000001b: 12 5c                    adjust_sp            -36
+0000001d: 17                       ret                  
+0000001e: 12 f8 08                 adjust_sp            1144
+00000021: 0f 6c 84                 store_stack          0x846C
+00000024: 0f 70 84                 store_stack          0x8470
+00000027: 0f 74 84                 store_stack          0x8474
+0000002a: 0f 78 84                 store_stack          0x8478
+0000002d: 04 5c 03                 addr_stack           0x035C
+00000030: 00 00                    push_i8              0
+00000032: 09 02                    store_keep           2
+00000034: 04 58 03                 addr_stack           0x0358
+00000037: 19 78 84                 load_stack           0x8478
+0000003a: 6a                       op_6a                
+0000003b: 19 70 84                 load_stack           0x8470
+0000003e: 15 08 22 00              branch               mode=08 delta=34
+00000042: 18 04 45 07 80           load_imm_addr        0x80074504
+00000047: 00 20                    push_i8              32
+00000049: 3b 82 17 00              branch_compare       mode=82 delta=23
+0000004d: 04 58 03                 addr_stack           0x0358
+00000050: 04 5c 04                 addr_stack           0x045C
+00000053: 05 2d 03                 addr_code            0x032D
+00000056: 6f                       op_6f                
+00000057: 04 5c 04                 addr_stack           0x045C
+0000005a: b0 80                    op_b0                80 handler=00488180
+0000005c: 06 f2 02                 ip_relative          0x02F2
+0000005f: 14                       jump                 
+00000060: 04 4c 00                 addr_stack           0x004C
+00000063: 05 6c 03                 addr_code            0x036C
+00000066: 09 02                    store_keep           2
+00000068: 04 5c 04                 addr_stack           0x045C
+0000006b: 04 58 03                 addr_stack           0x0358
+0000006e: 6a                       op_6a                
+0000006f: 04 5c 04                 addr_stack           0x045C
+00000072: 6d                       op_6d                
+00000073: 04 5c 04                 addr_stack           0x045C
+00000076: 05 64 03                 addr_code            0x0364
+00000079: 69                       op_69                
+0000007a: 15 09 0f 00              branch               mode=09 delta=15
+0000007e: 04 58 03                 addr_stack           0x0358
+00000081: 05 63 03                 addr_code            0x0363
+00000084: 6a                       op_6a                
+00000085: 06 2b 00                 ip_relative          0x002B
+00000088: 14                       jump                 
+00000089: 04 4c 00                 addr_stack           0x004C
+0000008c: 05 66 03                 addr_code            0x0366
+0000008f: 09 02                    store_keep           2
+00000091: 19 4c 80                 load_stack           0x804C
+00000094: 04 58 03                 addr_stack           0x0358
+00000097: 80 34                    op_80                34 handler=004975B0
+00000099: 15 08 17 00              branch               mode=08 delta=23
+0000009d: 04 58 03                 addr_stack           0x0358
+000000a0: 04 5c 04                 addr_stack           0x045C
+000000a3: 05 5d 03                 addr_code            0x035D
+000000a6: 6f                       op_6f                
+000000a7: 04 5c 04                 addr_stack           0x045C
+000000aa: b0 80                    op_b0                80 handler=00488180
+000000ac: 06 a2 02                 ip_relative          0x02A2
+000000af: 14                       jump                 
+000000b0: 19 4c 80                 load_stack           0x804C
+000000b3: 04 58 03                 addr_stack           0x0358
+000000b6: 80 35                    op_80                35 handler=004975F0
+000000b8: 0f 60 84                 store_stack          0x8460
+000000bb: 04 60 04                 addr_stack           0x0460
+000000be: 1a 60 84 0f              load_stack_add       0x8460 15
+000000c2: 3c fc                    shift_imm            252
+000000c4: 3c 04                    shift_imm            4
+000000c6: 09 02                    store_keep           2
+000000c8: 18 18 0d 00 80           load_imm_addr        0x80000D18
+000000cd: 1b 60 84 01              load_stack_muladd    0x8460 1
+000000d1: 02 00 00 40 00           push_i32             0x00400000
+000000d6: 3b 83 17 00              branch_compare       mode=83 delta=23
+000000da: 04 58 03                 addr_stack           0x0358
+000000dd: 04 5c 04                 addr_stack           0x045C
+000000e0: 05 4b 03                 addr_code            0x034B
+000000e3: 6f                       op_6f                
+000000e4: 04 5c 04                 addr_stack           0x045C
+000000e7: b0 80                    op_b0                80 handler=00488180
+000000e9: 06 65 02                 ip_relative          0x0265
+000000ec: 14                       jump                 
+000000ed: 04 48 00                 addr_stack           0x0048
+000000f0: 18 c8 de 06 80           load_imm_addr        0x8006DEC8
+000000f5: 18 18 0d 00 80           load_imm_addr        0x80000D18
+000000fa: 20                       add                  
+000000fb: 09 02                    store_keep           2
+000000fd: 04 44 00                 addr_stack           0x0044
+00000100: 19 48 80                 load_stack           0x8048
+00000103: 09 02                    store_keep           2
+00000105: 19 48 80                 load_stack           0x8048
+00000108: 19 4c 80                 load_stack           0x804C
+0000010b: 04 58 03                 addr_stack           0x0358
+0000010e: 80 30                    op_80                30 handler=00497430
+00000110: 0f 40 80                 store_stack          0x8040
+00000113: 04 3c 00                 addr_stack           0x003C
+00000116: 19 40 80                 load_stack           0x8040
+00000119: 09 02                    store_keep           2
+0000011b: 04 38 00                 addr_stack           0x0038
+0000011e: 00 08                    push_i8              8
+00000120: 61                       op_61                
+00000121: 18 4c 06 00 80           load_imm_addr        0x8000064C
+00000126: 15 08 0f 00              branch               mode=08 delta=15
+0000012a: 04 38 00                 addr_stack           0x0038
+0000012d: 19 48 80                 load_stack           0x8048
+00000130: 19 40 80                 load_stack           0x8040
+00000133: 81 e9                    op_81                E9 handler=0049B4C0
+00000135: 05 43 03                 addr_code            0x0343
+00000138: 68                       op_68                
+00000139: 0f 30 80                 store_stack          0x8030
+0000013c: 04 30 00                 addr_stack           0x0030
+0000013f: 1a 30 80 01              load_stack_add       0x8030 1
+00000143: 09 02                    store_keep           2
+00000145: 04 24 00                 addr_stack           0x0024
+00000148: 18 18 0d 00 80           load_imm_addr        0x80000D18
+0000014d: 09 02                    store_keep           2
+0000014f: 19 48 80                 load_stack           0x8048
+00000152: 05 42 03                 addr_code            0x0342
+00000155: 19 30 80                 load_stack           0x8030
+00000158: 63                       op_63                
+00000159: 0f 2c 80                 store_stack          0x802C
+0000015c: 19 2c 80                 load_stack           0x802C
+0000015f: 15 09 4d 00              branch               mode=09 delta=77
+00000163: 04 44 00                 addr_stack           0x0044
+00000166: 19 48 80                 load_stack           0x8048
+00000169: 1b 30 80 01              load_stack_muladd    0x8030 1
+0000016d: 09 02                    store_keep           2
+0000016f: 04 68 04                 addr_stack           0x0468
+00000172: 19 44 80                 load_stack           0x8044
+00000175: 09 02                    store_keep           2
+00000177: 04 44 00                 addr_stack           0x0044
+0000017a: 1a 44 80 04              load_stack_add       0x8044 4
+0000017e: 09 02                    store_keep           2
+00000180: 04 28 00                 addr_stack           0x0028
+00000183: 19 68 84                 load_stack           0x8468
+00000186: 08 02                    load                 2
+00000188: 09 02                    store_keep           2
+0000018a: 04 3c 00                 addr_stack           0x003C
+0000018d: 19 40 80                 load_stack           0x8040
+00000190: 1b 30 80 7f              load_stack_muladd    0x8030 -1
+00000194: 1b 28 80 7f              load_stack_muladd    0x8028 -1
+00000198: 09 02                    store_keep           2
+0000019a: 04 24 00                 addr_stack           0x0024
+0000019d: 18 18 0d 00 80           load_imm_addr        0x80000D18
+000001a2: 1b 30 80 01              load_stack_muladd    0x8030 1
+000001a6: 1b 28 80 01              load_stack_muladd    0x8028 1
+000001aa: 09 02                    store_keep           2
+000001ac: 19 70 84                 load_stack           0x8470
+000001af: 15 08 17 00              branch               mode=08 delta=23
+000001b3: 04 5c 04                 addr_stack           0x045C
+000001b6: 04 58 03                 addr_stack           0x0358
+000001b9: 6a                       op_6a                
+000001ba: 04 5c 04                 addr_stack           0x045C
+000001bd: 6d                       op_6d                
+000001be: 04 5c 04                 addr_stack           0x045C
+000001c1: 19 3c 80                 load_stack           0x803C
+000001c4: 80 88                    op_80                88 handler=00498680
+000001c6: 04 20 00                 addr_stack           0x0020
+000001c9: 18 04 45 07 80           load_imm_addr        0x80074504
+000001ce: 09 02                    store_keep           2
+000001d0: 19 6c 84                 load_stack           0x846C
+000001d3: 15 09 5c 00              branch               mode=09 delta=92
+000001d7: 04 1c 00                 addr_stack           0x001C
+000001da: 02 08 45 07 00           push_i32             0x00074508
+000001df: 1b 20 80 38              load_stack_muladd    0x8020 56
+000001e3: 09 02                    store_keep           2
+000001e5: 19 1c 80                 load_stack           0x801C
+000001e8: 00 38                    push_i8              56
+000001ea: 61                       op_61                
+000001eb: 19 1c 80                 load_stack           0x801C
+000001ee: 04 58 03                 addr_stack           0x0358
+000001f1: 6a                       op_6a                
+000001f2: 1a 1c 80 20              load_stack_add       0x801C 32
+000001f6: 04 38 00                 addr_stack           0x0038
+000001f9: 00 08                    push_i8              8
+000001fb: 60                       op_60                
+000001fc: 1a 1c 80 28              load_stack_add       0x801C 40
+00000200: 19 70 84                 load_stack           0x8470
+00000203: 09 02                    store_keep           2
+00000205: 1a 1c 80 2c              load_stack_add       0x801C 44
+00000209: 18 18 0d 00 80           load_imm_addr        0x80000D18
+0000020e: 09 02                    store_keep           2
+00000210: 1a 1c 80 30              load_stack_add       0x801C 48
+00000214: 19 24 80                 load_stack           0x8024
+00000217: 09 02                    store_keep           2
+00000219: 02 04 45 07 00           push_i32             0x00074504
+0000021e: 18 04 45 07 80           load_imm_addr        0x80074504
+00000223: 2c 01                    add_imm              1
+00000225: 09 02                    store_keep           2
+00000227: 04 5c 03                 addr_stack           0x035C
+0000022a: 19 1c 80                 load_stack           0x801C
+0000022d: 09 02                    store_keep           2
+0000022f: 01 18 0d                 push_i16             3352
+00000232: 18 18 0d 00 80           load_imm_addr        0x80000D18
+00000237: 1a 40 80 0f              load_stack_add       0x8040 15
+0000023b: 3c fc                    shift_imm            252
+0000023d: 3c 04                    shift_imm            4
+0000023f: 20                       add                  
+00000240: 09 02                    store_keep           2
+00000242: 19 2c 80                 load_stack           0x802C
+00000245: 15 09 71 00              branch               mode=09 delta=113
+00000249: 04 68 04                 addr_stack           0x0468
+0000024c: 19 44 80                 load_stack           0x8044
+0000024f: 09 02                    store_keep           2
+00000251: 04 44 00                 addr_stack           0x0044
+00000254: 1a 44 80 04              load_stack_add       0x8044 4
+00000258: 09 02                    store_keep           2
+0000025a: 04 18 00                 addr_stack           0x0018
+0000025d: 19 68 84                 load_stack           0x8468
+00000260: 08 02                    load                 2
+00000262: 09 02                    store_keep           2
+00000264: 04 64 04                 addr_stack           0x0464
+00000267: 00 00                    push_i8              0
+00000269: 09 02                    store_keep           2
+0000026b: 19 64 84                 load_stack           0x8464
+0000026e: 19 18 80                 load_stack           0x8018
+00000271: 3b 02 45 00              branch_compare       mode=02 delta=69
+00000275: 19 74 84                 load_stack           0x8474
+00000278: 15 09 1c 00              branch               mode=09 delta=28
+0000027c: 19 44 80                 load_stack           0x8044
+0000027f: 00 00                    push_i8              0
+00000281: 00 01                    push_i8              1
+00000283: 00 01                    push_i8              1
+00000285: 06 99 fd                 ip_relative          0xFD99
+00000288: 16                       call                 
+00000289: 0f 14 80                 store_stack          0x8014
+0000028c: 1a 14 80 34              load_stack_add       0x8014 52
+00000290: 00 00                    push_i8              0
+00000292: 09 02                    store_keep           2
+00000294: 19 44 80                 load_stack           0x8044
+00000297: 68                       op_68                
+00000298: 0f 60 84                 store_stack          0x8460
+0000029b: 04 44 00                 addr_stack           0x0044
+0000029e: 19 44 80                 load_stack           0x8044
+000002a1: 1b 60 84 01              load_stack_muladd    0x8460 1
+000002a5: 2c 01                    add_imm              1
+000002a7: 09 02                    store_keep           2
+000002a9: 04 64 04                 addr_stack           0x0464
+000002ac: 1a 64 84 01              load_stack_add       0x8464 1
+000002b0: 09 02                    store_keep           2
+000002b2: 06 b9 ff                 ip_relative          0xFFB9
+000002b5: 14                       jump                 
+000002b6: 19 2c 80                 load_stack           0x802C
+000002b9: 15 09 95 00              branch               mode=09 delta=149
+000002bd: 04 68 04                 addr_stack           0x0468
+000002c0: 19 44 80                 load_stack           0x8044
+000002c3: 09 02                    store_keep           2
+000002c5: 04 44 00                 addr_stack           0x0044
+000002c8: 1a 44 80 04              load_stack_add       0x8044 4
+000002cc: 09 02                    store_keep           2
+000002ce: 04 10 00                 addr_stack           0x0010
+000002d1: 19 68 84                 load_stack           0x8468
+000002d4: 08 02                    load                 2
+000002d6: 09 02                    store_keep           2
+000002d8: 04 64 04                 addr_stack           0x0464
+000002db: 00 00                    push_i8              0
+000002dd: 09 02                    store_keep           2
+000002df: 19 64 84                 load_stack           0x8464
+000002e2: 19 10 80                 load_stack           0x8010
+000002e5: 3b 02 69 00              branch_compare       mode=02 delta=105
+000002e9: 04 0c 00                 addr_stack           0x000C
+000002ec: 19 44 80                 load_stack           0x8044
+000002ef: 09 02                    store_keep           2
+000002f1: 19 44 80                 load_stack           0x8044
+000002f4: 68                       op_68                
+000002f5: 0f 60 84                 store_stack          0x8460
+000002f8: 04 44 00                 addr_stack           0x0044
+000002fb: 19 44 80                 load_stack           0x8044
+000002fe: 1b 60 84 01              load_stack_muladd    0x8460 1
+00000302: 2c 01                    add_imm              1
+00000304: 09 02                    store_keep           2
+00000306: 04 08 00                 addr_stack           0x0008
+00000309: 19 20 80                 load_stack           0x8020
+0000030c: 09 02                    store_keep           2
+0000030e: 04 68 04                 addr_stack           0x0468
+00000311: 19 44 80                 load_stack           0x8044
+00000314: 09 02                    store_keep           2
+00000316: 04 44 00                 addr_stack           0x0044
+00000319: 1a 44 80 04              load_stack_add       0x8044 4
+0000031d: 09 02                    store_keep           2
+0000031f: 04 04 00                 addr_stack           0x0004
+00000322: 19 24 80                 load_stack           0x8024
+00000325: 19 68 84                 load_stack           0x8468
+00000328: 08 02                    load                 2
+0000032a: 20                       add                  
+0000032b: 09 02                    store_keep           2
+0000032d: 19 70 84                 load_stack           0x8470
+00000330: 15 09 11 00              branch               mode=09 delta=17
+00000334: 18 1c 07 00 80           load_imm_addr        0x8000071C
+00000339: 19 0c 80                 load_stack           0x800C
+0000033c: 04 08 00                 addr_stack           0x0008
+0000033f: 80 d2                    op_80                D2 handler=004991D0
+00000341: 04 64 04                 addr_stack           0x0464
+00000344: 1a 64 84 01              load_stack_add       0x8464 1
+00000348: 09 02                    store_keep           2
+0000034a: 06 95 ff                 ip_relative          0xFF95
+0000034d: 14                       jump                 
+0000034e: 19 5c 83                 load_stack           0x835C
+00000351: 12 88 77                 adjust_sp            -1144
+00000354: 17                       ret                  
+00000355: 12 0c                    adjust_sp            12
+00000357: 0f 08 80                 store_stack          0x8008
+0000035a: 0f 0c 80                 store_stack          0x800C
+0000035d: 19 0c 80                 load_stack           0x800C
+00000360: 18 1c 07 00 80           load_imm_addr        0x8000071C
+00000365: 19 08 80                 load_stack           0x8008
+00000368: 00 00                    push_i8              0
+0000036a: 80 d4                    op_80                D4 handler=00499240
+0000036c: 0f 04 80                 store_stack          0x8004
+0000036f: 19 04 80                 load_stack           0x8004
+00000372: 00 00                    push_i8              0
+00000374: 30                       eq                   
+00000375: 12 74                    adjust_sp            -12
+00000377: 17                       ret                  
+00000378: 00 00                    push_i8              0
+0000037a: 00 00                    push_i8              0
+0000037c: 00 00                    push_i8              0
+0000037e: 00 00                    push_i8              0
+00000380: ERROR unknown opcode 0x83

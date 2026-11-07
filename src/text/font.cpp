@@ -7,6 +7,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
+#include <tuple>
 
 #include "text/encoding.hpp"
 
@@ -78,11 +79,18 @@ const char* const kGlyphFallbacks[] = {"msyh.ttc", "simsun.ttc", "msjh.ttc", "yu
 
 } // namespace
 
+struct FreeTypeState {
+    FT_Library ft = nullptr;
+    ~FreeTypeState() { if (ft) FT_Done_FreeType(ft); }
+};
+
 struct Font::Impl {
+    std::shared_ptr<FreeTypeState> engine;
     FT_Face face = nullptr;
     FileData data;
     std::map<char32_t, std::unique_ptr<Glyph>> cache; // null entry = missing glyph
     std::vector<std::shared_ptr<Font>> fallbacks;     // tried, in order, for code points this face lacks
+    bool fallbacks_ready = false;
     ~Impl() {
         if (face) FT_Done_Face(face);
     }
@@ -91,17 +99,17 @@ struct Font::Impl {
 Font::~Font() = default;
 
 const Glyph* Font::glyph(char32_t cp) {
+    if (const auto glyph = native_glyph(cp)) return glyph;
+    for (const auto& fallback : impl_->fallbacks)
+        if (const auto glyph = fallback->native_glyph(cp)) return glyph;
+    return nullptr;
+}
+
+const Glyph* Font::native_glyph(char32_t cp) {
     auto it = impl_->cache.find(cp);
     if (it != impl_->cache.end()) return it->second.get();
     std::unique_ptr<Glyph> g;
     FT_Face face = impl_->face;
-    if (FT_Get_Char_Index(face, cp) == 0) {
-        for (const auto& fb : impl_->fallbacks)
-            if (const Glyph* fg = fb->glyph(cp)) {
-                auto copy = std::make_unique<Glyph>(*fg);
-                return impl_->cache.emplace(cp, std::move(copy)).first->second.get();
-            }
-    }
     if (FT_Get_Char_Index(face, cp) != 0 && FT_Load_Char(face, cp, FT_LOAD_RENDER | FT_LOAD_TARGET_NORMAL) == 0) {
         const FT_GlyphSlot slot = face->glyph;
         const FT_Bitmap& bm = slot->bitmap;
@@ -121,13 +129,18 @@ const Glyph* Font::glyph(char32_t cp) {
 }
 
 struct FontLibrary::Impl {
+    std::shared_ptr<FreeTypeState> engine = std::make_shared<FreeTypeState>();
     FT_Library ft = nullptr;
+    std::map<std::string, fs::path> registered;
+    std::map<fs::path, FT_Long> face_indices;
+    mutable std::map<std::tuple<std::string, bool, int>, Result<fs::path>> resolutions;
     std::vector<fs::path> dirs;
     std::map<fs::path, FileData> files;
-    std::map<std::pair<fs::path, int>, std::weak_ptr<Font>> fonts;
+    struct CachedFont { std::shared_ptr<Font> font; std::uint64_t used; };
+    std::map<std::pair<fs::path, int>, CachedFont> fonts;
+    std::uint64_t font_clock = 0;
     ~Impl() {
         fonts.clear();
-        if (ft) FT_Done_FreeType(ft);
     }
 };
 
@@ -136,18 +149,52 @@ FontLibrary::~FontLibrary() = default;
 Result<std::unique_ptr<FontLibrary>> FontLibrary::create() {
     std::unique_ptr<FontLibrary> lib(new FontLibrary);
     lib->impl_ = std::make_unique<Impl>();
-    if (FT_Init_FreeType(&lib->impl_->ft) != 0) return fail(Errc::Io, "FreeType initialisation failed");
+    if (FT_Init_FreeType(&lib->impl_->engine->ft) != 0) return fail(Errc::Io, "FreeType initialisation failed");
+    lib->impl_->ft = lib->impl_->engine->ft;
     if (const char* env = std::getenv("OBGI_FONT_DIR")) lib->impl_->dirs.emplace_back(env);
     return lib;
 }
 
-void FontLibrary::add_search_dir(fs::path dir) { impl_->dirs.push_back(std::move(dir)); }
+void FontLibrary::add_search_dir(fs::path dir) { impl_->dirs.push_back(std::move(dir)); impl_->resolutions.clear(); }
+
+Result<void> FontLibrary::register_file(const std::string& name, std::vector<std::uint8_t> bytes) {
+    auto data = std::make_shared<std::vector<std::uint8_t>>(std::move(bytes));
+    FT_Face first = nullptr;
+    if (FT_New_Memory_Face(impl_->ft, data->data(), static_cast<FT_Long>(data->size()), 0, &first) != 0)
+        return fail(Errc::Format, "invalid font resource: " + name);
+    const auto count = first->num_faces;
+    FT_Done_Face(first);
+    for (FT_Long index = 0; index < count; ++index) {
+        FT_Face face = nullptr;
+        if (FT_New_Memory_Face(impl_->ft, data->data(), static_cast<FT_Long>(data->size()), index, &face) != 0) continue;
+        const auto identity = fs::path("@memory") / (std::to_string(impl_->files.size()) + ".font");
+        impl_->files.emplace(identity, data);
+        impl_->face_indices.emplace(identity, index);
+        if (index == 0) impl_->registered[lower(name)] = identity;
+        if (face->family_name) impl_->registered.try_emplace(lower(face->family_name), identity);
+        if (const auto postscript = FT_Get_Postscript_Name(face)) impl_->registered[lower(postscript)] = identity;
+        FT_Done_Face(face);
+    }
+    impl_->resolutions.clear();
+    return {};
+}
 
 Result<fs::path> FontLibrary::resolve(const std::string& cp932_name) const { return resolve_impl(cp932_name, true); }
 
 bool FontLibrary::has_exact(const std::string& cp932_name) const { return resolve_impl(cp932_name, false).has_value(); }
 
-Result<fs::path> FontLibrary::resolve_impl(const std::string& cp932_name, bool fallback) const {
+Result<fs::path> FontLibrary::resolve_impl(const std::string& name, bool fallback, int charset) const {
+    const auto key = std::make_tuple(name, fallback, charset);
+    if (const auto it = impl_->resolutions.find(key); it != impl_->resolutions.end()) return it->second;
+    auto result = resolve_uncached(name, fallback, charset);
+    impl_->resolutions.emplace(key, result);
+    return result;
+}
+
+Result<fs::path> FontLibrary::resolve_uncached(const std::string& cp932_name, bool fallback, int charset) const {
+    const auto utf8_name = lower(to_utf8(cp932_to_utf32(cp932_name)));
+    if (const auto it = impl_->registered.find(utf8_name); it != impl_->registered.end()) return it->second;
+    if (const auto it = impl_->registered.find(lower(cp932_name)); it != impl_->registered.end()) return it->second;
     std::vector<fs::path> dirs = impl_->dirs;
     for (const char* d : {"C:/Windows/Fonts", "/usr/share/fonts", "/usr/share/fonts/truetype", "/usr/share/fonts/opentype",
                           "/usr/share/fonts/opentype/noto", "/usr/share/fonts/truetype/noto", "/usr/local/share/fonts",
@@ -182,6 +229,17 @@ Result<fs::path> FontLibrary::resolve_impl(const std::string& cp932_name, bool f
             if (fs::path p = find(over); !p.empty()) return p;
         }
     const std::string utf8 = to_utf8(cp932_to_utf32(cp932_name));
+    // Windows font charset is part of the script's font registration. Han
+    // characters shared by Japanese and Chinese are present in both fonts, so
+    // glyph fallback alone cannot select the intended regional glyph shape.
+    if (fallback && charset == 0x86) {
+        for (const char* file : {"msyh.ttc", "simsun.ttc", "simhei.ttf", "NotoSansSC-VF.ttf", "NotoSerifSC-VF.ttf"})
+            if (fs::path p = find(file); !p.empty()) return p;
+    }
+    if (charset == 0x88) {
+        for (const char* file : {"msjh.ttc", "mingliu.ttc", "NotoSansTC-VF.ttf"})
+            if (fs::path p = find(file); !p.empty()) return p;
+    }
     for (const std::string& file : candidates_for(utf8))
         if (fs::path p = find(file); !p.empty()) return p;
     if (!fallback) return fail(Errc::Io, "font not installed: " + utf8);
@@ -190,30 +248,36 @@ Result<fs::path> FontLibrary::resolve_impl(const std::string& cp932_name, bool f
     return fail(Errc::Io, "no usable font found for \"" + utf8 + "\"; set OBGI_FONT_DIR to a folder with a Japanese font");
 }
 
-Result<std::shared_ptr<Font>> FontLibrary::open(const std::string& cp932_name, int pixel_size) {
+Result<std::shared_ptr<Font>> FontLibrary::open(const std::string& cp932_name, int pixel_size, int charset) {
     if (pixel_size < 4 || pixel_size > 512) return fail(Errc::Range, "font size out of range");
-    auto path = resolve(cp932_name);
+    auto path = resolve_impl(cp932_name, true, charset);
     if (!path) return std::unexpected(path.error());
     auto font = open_path(*path, pixel_size);
     if (!font) return font;
+    if ((*font)->impl_->fallbacks_ready) return font;
     // code points the named font lacks (simplified Chinese in a Japanese face, say) come from the first installed font that has them
     std::vector<std::shared_ptr<Font>> chain;
     for (const char* file : kGlyphFallbacks) {
         auto p = resolve_impl(file, false);
         if (!p || *p == *path) continue;
-        if (auto fb = open_path(*p, pixel_size)) chain.push_back(*fb);
+        // Fallbacks are native leaf faces. Sharing primary Font objects here can form
+        // ownership cycles when two primary fonts fall back to each other.
+        if (auto fb = open_path(*p, pixel_size, false)) chain.push_back(*fb);
     }
     if (std::getenv("OBGI_DBGFONT")) std::fprintf(stderr, "font %s: %zu fallbacks\n", path->string().c_str(), chain.size());
     (*font)->impl_->fallbacks = std::move(chain);
+    (*font)->impl_->fallbacks_ready = true;
     return font;
 }
 
-Result<std::shared_ptr<Font>> FontLibrary::open_path(const fs::path& path_in, int pixel_size) {
+Result<std::shared_ptr<Font>> FontLibrary::open_path(const fs::path& path_in, int pixel_size, bool cache) {
     Impl& m = *impl_;
     const fs::path* path = &path_in;
     const auto key = std::make_pair(*path, pixel_size);
-    if (auto it = m.fonts.find(key); it != m.fonts.end())
-        if (auto sp = it->second.lock()) return sp;
+    if (cache) if (auto it = m.fonts.find(key); it != m.fonts.end()) {
+        it->second.used = ++m.font_clock;
+        return it->second.font;
+    }
 
     FileData data;
     if (auto it = m.files.find(*path); it != m.files.end()) {
@@ -228,7 +292,9 @@ Result<std::shared_ptr<Font>> FontLibrary::open_path(const fs::path& path_in, in
     std::shared_ptr<Font> font(new Font);
     font->impl_ = std::make_unique<Font::Impl>();
     font->impl_->data = data;
-    if (FT_New_Memory_Face(m.ft, data->data(), static_cast<FT_Long>(data->size()), 0, &font->impl_->face) != 0)
+    font->impl_->engine = m.engine;
+    const auto face_index = m.face_indices.contains(*path) ? m.face_indices.at(*path) : 0;
+    if (FT_New_Memory_Face(m.ft, data->data(), static_cast<FT_Long>(data->size()), face_index, &font->impl_->face) != 0)
         return fail(Errc::Format, "FreeType cannot open " + path->string());
     FT_Face face = font->impl_->face;
     if (FT_Select_Charmap(face, FT_ENCODING_UNICODE) != 0) return fail(Errc::Format, "font has no Unicode map: " + path->string());
@@ -237,7 +303,15 @@ Result<std::shared_ptr<Font>> FontLibrary::open_path(const fs::path& path_in, in
     font->ascent_ = static_cast<int>((sm.ascender + 63) >> 6);
     font->descent_ = static_cast<int>((-sm.descender + 63) >> 6);
     font->line_height_ = std::max(static_cast<int>((sm.height + 63) >> 6), font->ascent_ + font->descent_);
-    m.fonts[key] = font;
+    if (cache) {
+        if (m.fonts.size() >= 64) {
+            const auto oldest = std::min_element(m.fonts.begin(), m.fonts.end(), [](const auto& a, const auto& b) {
+                return a.second.used < b.second.used;
+            });
+            m.fonts.erase(oldest);
+        }
+        m.fonts.emplace(key, Impl::CachedFont{font, ++m.font_clock});
+    }
     return font;
 }
 

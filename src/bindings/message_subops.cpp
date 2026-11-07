@@ -19,19 +19,14 @@ using vm::Word;
 constexpr Word kHandleBase = 0xB0000000u;
 constexpr Word kPlaneSlotBase = 0x10000u; // the window object's picture (see plane_subops.cpp)
 constexpr Word kTextSlotBase = 0x20000u;  // its text layer
+constexpr Word kFrameSlotBase = 0x30000u; // window-owned frame, independent of script bitmap lifetime
 constexpr Word kTempSlot = 0x7FFF0001u;   // a rendered string on its way into the text layer
 
-struct Cursor {
-    std::int32_t x = 0, y = 0;
-    bool placed = false; // false: at the start of the text area
-};
+using Cursor = MessageService::Cursor;
+using Reveal = MessageVisual;
 
-struct Shared {
-    std::array<Cursor, 16> cursors;
-};
-
-void add(vm::SubopRegistry& r, std::uint16_t id, const char* name, int pops, int pushes, std::function<int(Ctx&)> fn) {
-    r.add({id, name, static_cast<std::uint8_t>(pops), static_cast<std::uint8_t>(pushes), std::move(fn)});
+void add(vm::SubopRegistry& r, std::uint16_t id, const char* name, int pops, int pushes, std::function<int(Ctx&)> fn, int deferred = 0) {
+    r.add({id, name, static_cast<std::uint8_t>(pops), static_cast<std::uint8_t>(pushes), std::move(fn), static_cast<std::uint8_t>(deferred)});
 }
 
 SystemState::Plane* plane_of(SystemState& s, Ctx& c, Word handle, std::size_t* index = nullptr) {
@@ -52,9 +47,18 @@ void recompose(SystemState& s, std::size_t idx) {
     const Word plane_slot = kPlaneSlotBase + static_cast<Word>(idx), text_slot = kTextSlotBase + static_cast<Word>(idx);
     if (!d->slot(plane_slot)) return;
     (void)d->fill_slot(plane_slot, 0);
-    if (p.image != 0xFFFFFFFFu && p.image < 0x4000 && d->slot(p.image))
+    if (p.frame_visible && p.image != 0xFFFFFFFFu && d->slot(p.image))
         (void)d->blit(plane_slot, 0, 0, p.image, 0, 0, p.width, p.height, 0x80, 0);
-    if (d->slot(text_slot)) (void)d->blit(plane_slot, 0, 0, text_slot, 0, 0, p.width, p.height, 1, s.plane_text_level[idx]);
+    if (p.text_visible && d->slot(text_slot)) (void)d->blit(plane_slot, 0, 0, text_slot, 0, 0, p.width, p.height, 1, s.plane_text_level[idx]);
+}
+
+Word frame_layer(SystemState& s, std::size_t idx) {
+    Display* d = s.display;
+    const Word slot = kFrameSlotBase + static_cast<Word>(idx);
+    if (d && !d->slot(slot) && s.planes[idx]) {
+        if (d->create_slot(slot, s.planes[idx]->width, s.planes[idx]->height, SlotFormat::Bgra)) (void)d->fill_slot(slot, 0);
+    }
+    return slot;
 }
 
 Word text_layer(SystemState& s, std::size_t idx) {
@@ -66,28 +70,14 @@ Word text_layer(SystemState& s, std::size_t idx) {
     return text_slot;
 }
 
-// A message being typed out: draw(k) shows its first k characters.
-struct Reveal {
-    // plain output (90:90): draw(k) shows the first k characters, `total` characters, one every 90:94 ms.
-    // rich output (91:90, 92:90): draw(ms) shows the text `ms` after it began, `total` = the time the last glyph is solid; every
-    // glyph appears 91:98's delay after the one before it and fades in over 91:98's steps (a step is a millisecond).
-    bool rich = false;
-    std::size_t total = 0;
-    std::function<void(std::size_t)> draw;
-    // a page leaving before the text: pre(k, pre_frames) for k = 0 .. pre_frames - 1, then pre_done() clears the layer
-    int pre_frames = 0;
-    std::function<void(int, int)> pre;
-    std::function<void()> pre_done;
-};
-
 // Frames between two characters of a message: 90:94 gives milliseconds (a frame is 16 ms), 2 frames until a script sets it;
 // OBGI_TEXT_FRAMES overrides; 0 shows messages at once.
-int frames_per_char(const SystemState& s) {
+int character_ms(const SystemState& s) {
     static const char* e = std::getenv("OBGI_TEXT_FRAMES");
-    if (e) return std::atoi(e);
+    if (e) return std::max(0, std::atoi(e)) * 16;
     const auto it = s.records.find(0x9094);
-    if (it == s.records.end() || it->second.empty()) return 2;
-    return static_cast<int>((it->second[0] + 8) / 16);
+    if (it == s.records.end() || it->second.empty()) return 32;
+    return static_cast<int>(it->second[0]);
 }
 
 // How a message is drawn beyond its colour: the shadow (90:9C/9D globally, or 92:90's own) and the rich pacing (91:98).
@@ -124,16 +114,13 @@ std::uint32_t record_ms(const SystemState& s, std::uint16_t id) {
     return it != s.records.end() && it->second.size() >= 2 && it->second[0] ? it->second[1] : 0;
 }
 
-// What the click that ends a message looks like: Enter, Space, the left button.
-std::uint32_t decide_count(const SystemState& s) { return s.input_counts[0x0D] + s.input_counts[0x20] + s.input_counts[0x01]; }
-
 } // namespace
 
 void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost& text, FontHost& fonts) {
     SystemState* s = &state;
     TextHost* th = &text;
     FontHost* fh = &fonts;
-    auto shared = std::make_shared<Shared>();
+    auto shared = text.messages;
 
     // 91:9B (out, string, font no, size, width %, bold, proportional): writes the width in pixels of the string to `out`, pushes 0
     // (0x80000001 bad size, 0x80000003 bad font number; nothing written then). Width = the laid-out line's width, unwrapped.
@@ -187,8 +174,59 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         if (!c.ok()) return 0;
         std::size_t idx = 0;
         if (SystemState::Plane* p = plane_of(*s, c, handle, &idx)) {
-            p->image = image;
+            const Word frame = frame_layer(*s, idx);
+            if (s->display && s->display->slot(frame)) {
+                (void)s->display->fill_slot(frame, 0);
+                if (image != 0xFFFFFFFFu) {
+                    const SlotInfo* info = s->display->slot(image);
+                    if (!info) { c.fail(Errc::Range, "window frame bitmap does not exist"); return 0; }
+                    if (auto r = s->display->blit(frame, 0, 0, image, 0, 0, info->width, info->height, 0x80, 0); !r) { c.fail(r.error().code, r.error().message); return 0; }
+                }
+            }
+            p->image = frame;
+            p->frame_visible = image != 0xFFFFFFFFu;
             p->extra = {a, b};
+            recompose(*s, idx);
+        }
+        return 0;
+    });
+    for (const bool text : {false, true}) {
+        add(r, text ? 0x928D : 0x9289, text ? "draw window text layer" : "draw window frame layer", 6, 0, [s, text](Ctx& c) {
+            const Word level = c.pop(), effect = c.pop(), image = c.pop();
+            const auto y = static_cast<std::int32_t>(c.pop()), x = static_cast<std::int32_t>(c.pop());
+            const Word handle = c.pop();
+            if (!c.ok()) return 0;
+            std::size_t idx = 0;
+            auto* p = plane_of(*s, c, handle, &idx);
+            if (!p || !s->display) return 0;
+            const SlotInfo* info = s->display->slot(image);
+            if (!info || image >= 0x4000 || level > 0x100 || !blend_mode_supported(effect)) { c.fail(Errc::Range, "invalid window layer bitmap or blend"); return 0; }
+            const Word width = info->width, height = info->height;
+            const Word dst = text ? text_layer(*s, idx) : frame_layer(*s, idx);
+            if (auto r = s->display->blit(dst, x, y, image, 0, 0, width, height, effect, level); !r) { c.fail(r.error().code, r.error().message); return 0; }
+            if (!text) p->image = dst;
+            recompose(*s, idx);
+            return 0;
+        });
+        add(r, text ? 0x928C : 0x9288, text ? "show window text layer" : "show window frame layer", 2, 0, [s, text](Ctx& c) {
+            const Word on = c.pop(), handle = c.pop();
+            if (!c.ok()) return 0;
+            std::size_t idx = 0;
+            if (auto* p = plane_of(*s, c, handle, &idx)) {
+                if (text) p->text_visible = on != 0; else p->frame_visible = on != 0;
+                recompose(*s, idx);
+            }
+            return 0;
+        });
+    }
+    add(r, 0x928A, "fill window frame layer", 2, 0, [s](Ctx& c) {
+        const Word colour = c.pop(), handle = c.pop();
+        if (!c.ok()) return 0;
+        std::size_t idx = 0;
+        if (auto* p = plane_of(*s, c, handle, &idx); p && s->display) {
+            const Word frame = frame_layer(*s, idx);
+            if (auto r = s->display->fill_slot(frame, colour); !r) { c.fail(r.error().code, r.error().message); return 0; }
+            p->image = frame;
             recompose(*s, idx);
         }
         return 0;
@@ -328,7 +366,10 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
                 recompose(*s, idx);
             };
         }
-        auto fnt = th->fonts->open(name, size);
+        int charset = -1;
+        for (const auto& info : fh->table.infos)
+            if (info.name == name) { charset = info.charset; break; }
+        auto fnt = th->fonts->open(name, size, charset);
         if (!fnt) return true; // no font to draw with: the text just does not show
         std::shared_ptr<Font> face = *fnt;
         Cursor& cur = shared->cursors[idx];
@@ -391,75 +432,30 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
     };
     // Ends the op: the thread types the message out (a click shows the rest at once), then waits for a click at the end when
     // asked, and receives 1 when the user ended it that way.
-    auto finish = [](Ctx& c, Reveal rv, bool instant, bool allow_skip, bool wait_click, SystemState* st) {
-        vm::Thread* t = &c.t;
-        auto base = std::make_shared<std::uint32_t>(decide_count(*st));
-        auto shown = std::make_shared<std::size_t>(0);
-        auto ticks = std::make_shared<int>(0);
-        const int per_char = frames_per_char(*st);
-        // 90:97: a message that waits at its end finishes by itself that long after the end was reached;
-        // 90:9B: the wait does not start (clicks do not count) until that long after the message began
-        const int auto_frames = static_cast<int>((record_ms(*st, 0x9097) + 8) / 16);
-        const bool auto_on = record_ms(*st, 0x9097) != 0 || (st->records.count(0x9097) && st->records[0x9097][0]);
-        const int delay_frames = static_cast<int>((record_ms(*st, 0x909B) + 8) / 16);
-        auto age = std::make_shared<int>(0), idle = std::make_shared<int>(0);
-        if (rv.pre_frames > 0 && std::getenv("OBGI_DBGTEXT")) std::fprintf(stderr, "page leaves over %d frames\n", rv.pre_frames);
-        auto pre_k = std::make_shared<int>(0);
-        auto started = std::make_shared<bool>(false);
-        if (rv.pre_frames <= 0 && rv.pre_done) rv.pre_done(), *started = true;
-        if (*started && rv.draw && (instant || per_char <= 0)) rv.draw(*shown = rv.total);
-        if (!rv.pre_done) {
-            *started = true;
-            if (rv.draw && (instant || per_char <= 0)) rv.draw(*shown = rv.total);
-        }
-        c.t.wait.kind = vm::WaitObject::Kind::Poll;
-        c.t.wait.poll = [t, st, base, shown, ticks, per_char, rv, allow_skip, wait_click, auto_on, auto_frames, delay_frames, age, idle,
-                         pre_k, started, instant]() {
-            if (!*started) { // the old page leaves first; a click hurries it
-                if (allow_skip && decide_count(*st) != *base) {
-                    *base = decide_count(*st);
-                    *pre_k = rv.pre_frames;
-                }
-                if (*pre_k < rv.pre_frames) {
-                    rv.pre(*pre_k, rv.pre_frames);
-                    ++*pre_k;
-                    return false;
-                }
-                rv.pre_done();
-                *started = true;
-                if (rv.draw && (instant || per_char <= 0)) rv.draw(*shown = rv.total);
-            }
-            ++*age;
-            if (rv.draw && *shown < rv.total) {
-                if (allow_skip && decide_count(*st) != *base) {
-                    *base = decide_count(*st); // this click only hurries the typing
-                    *shown = rv.total;
-                    rv.draw(*shown);
-                } else if (rv.rich) { // a frame is 16 ms of the glyphs' own clock
-                    *shown = std::min(*shown + 16, rv.total);
-                    rv.draw(*shown);
-                    return false;
-                } else if (++*ticks >= per_char) {
-                    *ticks = 0;
-                    rv.draw(++*shown);
-                    return false;
-                } else {
-                    return false;
-                }
-            }
-            if (wait_click) {
-                if (*age < delay_frames) *base = decide_count(*st); // too early: clicks are not taken yet
-                if (decide_count(*st) == *base && !(auto_on && ++*idle >= auto_frames)) return false;
-            }
-            t->expr[t->depth] = wait_click ? 1u : 0u;
-            t->depth = t->depth + 1 < t->expr.size() ? t->depth + 1 : 0;
-            return true;
+    auto finish = [shared](Ctx& c, Reveal visual, bool instant, bool allow_skip, bool wait_click, SystemState* state) {
+        MessagePacing pacing;
+        pacing.character_ms = character_ms(*state);
+        pacing.auto_ms = record_ms(*state, 0x9097);
+        pacing.delay_ms = record_ms(*state, 0x909B);
+        const auto automatic = state->records.find(0x9097);
+        pacing.automatic = automatic != state->records.end() && !automatic->second.empty() && automatic->second[0] != 0;
+        pacing.instant = instant;
+        pacing.allow_skip = allow_skip;
+        pacing.wait_click = wait_click;
+        MessageInput input(*state);
+        auto operation = shared->start(std::move(visual), pacing, c.vm.now_ms, 0);
+        vm::WaitObject wait;
+        wait.kind = vm::WaitObject::Kind::Poll;
+        wait.poll = [operation = std::move(operation), state, input](const vm::WaitContext& context) mutable -> Result<vm::WaitUpdate> {
+            auto result = operation.update(context.now_ms, input.poll(*state));
+            return result ? vm::WaitUpdate::complete({*result}) : vm::WaitUpdate::pending();
         };
+        c.suspend(std::move(wait), 1);
         return static_cast<int>(vm::StayThread);
     };
 
     // 90:90 (window, string, colour, instant, wait at end, allow skip)
-    add(r, 0x9090, "message text", 6, 0, [write_text, finish, s](Ctx& c) {
+    add(r, 0x9090, "message text", 6, 1, [write_text, finish, s](Ctx& c) {
         const Word skip = c.pop();
         const Word wait_end = c.pop();
         const Word instant = c.pop();
@@ -469,9 +465,9 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         Reveal rv;
         if (!c.ok() || !write_text(c, handle, str, colour, global_text_opts(*s, false), rv)) return 0;
         return finish(c, rv, instant != 0, skip != 0, wait_end != 0, s);
-    });
+    }, 1);
     // 91:90 (window, string, colour, instant, wait at end, allow skip, allow keys, ruby on, hang, unused)
-    add(r, 0x9190, "message text (rich)", 10, 0, [write_text, finish, s](Ctx& c) {
+    add(r, 0x9190, "message text (rich)", 10, 1, [write_text, finish, s](Ctx& c) {
         c.pop(), c.pop(), c.pop(); // unused, hang, ruby on
         c.pop();                   // allow keys
         const Word skip = c.pop();
@@ -483,10 +479,10 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         Reveal rv;
         if (!c.ok() || !write_text(c, handle, str, colour, global_text_opts(*s, true), rv)) return 0;
         return finish(c, rv, instant != 0, skip != 0, wait_end != 0, s);
-    });
+    }, 1);
     // 92:90 (window, string, colour, ruby on, ruby colour, hang, shadow on, dx, dy, shadow colour, shadow level, instant,
     // wait at end, allow skip, allow keys)
-    add(r, 0x9290, "message text (styled)", 15, 0, [write_text, finish, s](Ctx& c) {
+    add(r, 0x9290, "message text (styled)", 15, 1, [write_text, finish, s](Ctx& c) {
         c.pop();                     // allow keys
         const Word skip = c.pop();
         const Word wait_end = c.pop();
@@ -505,7 +501,7 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         Reveal rv;
         if (!c.ok() || !write_text(c, handle, str, colour, opts, rv)) return 0;
         return finish(c, rv, instant != 0, skip != 0, wait_end != 0, s);
-    });
+    }, 1);
 }
 
 } // namespace obgi

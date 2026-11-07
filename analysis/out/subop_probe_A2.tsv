@@ -1,0 +1,501 @@
+subop	tier	handler	pattern	status	pops_observed	pushes_observed	immediate_reads_observed	eax_if_returned	stop_eip	error
+80:02	A2	00496970	zero	returned	1	1	0	00000000	0x40000000	
+80:02	A2	00496970	ascending	returned	1	1	0	00000000	0x40000000	
+80:02	A2	00496970	0_1_2_3	returned	1	1	0	00000000	0x40000000	
+80:02	A2	00496970	boundary_mix	returned	1	1	0	00000000	0x40000000	
+80:04	A2	00496A00	zero	unmapped_or_exception	0	0	0		0x12b994	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:04	A2	00496A00	ascending	unmapped_or_exception	0	0	0		0x12b994	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:04	A2	00496A00	0_1_2_3	unmapped_or_exception	0	0	0		0x12b994	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:04	A2	00496A00	boundary_mix	unmapped_or_exception	0	0	0		0x12b994	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:08	A2	00496A90	zero	returned	0	2	0	00000000	0x40000000	
+80:08	A2	00496A90	ascending	returned	0	2	0	00000000	0x40000000	
+80:08	A2	00496A90	0_1_2_3	returned	0	2	0	00000000	0x40000000	
+80:08	A2	00496A90	boundary_mix	returned	0	2	0	00000000	0x40000000	
+80:0F	A2	00496C00	zero	returned	0	1	0	00000000	0x40000000	
+80:0F	A2	00496C00	ascending	returned	0	1	0	00000000	0x40000000	
+80:0F	A2	00496C00	0_1_2_3	returned	0	1	0	00000000	0x40000000	
+80:0F	A2	00496C00	boundary_mix	returned	0	1	0	00000000	0x40000000	
+80:16	A2	00496D10	zero	unmapped_or_exception	0	0	0		0x12be4c	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:16	A2	00496D10	ascending	unmapped_or_exception	0	0	0		0x12be4c	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:16	A2	00496D10	0_1_2_3	unmapped_or_exception	0	0	0		0x12be4c	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:16	A2	00496D10	boundary_mix	unmapped_or_exception	0	0	0		0x12be4c	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:17	A2	00496D20	zero	returned	0	1	0	00000000	0x40000000	
+80:17	A2	00496D20	ascending	returned	0	1	0	00000000	0x40000000	
+80:17	A2	00496D20	0_1_2_3	returned	0	1	0	00000000	0x40000000	
+80:17	A2	00496D20	boundary_mix	returned	0	1	0	00000000	0x40000000	
+80:18	A2	00496D40	zero	unmapped_or_exception	1	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:18	A2	00496D40	ascending	unmapped_or_exception	1	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:18	A2	00496D40	0_1_2_3	unmapped_or_exception	1	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:18	A2	00496D40	boundary_mix	unmapped_or_exception	1	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:19	A2	00496D80	zero	unmapped_or_exception	1	0	0		0x12be4c	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:19	A2	00496D80	ascending	unmapped_or_exception	1	0	0		0x12be4c	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:19	A2	00496D80	0_1_2_3	unmapped_or_exception	1	0	0		0x12be4c	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:19	A2	00496D80	boundary_mix	unmapped_or_exception	1	0	0		0x12be4c	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:1A	A2	00496DC0	zero	unmapped_or_exception	1	0	0		0x12be4c	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:1A	A2	00496DC0	ascending	unmapped_or_exception	1	0	0		0x12be4c	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:1A	A2	00496DC0	0_1_2_3	unmapped_or_exception	1	0	0		0x12be4c	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:1A	A2	00496DC0	boundary_mix	unmapped_or_exception	1	0	0		0x12be4c	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:1C	A2	00496E80	zero	returned	1	1	0	00000000	0x40000000	
+80:1C	A2	00496E80	ascending	returned	1	1	0	00000000	0x40000000	
+80:1C	A2	00496E80	0_1_2_3	returned	1	1	0	00000000	0x40000000	
+80:1C	A2	00496E80	boundary_mix	returned	1	1	0	00000000	0x40000000	
+80:1F	A2	00496F20	zero	unmapped_or_exception	6	0	0		0x12c278	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:1F	A2	00496F20	ascending	unmapped_or_exception	6	0	0		0x12c278	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:1F	A2	00496F20	0_1_2_3	unmapped_or_exception	6	0	0		0x12c278	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:1F	A2	00496F20	boundary_mix	unmapped_or_exception	6	0	0		0x12c278	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:30	A2	00497430	zero	unmapped_or_exception	3	0	0		0x472270	Invalid memory read (UC_ERR_READ_UNMAPPED)
+80:30	A2	00497430	ascending	unmapped_or_exception	3	0	0		0x472270	Invalid memory read (UC_ERR_READ_UNMAPPED)
+80:30	A2	00497430	0_1_2_3	unmapped_or_exception	3	0	0		0x472270	Invalid memory read (UC_ERR_READ_UNMAPPED)
+80:30	A2	00497430	boundary_mix	unmapped_or_exception	2	0	0		0x12b780	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:48	A2	00497AB0	zero	script_error	2	0	0		0x471e50	script_error
+80:48	A2	00497AB0	ascending	script_error	2	0	0		0x471e50	script_error
+80:48	A2	00497AB0	0_1_2_3	script_error	2	0	0		0x471e50	script_error
+80:48	A2	00497AB0	boundary_mix	script_error	2	0	0		0x471e50	script_error
+80:49	A2	00497B00	zero	returned	1	1	0	00000000	0x40000000	
+80:49	A2	00497B00	ascending	returned	1	1	0	00000000	0x40000000	
+80:49	A2	00497B00	0_1_2_3	returned	1	1	0	00000000	0x40000000	
+80:49	A2	00497B00	boundary_mix	returned	1	1	0	00000000	0x40000000	
+80:4A	A2	00497B30	zero	script_error	3	0	0		0x471e50	script_error
+80:4A	A2	00497B30	ascending	script_error	3	0	0		0x471e50	script_error
+80:4A	A2	00497B30	0_1_2_3	script_error	3	0	0		0x471e50	script_error
+80:4A	A2	00497B30	boundary_mix	script_error	3	0	0		0x471e50	script_error
+80:5C	A2	00497EB0	zero	unmapped_or_exception	3	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:5C	A2	00497EB0	ascending	unmapped_or_exception	3	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:5C	A2	00497EB0	0_1_2_3	unmapped_or_exception	3	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:5C	A2	00497EB0	boundary_mix	unmapped_or_exception	3	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:5E	A2	00497F60	zero	returned	1	0	0	00000003	0x40000000	
+80:5E	A2	00497F60	ascending	returned	1	0	0	00000003	0x40000000	
+80:5E	A2	00497F60	0_1_2_3	returned	1	0	0	00000003	0x40000000	
+80:5E	A2	00497F60	boundary_mix	returned	1	0	0	00000003	0x40000000	
+80:82	A2	004984C0	zero	unmapped_or_exception	3	0	0		0x12b780	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:82	A2	004984C0	ascending	unmapped_or_exception	3	0	0		0x4da9ef	Invalid memory read (UC_ERR_READ_UNMAPPED)
+80:82	A2	004984C0	0_1_2_3	unmapped_or_exception	3	0	0		0x4dacdd	Invalid memory read (UC_ERR_READ_UNMAPPED)
+80:82	A2	004984C0	boundary_mix	unmapped_or_exception	2	0	0		0x12b780	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:84	A2	00498640	zero	unmapped_or_exception	1	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:84	A2	00498640	ascending	unmapped_or_exception	1	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:84	A2	00498640	0_1_2_3	unmapped_or_exception	1	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:84	A2	00498640	boundary_mix	unmapped_or_exception	1	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:85	A2	00498660	zero	returned	1	1	0	00000000	0x40000000	
+80:85	A2	00498660	ascending	returned	1	1	0	00000000	0x40000000	
+80:85	A2	00498660	0_1_2_3	returned	1	1	0	00000000	0x40000000	
+80:85	A2	00498660	boundary_mix	returned	1	1	0	00000000	0x40000000	
+80:AC	A2	00498E00	zero	returned	3	1	0	00000000	0x40000000	
+80:AC	A2	00498E00	ascending	returned	3	1	0	00000000	0x40000000	
+80:AC	A2	00498E00	0_1_2_3	returned	3	1	0	00000000	0x40000000	
+80:AC	A2	00498E00	boundary_mix	returned	3	1	0	00000000	0x40000000	
+80:DC	A2	00499330	zero	unmapped_or_exception	2	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:DC	A2	00499330	ascending	unmapped_or_exception	2	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:DC	A2	00499330	0_1_2_3	unmapped_or_exception	2	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:DC	A2	00499330	boundary_mix	unmapped_or_exception	2	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+80:DD	A2	00499360	zero	returned	3	1	0	00000000	0x40000000	
+80:DD	A2	00499360	ascending	returned	3	1	0	00000000	0x40000000	
+80:DD	A2	00499360	0_1_2_3	returned	3	1	0	00000000	0x40000000	
+80:DD	A2	00499360	boundary_mix	returned	3	1	0	00000000	0x40000000	
+81:30	A2	0049A6D0	zero	unmapped_or_exception	5	0	0		0x472270	Invalid memory read (UC_ERR_READ_UNMAPPED)
+81:30	A2	0049A6D0	ascending	unmapped_or_exception	5	0	0		0x472270	Invalid memory read (UC_ERR_READ_UNMAPPED)
+81:30	A2	0049A6D0	0_1_2_3	unmapped_or_exception	5	0	0		0x472270	Invalid memory read (UC_ERR_READ_UNMAPPED)
+81:30	A2	0049A6D0	boundary_mix	unmapped_or_exception	4	0	0		0x12b780	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+90:01	A2	00488940	zero	returned	1	0	0	00000000	0x40000000	
+90:01	A2	00488940	ascending	returned	1	0	0	00000000	0x40000000	
+90:01	A2	00488940	0_1_2_3	returned	1	0	0	00000000	0x40000000	
+90:01	A2	00488940	boundary_mix	returned	1	0	0	00000000	0x40000000	
+90:05	A2	00488A50	zero	unmapped_or_exception	2	0	0		0x408e93	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:05	A2	00488A50	ascending	unmapped_or_exception	2	0	0		0x408e93	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:05	A2	00488A50	0_1_2_3	unmapped_or_exception	2	0	0		0x408e93	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:05	A2	00488A50	boundary_mix	script_error	2	0	0		0x471e50	script_error
+90:09	A2	00488B00	zero	unmapped_or_exception	1	0	0		0x44b108	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:09	A2	00488B00	ascending	unmapped_or_exception	1	0	0		0x44b108	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:09	A2	00488B00	0_1_2_3	unmapped_or_exception	1	0	0		0x44b108	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:09	A2	00488B00	boundary_mix	unmapped_or_exception	1	0	0		0x44b108	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:16	A2	00489110	zero	unmapped_or_exception	2	0	0		0x408fcc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:16	A2	00489110	ascending	unmapped_or_exception	2	0	0		0x408fcc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:16	A2	00489110	0_1_2_3	unmapped_or_exception	2	0	0		0x408fcc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:16	A2	00489110	boundary_mix	unmapped_or_exception	2	0	0		0x12b780	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+90:17	A2	00489150	zero	unmapped_or_exception	2	0	0		0x4090ac	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:17	A2	00489150	ascending	unmapped_or_exception	2	0	0		0x4090ac	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:17	A2	00489150	0_1_2_3	unmapped_or_exception	2	0	0		0x4090ac	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:17	A2	00489150	boundary_mix	returned	2	1	0	00000000	0x40000000	
+90:22	A2	00489BD0	zero	script_error	7	0	0		0x471e50	script_error
+90:22	A2	00489BD0	ascending	unmapped_or_exception	7	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:22	A2	00489BD0	0_1_2_3	script_error	7	0	0		0x471e50	script_error
+90:22	A2	00489BD0	boundary_mix	unmapped_or_exception	7	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:28	A2	0048A0E0	zero	script_error	12	0	0		0x471e50	script_error
+90:28	A2	0048A0E0	ascending	unmapped_or_exception	12	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:28	A2	0048A0E0	0_1_2_3	script_error	12	0	0		0x471e50	script_error
+90:28	A2	0048A0E0	boundary_mix	script_error	12	0	0		0x471e50	script_error
+90:30	A2	0048A500	zero	unmapped_or_exception	2	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:30	A2	0048A500	ascending	unmapped_or_exception	2	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:30	A2	0048A500	0_1_2_3	unmapped_or_exception	2	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:30	A2	0048A500	boundary_mix	unmapped_or_exception	2	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:31	A2	0048A540	zero	unmapped_or_exception	2	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:31	A2	0048A540	ascending	unmapped_or_exception	2	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:31	A2	0048A540	0_1_2_3	unmapped_or_exception	2	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:31	A2	0048A540	boundary_mix	unmapped_or_exception	2	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:32	A2	0048A580	zero	unmapped_or_exception	2	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:32	A2	0048A580	ascending	unmapped_or_exception	2	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:32	A2	0048A580	0_1_2_3	unmapped_or_exception	2	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:32	A2	0048A580	boundary_mix	unmapped_or_exception	2	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:33	A2	0048A5D0	zero	unmapped_or_exception	3	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:33	A2	0048A5D0	ascending	unmapped_or_exception	3	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:33	A2	0048A5D0	0_1_2_3	unmapped_or_exception	3	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:33	A2	0048A5D0	boundary_mix	unmapped_or_exception	3	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:35	A2	0048A670	zero	unmapped_or_exception	2	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:35	A2	0048A670	ascending	unmapped_or_exception	2	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:35	A2	0048A670	0_1_2_3	unmapped_or_exception	2	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:35	A2	0048A670	boundary_mix	unmapped_or_exception	2	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:36	A2	0048A6C0	zero	unmapped_or_exception	3	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:36	A2	0048A6C0	ascending	unmapped_or_exception	3	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:36	A2	0048A6C0	0_1_2_3	unmapped_or_exception	3	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:36	A2	0048A6C0	boundary_mix	unmapped_or_exception	3	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:37	A2	0048A710	zero	unmapped_or_exception	3	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:37	A2	0048A710	ascending	unmapped_or_exception	3	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:37	A2	0048A710	0_1_2_3	unmapped_or_exception	3	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:37	A2	0048A710	boundary_mix	unmapped_or_exception	3	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:38	A2	0048A760	zero	unmapped_or_exception	4	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:38	A2	0048A760	ascending	unmapped_or_exception	4	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:38	A2	0048A760	0_1_2_3	unmapped_or_exception	4	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:38	A2	0048A760	boundary_mix	unmapped_or_exception	4	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:3A	A2	0048A880	zero	unmapped_or_exception	2	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:3A	A2	0048A880	ascending	unmapped_or_exception	2	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:3A	A2	0048A880	0_1_2_3	unmapped_or_exception	2	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:3A	A2	0048A880	boundary_mix	unmapped_or_exception	2	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:43	A2	0048ABE0	zero	unmapped_or_exception	9	0	0		0x446397	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:43	A2	0048ABE0	ascending	unmapped_or_exception	9	0	0		0x446397	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:43	A2	0048ABE0	0_1_2_3	unmapped_or_exception	9	0	0		0x446397	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:43	A2	0048ABE0	boundary_mix	unmapped_or_exception	9	0	0		0x446397	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:47	A2	0048B040	zero	unmapped_or_exception	5	0	0		0x446397	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:47	A2	0048B040	ascending	unmapped_or_exception	5	0	0		0x446397	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:47	A2	0048B040	0_1_2_3	unmapped_or_exception	5	0	0		0x446397	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:47	A2	0048B040	boundary_mix	unmapped_or_exception	5	0	0		0x446397	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:4A	A2	0048B2D0	zero	unmapped_or_exception	5	0	0		0x446397	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:4A	A2	0048B2D0	ascending	unmapped_or_exception	5	0	0		0x446397	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:4A	A2	0048B2D0	0_1_2_3	unmapped_or_exception	5	0	0		0x446397	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:4A	A2	0048B2D0	boundary_mix	unmapped_or_exception	5	0	0		0x446397	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:50	A2	0048B400	zero	unmapped_or_exception	0	0	0		0x4466db	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:50	A2	0048B400	ascending	unmapped_or_exception	0	0	0		0x4466db	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:50	A2	0048B400	0_1_2_3	unmapped_or_exception	0	0	0		0x4466db	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:50	A2	0048B400	boundary_mix	unmapped_or_exception	0	0	0		0x4466db	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:51	A2	0048B440	zero	unmapped_or_exception	1	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:51	A2	0048B440	ascending	unmapped_or_exception	1	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:51	A2	0048B440	0_1_2_3	unmapped_or_exception	1	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:51	A2	0048B440	boundary_mix	unmapped_or_exception	1	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:54	A2	0048B530	zero	script_error	2	0	0		0x471e50	script_error
+90:54	A2	0048B530	ascending	script_error	2	0	0		0x471e50	script_error
+90:54	A2	0048B530	0_1_2_3	script_error	2	0	0		0x471e50	script_error
+90:54	A2	0048B530	boundary_mix	script_error	2	0	0		0x471e50	script_error
+90:55	A2	0048B570	zero	script_error	2	0	0		0x471e50	script_error
+90:55	A2	0048B570	ascending	script_error	2	0	0		0x471e50	script_error
+90:55	A2	0048B570	0_1_2_3	script_error	2	0	0		0x471e50	script_error
+90:55	A2	0048B570	boundary_mix	script_error	2	0	0		0x471e50	script_error
+90:56	A2	0048B600	zero	script_error	7	0	0		0x471e50	script_error
+90:56	A2	0048B600	ascending	script_error	7	0	0		0x471e50	script_error
+90:56	A2	0048B600	0_1_2_3	script_error	7	0	0		0x471e50	script_error
+90:56	A2	0048B600	boundary_mix	script_error	7	0	0		0x471e50	script_error
+90:58	A2	0048B7B0	zero	script_error	9	0	0		0x471e50	script_error
+90:58	A2	0048B7B0	ascending	script_error	9	0	0		0x471e50	script_error
+90:58	A2	0048B7B0	0_1_2_3	script_error	9	0	0		0x471e50	script_error
+90:58	A2	0048B7B0	boundary_mix	script_error	9	0	0		0x471e50	script_error
+90:5A	A2	0048BAE0	zero	script_error	10	0	0		0x471e50	script_error
+90:5A	A2	0048BAE0	ascending	script_error	10	0	0		0x471e50	script_error
+90:5A	A2	0048BAE0	0_1_2_3	script_error	10	0	0		0x471e50	script_error
+90:5A	A2	0048BAE0	boundary_mix	script_error	10	0	0		0x471e50	script_error
+90:5C	A2	0048BF80	zero	script_error	17	0	0		0x471e50	script_error
+90:5C	A2	0048BF80	ascending	script_error	17	0	0		0x471e50	script_error
+90:5C	A2	0048BF80	0_1_2_3	script_error	17	0	0		0x471e50	script_error
+90:5C	A2	0048BF80	boundary_mix	script_error	17	0	0		0x471e50	script_error
+90:60	A2	0048C610	zero	unmapped_or_exception	0	0	0		0x44714b	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:60	A2	0048C610	ascending	unmapped_or_exception	0	0	0		0x44714b	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:60	A2	0048C610	0_1_2_3	unmapped_or_exception	0	0	0		0x44714b	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:60	A2	0048C610	boundary_mix	unmapped_or_exception	0	0	0		0x44714b	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:61	A2	0048C640	zero	script_error	1	0	0		0x471e50	script_error
+90:61	A2	0048C640	ascending	script_error	1	0	0		0x471e50	script_error
+90:61	A2	0048C640	0_1_2_3	script_error	1	0	0		0x471e50	script_error
+90:61	A2	0048C640	boundary_mix	script_error	1	0	0		0x471e50	script_error
+90:64	A2	0048C670	zero	script_error	2	0	0		0x471e50	script_error
+90:64	A2	0048C670	ascending	script_error	2	0	0		0x471e50	script_error
+90:64	A2	0048C670	0_1_2_3	script_error	2	0	0		0x471e50	script_error
+90:64	A2	0048C670	boundary_mix	script_error	2	0	0		0x471e50	script_error
+90:66	A2	0048C720	zero	script_error	7	0	0		0x471e50	script_error
+90:66	A2	0048C720	ascending	script_error	7	0	0		0x471e50	script_error
+90:66	A2	0048C720	0_1_2_3	script_error	7	0	0		0x471e50	script_error
+90:66	A2	0048C720	boundary_mix	script_error	7	0	0		0x471e50	script_error
+90:80	A2	0048CDB0	zero	unmapped_or_exception	2	0	0		0x4486fc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:80	A2	0048CDB0	ascending	unmapped_or_exception	2	0	0		0x4486fc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:80	A2	0048CDB0	0_1_2_3	unmapped_or_exception	2	0	0		0x4486fc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:80	A2	0048CDB0	boundary_mix	unmapped_or_exception	2	0	0		0x4486fc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:81	A2	0048CE50	zero	unmapped_or_exception	1	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:81	A2	0048CE50	ascending	unmapped_or_exception	1	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:81	A2	0048CE50	0_1_2_3	unmapped_or_exception	1	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:81	A2	0048CE50	boundary_mix	unmapped_or_exception	1	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:85	A2	0048CFC0	zero	script_error	7	0	0		0x471e50	script_error
+90:85	A2	0048CFC0	ascending	script_error	7	0	0		0x471e50	script_error
+90:85	A2	0048CFC0	0_1_2_3	script_error	7	0	0		0x471e50	script_error
+90:85	A2	0048CFC0	boundary_mix	script_error	7	0	0		0x471e50	script_error
+90:86	A2	0048D060	zero	script_error	4	0	0		0x471e50	script_error
+90:86	A2	0048D060	ascending	script_error	4	0	0		0x471e50	script_error
+90:86	A2	0048D060	0_1_2_3	script_error	4	0	0		0x471e50	script_error
+90:86	A2	0048D060	boundary_mix	script_error	4	0	0		0x471e50	script_error
+90:87	A2	0048D140	zero	script_error	2	0	0		0x471e50	script_error
+90:87	A2	0048D140	ascending	script_error	2	0	0		0x471e50	script_error
+90:87	A2	0048D140	0_1_2_3	script_error	2	0	0		0x471e50	script_error
+90:87	A2	0048D140	boundary_mix	script_error	2	0	0		0x471e50	script_error
+90:88	A2	0048D180	zero	script_error	5	0	0		0x471e50	script_error
+90:88	A2	0048D180	ascending	script_error	5	0	0		0x471e50	script_error
+90:88	A2	0048D180	0_1_2_3	script_error	5	0	0		0x471e50	script_error
+90:88	A2	0048D180	boundary_mix	script_error	5	0	0		0x471e50	script_error
+90:90	A2	0048D290	zero	script_error	6	0	0		0x471e50	script_error
+90:90	A2	0048D290	ascending	script_error	6	0	0		0x471e50	script_error
+90:90	A2	0048D290	0_1_2_3	script_error	6	0	0		0x471e50	script_error
+90:90	A2	0048D290	boundary_mix	script_error	6	0	0		0x471e50	script_error
+90:9B	A2	0048D540	zero	returned	2	0	0	00000000	0x40000000	
+90:9B	A2	0048D540	ascending	returned	2	0	0	00000000	0x40000000	
+90:9B	A2	0048D540	0_1_2_3	returned	2	0	0	00000000	0x40000000	
+90:9B	A2	0048D540	boundary_mix	returned	2	0	0	00000000	0x40000000	
+90:B6	A2	0048DF80	zero	returned	2	1	0	00000000	0x40000000	
+90:B6	A2	0048DF80	ascending	returned	2	1	0	00000000	0x40000000	
+90:B6	A2	0048DF80	0_1_2_3	returned	2	1	0	00000000	0x40000000	
+90:B6	A2	0048DF80	boundary_mix	returned	2	1	0	00000000	0x40000000	
+90:B8	A2	0048E000	zero	unmapped_or_exception	1	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+90:B8	A2	0048E000	ascending	unmapped_or_exception	1	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+90:B8	A2	0048E000	0_1_2_3	unmapped_or_exception	1	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+90:B8	A2	0048E000	boundary_mix	unmapped_or_exception	1	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+90:B9	A2	0048E030	zero	returned	1	1	0	00000000	0x40000000	
+90:B9	A2	0048E030	ascending	returned	1	1	0	00000000	0x40000000	
+90:B9	A2	0048E030	0_1_2_3	returned	1	1	0	00000000	0x40000000	
+90:B9	A2	0048E030	boundary_mix	returned	1	1	0	00000000	0x40000000	
+90:BA	A2	0048E050	zero	returned	2	1	0	00000000	0x40000000	
+90:BA	A2	0048E050	ascending	returned	2	1	0	00000000	0x40000000	
+90:BA	A2	0048E050	0_1_2_3	returned	2	1	0	00000000	0x40000000	
+90:BA	A2	0048E050	boundary_mix	returned	2	1	0	00000000	0x40000000	
+90:BC	A2	0048E090	zero	returned	2	1	0	00000000	0x40000000	
+90:BC	A2	0048E090	ascending	returned	2	1	0	00000000	0x40000000	
+90:BC	A2	0048E090	0_1_2_3	returned	2	1	0	00000000	0x40000000	
+90:BC	A2	0048E090	boundary_mix	unmapped_or_exception	2	0	0		0x12b780	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+90:BE	A2	0048E0F0	zero	returned	2	1	0	00000000	0x40000000	
+90:BE	A2	0048E0F0	ascending	returned	2	1	0	00000000	0x40000000	
+90:BE	A2	0048E0F0	0_1_2_3	returned	2	1	0	00000000	0x40000000	
+90:BE	A2	0048E0F0	boundary_mix	unmapped_or_exception	2	0	0		0x12b780	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+90:BF	A2	0048E120	zero	returned	2	1	0	00000000	0x40000000	
+90:BF	A2	0048E120	ascending	returned	2	1	0	00000000	0x40000000	
+90:BF	A2	0048E120	0_1_2_3	returned	2	1	0	00000000	0x40000000	
+90:BF	A2	0048E120	boundary_mix	unmapped_or_exception	2	0	0		0x12b780	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+90:F1	A2	0048F260	zero	unmapped_or_exception	0	0	0		0x46c4dc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:F1	A2	0048F260	ascending	unmapped_or_exception	0	0	0		0x46c4dc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:F1	A2	0048F260	0_1_2_3	unmapped_or_exception	0	0	0		0x46c4dc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:F1	A2	0048F260	boundary_mix	unmapped_or_exception	0	0	0		0x46c4dc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+90:F2	A2	0048F280	zero	returned	0	1	0	00000000	0x40000000	
+90:F2	A2	0048F280	ascending	returned	0	1	0	00000000	0x40000000	
+90:F2	A2	0048F280	0_1_2_3	returned	0	1	0	00000000	0x40000000	
+90:F2	A2	0048F280	boundary_mix	returned	0	1	0	00000000	0x40000000	
+90:F3	A2	0048F2A0	zero	returned	1	0	0	00000000	0x40000000	
+90:F3	A2	0048F2A0	ascending	returned	1	0	0	00000000	0x40000000	
+90:F3	A2	0048F2A0	0_1_2_3	returned	1	0	0	00000000	0x40000000	
+90:F3	A2	0048F2A0	boundary_mix	returned	1	0	0	00000000	0x40000000	
+90:F5	A2	0048F360	zero	unmapped_or_exception	1	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+90:F5	A2	0048F360	ascending	unmapped_or_exception	1	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+90:F5	A2	0048F360	0_1_2_3	unmapped_or_exception	1	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+90:F5	A2	0048F360	boundary_mix	unmapped_or_exception	1	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+90:F6	A2	0048F3A0	zero	unmapped_or_exception	3	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+90:F6	A2	0048F3A0	ascending	unmapped_or_exception	3	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+90:F6	A2	0048F3A0	0_1_2_3	unmapped_or_exception	3	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+90:F6	A2	0048F3A0	boundary_mix	unmapped_or_exception	3	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+91:11	A2	0048FAF0	zero	unmapped_or_exception	2	0	0		0x408fcc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:11	A2	0048FAF0	ascending	unmapped_or_exception	2	0	0		0x408fcc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:11	A2	0048FAF0	0_1_2_3	unmapped_or_exception	2	0	0		0x408fcc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:11	A2	0048FAF0	boundary_mix	script_error	2	0	0		0x471e50	script_error
+91:12	A2	0048FB70	zero	unmapped_or_exception	6	0	0		0x408fcc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:12	A2	0048FB70	ascending	unmapped_or_exception	6	0	0		0x408fcc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:12	A2	0048FB70	0_1_2_3	unmapped_or_exception	6	0	0		0x408fcc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:12	A2	0048FB70	boundary_mix	unmapped_or_exception	6	0	0		0x408fcc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:16	A2	0048FEF0	zero	unmapped_or_exception	7	0	0		0x408fcc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:16	A2	0048FEF0	ascending	unmapped_or_exception	7	0	0		0x408fcc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:16	A2	0048FEF0	0_1_2_3	unmapped_or_exception	7	0	0		0x408fcc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:16	A2	0048FEF0	boundary_mix	unmapped_or_exception	7	0	0		0x408fcc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:1B	A2	004903F0	zero	unmapped_or_exception	5	0	0		0x408fcc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:1B	A2	004903F0	ascending	unmapped_or_exception	5	0	0		0x408fcc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:1B	A2	004903F0	0_1_2_3	unmapped_or_exception	5	0	0		0x408fcc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:1B	A2	004903F0	boundary_mix	unmapped_or_exception	5	0	0		0x408fcc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:36	A2	00490860	zero	unmapped_or_exception	4	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:36	A2	00490860	ascending	unmapped_or_exception	4	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:36	A2	00490860	0_1_2_3	unmapped_or_exception	4	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:36	A2	00490860	boundary_mix	unmapped_or_exception	4	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:38	A2	00490900	zero	unmapped_or_exception	3	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:38	A2	00490900	ascending	unmapped_or_exception	3	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:38	A2	00490900	0_1_2_3	unmapped_or_exception	3	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:38	A2	00490900	boundary_mix	unmapped_or_exception	3	0	0		0x44b273	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:40	A2	00490C00	zero	unmapped_or_exception	9	0	0		0x446397	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:40	A2	00490C00	ascending	unmapped_or_exception	9	0	0		0x446397	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:40	A2	00490C00	0_1_2_3	unmapped_or_exception	9	0	0		0x446397	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:40	A2	00490C00	boundary_mix	unmapped_or_exception	9	0	0		0x446397	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:48	A2	004911A0	zero	unmapped_or_exception	3	0	0		0x446278	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:48	A2	004911A0	ascending	unmapped_or_exception	3	0	0		0x446278	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:48	A2	004911A0	0_1_2_3	unmapped_or_exception	3	0	0		0x446278	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:48	A2	004911A0	boundary_mix	unmapped_or_exception	3	0	0		0x446278	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:49	A2	00491240	zero	unmapped_or_exception	3	0	0		0x4462c8	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:49	A2	00491240	ascending	unmapped_or_exception	3	0	0		0x4462c8	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:49	A2	00491240	0_1_2_3	unmapped_or_exception	3	0	0		0x4462c8	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:49	A2	00491240	boundary_mix	unmapped_or_exception	3	0	0		0x4462c8	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:4A	A2	004912E0	zero	unmapped_or_exception	4	0	0		0x446318	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:4A	A2	004912E0	ascending	unmapped_or_exception	4	0	0		0x446318	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:4A	A2	004912E0	0_1_2_3	unmapped_or_exception	4	0	0		0x446318	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:4A	A2	004912E0	boundary_mix	unmapped_or_exception	4	0	0		0x446318	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:55	A2	00491390	zero	returned	2	1	0	00000000	0x40000000	
+91:55	A2	00491390	ascending	returned	2	1	0	00000000	0x40000000	
+91:55	A2	00491390	0_1_2_3	returned	2	1	0	00000000	0x40000000	
+91:55	A2	00491390	boundary_mix	returned	2	1	0	00000000	0x40000000	
+91:60	A2	004913C0	zero	unmapped_or_exception	0	0	0		0x44742b	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:60	A2	004913C0	ascending	unmapped_or_exception	0	0	0		0x44742b	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:60	A2	004913C0	0_1_2_3	unmapped_or_exception	0	0	0		0x44742b	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:60	A2	004913C0	boundary_mix	unmapped_or_exception	0	0	0		0x44742b	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:61	A2	004913F0	zero	script_error	1	0	0		0x471e50	script_error
+91:61	A2	004913F0	ascending	script_error	1	0	0		0x471e50	script_error
+91:61	A2	004913F0	0_1_2_3	script_error	1	0	0		0x471e50	script_error
+91:61	A2	004913F0	boundary_mix	script_error	1	0	0		0x471e50	script_error
+91:64	A2	00491420	zero	script_error	2	0	0		0x471e50	script_error
+91:64	A2	00491420	ascending	script_error	2	0	0		0x471e50	script_error
+91:64	A2	00491420	0_1_2_3	script_error	2	0	0		0x471e50	script_error
+91:64	A2	00491420	boundary_mix	script_error	2	0	0		0x471e50	script_error
+91:65	A2	00491460	zero	script_error	6	0	0		0x471e50	script_error
+91:65	A2	00491460	ascending	script_error	6	0	0		0x471e50	script_error
+91:65	A2	00491460	0_1_2_3	script_error	6	0	0		0x471e50	script_error
+91:65	A2	00491460	boundary_mix	script_error	6	0	0		0x471e50	script_error
+91:66	A2	00491680	zero	script_error	4	0	0		0x471e50	script_error
+91:66	A2	00491680	ascending	script_error	4	0	0		0x471e50	script_error
+91:66	A2	00491680	0_1_2_3	script_error	4	0	0		0x471e50	script_error
+91:66	A2	00491680	boundary_mix	script_error	4	0	0		0x471e50	script_error
+91:88	A2	00492E00	zero	script_error	7	0	0		0x471e50	script_error
+91:88	A2	00492E00	ascending	script_error	7	0	0		0x471e50	script_error
+91:88	A2	00492E00	0_1_2_3	script_error	7	0	0		0x471e50	script_error
+91:88	A2	00492E00	boundary_mix	script_error	7	0	0		0x471e50	script_error
+91:89	A2	00492F10	zero	script_error	2	0	0		0x471e50	script_error
+91:89	A2	00492F10	ascending	script_error	2	0	0		0x471e50	script_error
+91:89	A2	00492F10	0_1_2_3	script_error	2	0	0		0x471e50	script_error
+91:89	A2	00492F10	boundary_mix	script_error	2	0	0		0x471e50	script_error
+91:8B	A2	00493010	zero	script_error	2	0	0		0x471e50	script_error
+91:8B	A2	00493010	ascending	script_error	2	0	0		0x471e50	script_error
+91:8B	A2	00493010	0_1_2_3	script_error	2	0	0		0x471e50	script_error
+91:8B	A2	00493010	boundary_mix	script_error	2	0	0		0x471e50	script_error
+91:8D	A2	004930E0	zero	script_error	1	0	0		0x471e50	script_error
+91:8D	A2	004930E0	ascending	script_error	1	0	0		0x471e50	script_error
+91:8D	A2	004930E0	0_1_2_3	script_error	1	0	0		0x471e50	script_error
+91:8D	A2	004930E0	boundary_mix	script_error	1	0	0		0x471e50	script_error
+91:8E	A2	00493140	zero	script_error	1	0	0		0x471e50	script_error
+91:8E	A2	00493140	ascending	script_error	1	0	0		0x471e50	script_error
+91:8E	A2	00493140	0_1_2_3	script_error	1	0	0		0x471e50	script_error
+91:8E	A2	00493140	boundary_mix	script_error	1	0	0		0x471e50	script_error
+91:9B	A2	00493660	zero	unmapped_or_exception	7	0	0		0x40a017	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:9B	A2	00493660	ascending	unmapped_or_exception	7	0	0		0x40a017	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:9B	A2	00493660	0_1_2_3	unmapped_or_exception	7	0	0		0x40a017	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:9B	A2	00493660	boundary_mix	unmapped_or_exception	7	0	0		0x40a017	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:9F	A2	00493AB0	zero	unmapped_or_exception	2	0	0		0x4a439a	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:9F	A2	00493AB0	ascending	unmapped_or_exception	2	0	0		0x4a439a	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:9F	A2	00493AB0	0_1_2_3	unmapped_or_exception	2	0	0		0x4a439a	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:9F	A2	00493AB0	boundary_mix	unmapped_or_exception	2	0	0		0x12b780	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+91:F1	A2	00493CF0	zero	unmapped_or_exception	2	0	0		0x409533	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:F1	A2	00493CF0	ascending	unmapped_or_exception	2	0	0		0x409533	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:F1	A2	00493CF0	0_1_2_3	unmapped_or_exception	2	0	0		0x409533	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:F1	A2	00493CF0	boundary_mix	unmapped_or_exception	2	0	0		0x12b780	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+91:F2	A2	00493D60	zero	unmapped_or_exception	1	0	0		0x4095a5	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:F2	A2	00493D60	ascending	unmapped_or_exception	1	0	0		0x4095a5	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:F2	A2	00493D60	0_1_2_3	unmapped_or_exception	1	0	0		0x4095a5	Invalid memory read (UC_ERR_READ_UNMAPPED)
+91:F2	A2	00493D60	boundary_mix	unmapped_or_exception	1	0	0		0x4095a5	Invalid memory read (UC_ERR_READ_UNMAPPED)
+92:14	A2	00494470	zero	unmapped_or_exception	2	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+92:14	A2	00494470	ascending	unmapped_or_exception	2	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+92:14	A2	00494470	0_1_2_3	unmapped_or_exception	2	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+92:14	A2	00494470	boundary_mix	unmapped_or_exception	2	0	0		0x12b780	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+92:15	A2	00494500	zero	returned	0	0	0	00000000	0x40000000	
+92:15	A2	00494500	ascending	returned	0	0	0	00000000	0x40000000	
+92:15	A2	00494500	0_1_2_3	returned	0	0	0	00000000	0x40000000	
+92:15	A2	00494500	boundary_mix	returned	0	0	0	00000000	0x40000000	
+92:16	A2	00494510	zero	unmapped_or_exception	2	0	0		0x408f9c	Invalid memory read (UC_ERR_READ_UNMAPPED)
+92:16	A2	00494510	ascending	unmapped_or_exception	2	0	0		0x408f9c	Invalid memory read (UC_ERR_READ_UNMAPPED)
+92:16	A2	00494510	0_1_2_3	unmapped_or_exception	2	0	0		0x408f9c	Invalid memory read (UC_ERR_READ_UNMAPPED)
+92:16	A2	00494510	boundary_mix	unmapped_or_exception	2	0	0		0x12b780	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+92:19	A2	00494610	zero	unmapped_or_exception	1	0	0		0x408fcc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+92:19	A2	00494610	ascending	unmapped_or_exception	1	0	0		0x408fcc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+92:19	A2	00494610	0_1_2_3	unmapped_or_exception	1	0	0		0x408fcc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+92:19	A2	00494610	boundary_mix	unmapped_or_exception	1	0	0		0x408fcc	Invalid memory read (UC_ERR_READ_UNMAPPED)
+92:89	A2	00494DA0	zero	script_error	6	0	0		0x471e50	script_error
+92:89	A2	00494DA0	ascending	script_error	6	0	0		0x471e50	script_error
+92:89	A2	00494DA0	0_1_2_3	script_error	6	0	0		0x471e50	script_error
+92:89	A2	00494DA0	boundary_mix	script_error	6	0	0		0x471e50	script_error
+92:8E	A2	00495040	zero	script_error	1	0	0		0x471e50	script_error
+92:8E	A2	00495040	ascending	script_error	1	0	0		0x471e50	script_error
+92:8E	A2	00495040	0_1_2_3	script_error	1	0	0		0x471e50	script_error
+92:8E	A2	00495040	boundary_mix	script_error	1	0	0		0x471e50	script_error
+92:90	A2	00495070	zero	script_error	15	0	0		0x471e50	script_error
+92:90	A2	00495070	ascending	script_error	15	0	0		0x471e50	script_error
+92:90	A2	00495070	0_1_2_3	script_error	15	0	0		0x471e50	script_error
+92:90	A2	00495070	boundary_mix	unmapped_or_exception	14	0	0		0x12b780	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+92:91	A2	00495170	zero	script_error	11	0	0		0x471e50	script_error
+92:91	A2	00495170	ascending	script_error	11	0	0		0x471e50	script_error
+92:91	A2	00495170	0_1_2_3	script_error	11	0	0		0x471e50	script_error
+92:91	A2	00495170	boundary_mix	unmapped_or_exception	10	0	0		0x12b780	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+92:9C	A2	004954F0	zero	script_error	21	0	0		0x471e50	script_error
+92:9C	A2	004954F0	ascending	script_error	21	0	0		0x471e50	script_error
+92:9C	A2	004954F0	0_1_2_3	script_error	21	0	0		0x471e50	script_error
+92:9C	A2	004954F0	boundary_mix	script_error	21	0	0		0x471e50	script_error
+92:F0	A2	00495830	zero	script_error	6	0	0		0x471e50	script_error
+92:F0	A2	00495830	ascending	unmapped_or_exception	6	0	0		0x12c908	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+92:F0	A2	00495830	0_1_2_3	unmapped_or_exception	6	0	0		0x12c908	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+92:F0	A2	00495830	boundary_mix	script_error	6	0	0		0x471e50	script_error
+92:F1	A2	004958E0	zero	unmapped_or_exception	5	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+92:F1	A2	004958E0	ascending	unmapped_or_exception	5	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+92:F1	A2	004958E0	0_1_2_3	unmapped_or_exception	5	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+92:F1	A2	004958E0	boundary_mix	unmapped_or_exception	2	0	0		0x12b780	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+92:F2	A2	004959C0	zero	returned	5	1	0	00000000	0x40000000	
+92:F2	A2	004959C0	ascending	unmapped_or_exception	5	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+92:F2	A2	004959C0	0_1_2_3	returned	5	1	0	00000000	0x40000000	
+92:F2	A2	004959C0	boundary_mix	unmapped_or_exception	4	0	0		0x12b780	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+92:F4	A2	00495A90	zero	unmapped_or_exception	2	0	0		0x4096b1	Invalid memory read (UC_ERR_READ_UNMAPPED)
+92:F4	A2	00495A90	ascending	unmapped_or_exception	2	0	0		0x4096b1	Invalid memory read (UC_ERR_READ_UNMAPPED)
+92:F4	A2	00495A90	0_1_2_3	unmapped_or_exception	2	0	0		0x4096b1	Invalid memory read (UC_ERR_READ_UNMAPPED)
+92:F4	A2	00495A90	boundary_mix	returned	2	1	0	00000000	0x40000000	
+A0:11	A2	00495DE0	zero	unmapped_or_exception	5	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:11	A2	00495DE0	ascending	script_error	5	0	0		0x471e50	script_error
+A0:11	A2	00495DE0	0_1_2_3	unmapped_or_exception	5	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:11	A2	00495DE0	boundary_mix	unmapped_or_exception	4	0	0		0x12b780	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:12	A2	00495F70	zero	unmapped_or_exception	7	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:12	A2	00495F70	ascending	script_error	7	0	0		0x471e50	script_error
+A0:12	A2	00495F70	0_1_2_3	unmapped_or_exception	7	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:12	A2	00495F70	boundary_mix	unmapped_or_exception	4	0	0		0x12b780	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:14	A2	00496080	zero	unmapped_or_exception	2	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:14	A2	00496080	ascending	script_error	2	0	0		0x471e50	script_error
+A0:14	A2	00496080	0_1_2_3	unmapped_or_exception	2	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:14	A2	00496080	boundary_mix	script_error	2	0	0		0x471e50	script_error
+A0:16	A2	00496100	zero	unmapped_or_exception	3	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:16	A2	00496100	ascending	script_error	3	0	0		0x471e50	script_error
+A0:16	A2	00496100	0_1_2_3	unmapped_or_exception	3	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:16	A2	00496100	boundary_mix	script_error	3	0	0		0x471e50	script_error
+A0:19	A2	004961C0	zero	unmapped_or_exception	2	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:19	A2	004961C0	ascending	script_error	2	0	0		0x471e50	script_error
+A0:19	A2	004961C0	0_1_2_3	unmapped_or_exception	2	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:19	A2	004961C0	boundary_mix	script_error	2	0	0		0x471e50	script_error
+A0:21	A2	004962E0	zero	unmapped_or_exception	5	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:21	A2	004962E0	ascending	unmapped_or_exception	5	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:21	A2	004962E0	0_1_2_3	unmapped_or_exception	5	0	0		0x12cee0	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:21	A2	004962E0	boundary_mix	unmapped_or_exception	4	0	0		0x12b780	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:24	A2	004964D0	zero	unmapped_or_exception	3	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:24	A2	004964D0	ascending	unmapped_or_exception	3	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:24	A2	004964D0	0_1_2_3	unmapped_or_exception	3	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:24	A2	004964D0	boundary_mix	script_error	3	0	0		0x471e50	script_error
+A0:25	A2	00496560	zero	unmapped_or_exception	1	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:25	A2	00496560	ascending	unmapped_or_exception	1	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:25	A2	00496560	0_1_2_3	unmapped_or_exception	1	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:25	A2	00496560	boundary_mix	unmapped_or_exception	1	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:26	A2	00496590	zero	unmapped_or_exception	2	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:26	A2	00496590	ascending	unmapped_or_exception	2	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:26	A2	00496590	0_1_2_3	unmapped_or_exception	2	0	0		0x12b67a	Invalid memory fetch (UC_ERR_FETCH_UNMAPPED)
+A0:26	A2	00496590	boundary_mix	script_error	2	0	0		0x471e50	script_error
+B0:80	A2	00488180	zero	unmapped_or_exception	1	0	0		0x4a4751	Invalid memory read (UC_ERR_READ_UNMAPPED)
+B0:80	A2	00488180	ascending	unmapped_or_exception	1	0	0		0x4a4751	Invalid memory read (UC_ERR_READ_UNMAPPED)
+B0:80	A2	00488180	0_1_2_3	unmapped_or_exception	1	0	0		0x4a4751	Invalid memory read (UC_ERR_READ_UNMAPPED)
+B0:80	A2	00488180	boundary_mix	unmapped_or_exception	1	0	0		0x4a4751	Invalid memory read (UC_ERR_READ_UNMAPPED)
+C0:01	A2	00484C00	zero	script_error	1	0	0		0x471e50	script_error
+C0:01	A2	00484C00	ascending	script_error	1	0	0		0x471e50	script_error
+C0:01	A2	00484C00	0_1_2_3	script_error	1	0	0		0x471e50	script_error
+C0:01	A2	00484C00	boundary_mix	script_error	1	0	0		0x471e50	script_error
+C0:41	A2	00485C20	zero	script_error	1	0	0		0x471e50	script_error
+C0:41	A2	00485C20	ascending	script_error	1	0	0		0x471e50	script_error
+C0:41	A2	00485C20	0_1_2_3	script_error	1	0	0		0x471e50	script_error
+C0:41	A2	00485C20	boundary_mix	script_error	1	0	0		0x471e50	script_error

@@ -1,0 +1,8 @@
+archive	member	size	version	width	height	bit_depth	format	rate_field	frames	field_2c	first_frame	offsets_valid
+data02280.arc	ef_shuchu.bm	2066944	00010001	1320	760	32	2	15	4	20	208	True
+data02280.arc	ef_shuchu_bl.bm	2066944	00010001	1320	760	32	2	15	4	20	208	True
+data02280.arc	ef_shuchu_wh.bm	2066864	00010001	1320	760	32	2	15	4	20	208	True
+data02280.arc	ef_shuchu_wh_a.bm	498795	00010001	1320	760	32	2	12	4	0	208	True
+data02280.arc	shuchu.bm	9858409	00010001	1280	720	24	1	60	298	20	1384	True
+data02291.arc	ef_love.bm	11955339	00010001	1280	720	24	1	60	1411	20	5836	True
+data02291.arc	ef_shine.bm	12600329	00010001	1280	720	24	1	60	1426	20	5896	True

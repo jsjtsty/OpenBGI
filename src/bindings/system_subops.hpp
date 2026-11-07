@@ -14,15 +14,18 @@
 #include "formats/gdb.hpp"
 #include "render/display.hpp"
 #include "vm/vm.hpp"
+#include "services/input.hpp"
 
 namespace obgi {
 
 // Engine-wide settings the scripts write at start-up (analysis/子opcode语义表.md, 80:xx / 81:xx / 90:xx / 91:xx
 // "set a global" ops). Most of them only record a value for other subsystems to read later.
-struct SystemState {
+struct SystemState : InputState {
+    std::function<std::array<std::uint16_t, 8>()> calendar_time;
     bool launcher = false;                 // 80:FD: started with "Execute as a launcher."
     std::string game_name = "AmairoChocolate2ML"; // 80:E8
-    std::uint32_t frame_ms = 0;            // 90:02: milliseconds per frame, 1000 / fps (0 = unset)
+    std::uint32_t frame_ms = 4;            // 90:02: present interval in ms; the original scheduler starts at 250 fps
+    bool display_enabled = true;           // 90:01: whether the runner presents the composed display
     std::uint32_t code_page = 932;         // 81:00: 932 (CP932) or 65001 (UTF-8) for script strings
     // 90:20..24, 90:28, 90:29: timed changes of a display object (position along an ease curve, level along another),
     // advanced by advance_motions() once per scheduler frame
@@ -64,16 +67,6 @@ struct SystemState {
     // Ops whose only job is to hand their arguments to a subsystem keep them here, in the order the script pushed them
     // (window, input, typesetting and display settings); the subsystem reads them when it exists.
     std::map<std::uint16_t, std::vector<std::uint32_t>> records;
-    std::map<std::uint32_t, std::vector<std::uint32_t>> input_maps; // 80:1B: input mask -> input numbers
-    // Physical input numbers (Windows virtual-key codes: 1/2/4 mouse buttons, 0x0D enter, 0x20 space, ...): how many times each was
-    // pressed since the start (key repeats count). 80:12 / 80:1C answer with sums of these, scripts watch for changes
-    // (analysis/输入.md). The host calls press_input().
-    std::array<std::uint32_t, 256> input_counts{};
-    std::map<std::uint32_t, std::array<std::uint32_t, 256>> poll_seen; // 80:1A: the counts at the last poll, per priority
-    int mouse_x = 0, mouse_y = 0;                       // pointer in screen coordinates, set by the host
-    void press_input(std::uint32_t number) { if (number < input_counts.size()) ++input_counts[number]; }
-    // The input numbers behind one logical input mask bit: a script's 80:1B list, else the original's default.
-    std::vector<std::uint32_t> input_numbers(std::uint32_t bit) const;
     std::vector<std::uint32_t> window_numbers;                      // 80:62: zero-terminated list kept with `window_id`
     std::uint32_t window_id = 0;
     struct ArchiveGroup {
@@ -91,6 +84,7 @@ struct SystemState {
         bool enabled = false, shown = false;
         std::int32_t x = 0, y = 0;            // top-left of the picture, relative to the window object
         std::int32_t bmp_normal = -1, bmp_focus = -1, bmp_selected = -1, bmp_selected_focus = -1;
+        std::int32_t hit_mask = -1;             // hit-test bitmap (-1: whole picture, -2: never hit)
         std::uint32_t flags = 0;
         std::uint32_t sprite = 0;             // display object id of the drawn button, 0 = not drawn
         std::uint32_t hotkey = 0;             // plain panel: virtual key that decides the button (bit 31: also on repeat)
@@ -110,10 +104,9 @@ struct SystemState {
         int current_group = -1;
         int hover_group = -1, hover_index = -1;          // the button under the pointer
         std::uint32_t seen_clicks = 0;                   // left-button presses already looked at
-        bool modal = false, select_on_decide = false;    // descriptor: modal panel (reads every key), select on a mouse decision
+        bool modal = false, mouse = false, select_on_decide = false; // descriptor: modal input, window mouse layer, select on mouse decision
         std::uint32_t input_mask = 0;                    // descriptor: input bits the panel ignores
         std::int32_t key_map = 0;                        // descriptor: built-in key map 0..3 (user maps 4..7 act like 0)
-        std::array<std::uint32_t, 256> seen_input{};     // press counts at the last update, to see what was pressed since
         int last_mouse_x = -1, last_mouse_y = -1;        // pointer of the last hover selection
         int reads = 0;                                 // 90:BF reads answered so far (the first two give the initial event)
         std::deque<std::array<std::uint32_t, 3>> events; // pending 90:BF records
@@ -151,17 +144,16 @@ struct SystemState {
         std::uint32_t image = 0xFFFFFFFFu;   // 90:86: bitmap id, -1 = none
         std::uint32_t flag = 0, mode = 0;    // 90:84, 90:87
         std::int32_t x = 0, y = 0;           // 90:85
+        bool frame_visible = false, text_visible = true;
         std::array<std::int32_t, 4> area{};  // 90:88: left, top, right, bottom (inclusive)
         std::vector<std::uint32_t> extra;    // 90:85 / 90:86 arguments not interpreted yet
     std::map<std::uint16_t, std::vector<std::uint32_t>> props; // 91:88.. / 92:88.. text settings, by sub-opcode id
     };
     std::array<std::optional<Plane>, 16> planes;
-    // 90:84 shows a window (created hidden), 90:85 gives its effect and own transparency, 90:0C a global switch and a
-    // transparency added to all of them; refresh_planes() applies the three to the windows' display sprites
+    // 90:84 records the last explicit show request; animation can also change the display object's visibility.
     std::array<bool, 16> plane_shown{};
     std::array<std::uint32_t, 16> plane_level{}, plane_effect{};
     std::array<std::uint32_t, 16> plane_text_level{}; // transparency of a window's text layer while a page fades out (0 = opaque)
-    void refresh_planes();
     // B0:80: the script shows a message box (UTF-8 text). The host decides what to do with it; the script goes on.
     std::function<void(const std::string&)> message_box;
     // B0:81, B0:82: a question box (UTF-8 text); true for "yes" / "OK". Without a host the default button answers.
@@ -176,7 +168,6 @@ struct SystemState {
     std::uint32_t last_item_id = 0;
     std::deque<std::array<std::uint32_t, 3>> event_queue; // 80:A1 / 80:A0: global FIFO of three-word messages
     std::array<bool, 8> filter_used{}; // 90:60: the eight filter object slots
-    bool left_down = false;            // the left mouse button is held (set by the host)
     // 90:D0..DF: knob controls (sliders), handle 0xF0000000 + index, at most 32. A knob drives a display object (the thumb)
     // along a track: the object sits at the knob's base position plus the value (pixels, or 16.16 cells when steps > 0).
     struct Knob {
@@ -193,7 +184,6 @@ struct SystemState {
     };
     std::map<std::uint32_t, Knob> knobs;          // by handle
     std::vector<std::uint32_t> knob_wheel;        // 90:DE / 90:DF: knobs the mouse wheel scrolls, newest first
-    int wheel = 0;                                // wheel notches not yet looked at (set by the host; positive = away from the user)
     std::uint32_t knob_focus = 0;                // the knob being dragged
     std::uint32_t knob_seen_left = 0, knob_seen_right = 0; // presses already looked at
     std::map<std::uint32_t, std::uint32_t> typesetting; // 91:9A: key -> value (analysis/排版引擎.md)

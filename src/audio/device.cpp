@@ -3,7 +3,8 @@
 #include <SDL3/SDL.h>
 
 #include <string>
-#include <vector>
+#include <array>
+#include <algorithm>
 
 namespace obgi {
 
@@ -11,7 +12,7 @@ struct AudioDevice::Impl {
     Mixer* mixer = nullptr;
     SDL_AudioStream* stream = nullptr;
     bool inited = false;
-    std::vector<std::int16_t> scratch; // only touched by the audio callback
+    std::array<std::int16_t, 2048> scratch{}; // only touched by the audio callback
 
     ~Impl() {
         if (stream) SDL_DestroyAudioStream(stream); // closes the device; the callback is finished before it returns
@@ -24,11 +25,13 @@ namespace {
 // Called on SDL's audio thread whenever the device wants more data.
 void SDLCALL feed(void* user, SDL_AudioStream* stream, int additional, int /*total*/) {
     auto& m = *static_cast<AudioDevice::Impl*>(user);
-    const std::uint32_t frames = additional > 0 ? static_cast<std::uint32_t>(additional) / 4 : 0; // stereo S16
-    if (!frames) return;
-    m.scratch.resize(std::size_t{frames} * 2);
-    m.mixer->mix(m.scratch.data(), frames);
-    SDL_PutAudioStreamData(stream, m.scratch.data(), static_cast<int>(frames * 4));
+    std::uint32_t frames = additional > 0 ? static_cast<std::uint32_t>(additional) / 4 : 0;
+    while (frames) {
+        const auto count = std::min(frames, 1024u);
+        m.mixer->mix(m.scratch.data(), count);
+        if (!SDL_PutAudioStreamData(stream, m.scratch.data(), static_cast<int>(count * 4))) break;
+        frames -= count;
+    }
 }
 
 } // namespace

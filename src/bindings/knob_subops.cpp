@@ -113,14 +113,15 @@ std::vector<Word> by_priority(const SystemState& s) {
 } // namespace
 
 void knob_input(SystemState& s) {
-    // The wheel scrolls the newest knob on the wheel list by one value unit on the y axis, but only while 90:DD is
-    // non-zero; otherwise (and with an empty list) it presses the pseudo keys 0x0E (away) / 0x0F (towards).
-    for (; s.wheel != 0; s.wheel += s.wheel > 0 ? -1 : 1) {
-        const bool away = s.wheel > 0;
+    // A captured knob takes each wheel event; otherwise it becomes the engine's wheel-up/down pseudo key.
+    while (!s.wheel_events.empty()) {
+        const int step = s.wheel_events.front();
+        s.wheel_events.pop_front();
+        const bool away = step > 0;
         auto mode = s.values.find(0x90DD);
         const bool scrolls = (mode == s.values.end() || mode->second != 0) && !s.knob_wheel.empty();
         if (!scrolls) {
-            s.press_input(away ? 0x0E : 0x0F);
+            s.press_input(away ? 0x0E : 0x0F, false); // the host already bumped the serial for this wheel event
             continue;
         }
         Knob& k = s.knobs.at(s.knob_wheel.front());

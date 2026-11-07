@@ -1,0 +1,277 @@
+# 操作码审计（参考项目 vs 本项目已注册）
+
+参考项目有注释签名的 584 个；本项目注册 429 个；缺失 198；名称含 setting/record 等疑似只存值 54
+
+
+## 缺失（参考项目有，本项目没注册）
+
+- `8005` out → ok
+- `800A` dst →
+- `800B` → v
+- `800E` → f
+- `8010` f →
+- `801D` prio, vk → v
+- `801E` v → ok
+- `8024` pattern, recurse → n
+- `8027` newPath, existing → ok
+- `8029` path → ok
+- `802C` path → attr
+- `802D` path, attr → ok
+- `802F` dst, src → ok
+- `803C` file, title, msg → ok
+- `803E` path → ok
+- `8054` msg → (pushes 2 values later)
+- `8059` ms → f
+- `805D` f →
+- `8063` v →
+- `806B` path, name →
+- `806C` f →
+- `806D` buf → f
+- `806E` on →
+- `806F` → f
+- `8078` slot, comment →
+- `8079` slot → code
+- `807A` buf, slot → code
+- `807B` slot → code
+- `8090` max →
+- `8091` → n
+- `8094` a1 .. a9, arc, file, name, msg →
+- `8095` buf, idx → ok
+- `8096` rec →
+- `8097` buf, idx → ok
+- `80A9` id, out → f
+- `80B0` name, max → ok
+- `80B1` name → code
+- `80B4` name, prio → (pushes later)
+- `80B5` name → code
+- `80B6` name, prio → code
+- `80DE` outLen, id, idx → code
+- `80E0` p1, p2, p3, a → r
+- `80E2` p1, p2, p3 → r
+- `80E9` out, path → ok
+- `80EC` out, name → code
+- `80ED` id → code
+- `80EE` out, id, no, b, a, kinds → code
+- `80EF` x → v
+- `80F0` p1, p2, p3, p4, n5, n6, p7, p8 → r
+- `80F1` p1, p2, p3, p4, n5, n6 → r
+- `80F2` p14, l13, l12, v11, s10, l9, l8, v7, s6, s5, s4, s3, s2, v1 → r
+- `80F3` p1 .. p6, n1, n2 → r
+- `80F4` dir, list → r
+- `80F5` dir, list → r
+- `80F6` p1, p2, p3, f →
+- `80F7` p1, p2, p3 → r
+- `80F8` buf, p1, p2 → ok
+- `80F9` p1, p2 → ok
+- `80FA` buf, name → ok
+- `80FB` buf →
+- `80FC` p5 .. p1 → ok
+- `80FE` → f
+- `8102` lang → lang
+- `8103` → lang
+- `8104` ms → ok
+- `810A` out → ok
+- `810B` desc, ver, x →
+- `810C` ver, csd →
+- `810D` total, avail →
+- `8110` vk, on → old
+- `8111` buf →
+- `8114` on →
+- `8116` count, distance → ok
+- `8117` xy, dist, first, count → n
+- `811B` index, key → ok
+- `811E` kind → ok
+- `811F` mask →
+- `8120` dst, src, mode → 1
+- `8128` out, path, mode → code
+- `8129` handle → code
+- `812A` status, handle, buf, size → code
+- `812B` status, handle, pos → code
+- `8131` buf, url, off, size → code
+- `8138` out, count, descs, patterns, title, initialDir, kind → code
+- `813A` out, title, initial → ok
+- `813B` p1, p2, p3, p4 → r
+- `813C` name → r
+- `8144` stackEntries, codeSize, dataSize, ip → id
+- `8165` on →
+- `8166` on →
+- `8167` out →
+- `8168` on → previous
+- `8169` on →
+- `816A` on →
+- `816B` buf → n
+- `816C` w, h → ok
+- `816D` → f
+- `816E` → f
+- `8180` globals, gSize, sysarea, sSize, image → ok
+- `900A` onWait, full →
+- `900B` v →
+- `900E` fontNo, size, widthPct, bold, amount →
+- `900F` v →
+- `901A` dst, src, vec1, vec2, level, amount →
+- `901B` dst, src, type, level →
+- `901C` dst, x, y, w, h, src, sx, sy, sw, sh →
+- `901D` dst, src, zoom, angle →
+- `902C` h, pattern, amplitude, frequency, repeat, decay, fps, skip, prio →
+- `9059` h, x, y, bmp, ox, oy, angle, sx, sy, smooth, effect, level, prio →
+- `905B` h, x, y, bmp, map, rings, rippleNo, level, fade, prio →
+- `905D` h, fx, fy, fz, bmp1, bmp2, mixRatio, levelRoute, ox, oy, angle, rotX, rotY, rotZ, projDist
+- `9070` → h
+- `9071` h →
+- `9074` h, f →
+- `9075` h, x, y, bmp, effect, level, prio →
+- `9076` h, cols, rows, chipW, chipH →
+- `9078` h, w, hgt, data →
+- `9079` h, col, row, offX, offY, wrap →
+- `907A` h, tile →
+- `9091` mode, layerNo →
+- `90A0` h, n, items, cols, centre, colour, init, allowCancel →
+- `90A1` h, n, items, cols, centre, colour →
+- `90A2` h, n, items, cols, centre, colour, init, allowCancel, bmp1, dx1, dy1, bmp2, dx2, dy2 →
+- `90A3` h, n, items, cols, centre, colour, init, allowCancel, bmp1, dx1, dy1, bmp2, dx2, dy2 →
+- `90A4` c0, c1 →
+- `90A5` ms →
+- `90A6` on, curve, duration, fps →
+- `90A7` h, table →
+- `90B0` h, n, icons, hotkeys, mode, allowCancel, useHitMask →
+- `90B1` h, n, icons, hotkeys, mode, allowCancel, useHitMask →
+- `90B4` h, n, icons →
+- `90B5` h, n, icons64 →
+- `90C0` bmp, arc, name →
+- `90C3` dst, src →
+- `90C4` bmp, path, mode → r
+- `90C5` path, format, quality, bmp → r
+- `90CA` dst, src →
+- `90F0` file, x, y, w, h → length
+- `90F8` →
+- `90FA` h →
+- `90FB` h →
+- `90FC` → index
+- `90FD` index → pressed
+- `918A` h, style →
+- `91BF` no, actions →
+- `9200` no, period, amplitude, count, rings →
+- `9210` slot, type, cx, cy, range →
+- `9211` slot, type →
+- `921F` slot, path → r
+- `928A` h, colour →
+- `928D` h, x, y, bmp, effect, level → ("91 8D" of 1.58 .. 1.64)
+- `A000` → 0x14 (the library's "not running" code, always)
+- `A010` ch, name, vol →
+- `A015` ch, outLength → position
+- `A01C` ch, vol →
+- `A02C` slot, vol →
+- `A02F` slot → length
+- `A080` →
+- `A081` →
+- `A084` track, loop → r
+- `A085` →
+- `A086` out → r
+- `A0C0` name → r
+- `B000` x, y, bmp →
+- `B004` sprite, dx, dy →
+- `B008` pattern, amplitude, frequency, repeat, decay, fps, skip →
+- `B020` x, y, w, h, fontNo, size, maxLen, focus →
+- `B021` → 0
+- `B022` pct → ok
+- `B023` → open
+- `B024` show →
+- `B025` colour →
+- `B026` str →
+- `B027` buf → length
+- `B028` on →
+- `B029` on →
+- `B081` text, defaultYes → yes
+- `B082` text, style, defaultYes → confirmed
+- `B084` out, title, initial, maxLen → ok
+- `B085` out1, out2, title, label1, initial1, maxLen1, label2, initial2, maxLen2 → ok
+- `B087` layout, out1, out2, title, label1, initial1, maxLen1, digits1, label2, initial2, maxLen2, 
+- `B08C` out, size, caption, items → chosen
+- `B08F` surname, givenName, nickname, pronoun, &month, &day → ok
+- `B0C0` name → no
+- `B0C2` file → ok
+- `B0C3` arc, file → ok
+- `B0C4` buf → n
+- `B0F0` path, stretch, tile →
+- `C0F0` out, &count, arc, name, base → result
+- `EF00` → level
+- `EF01` mode →
+- `EF02` mode →
+- `EF03` on →
+- `EF08` on, msPerLine →
+- `EF09` bmpUp, upX, upY, bmpDown, downX, downY →
+- `EF0A` h, dst, src, lines, maxBytes, rubyOn, hang → used
+- `EF0B` str, fontNo, size, widthPct, bold, prop → width
+- `EF0C` h → y
+
+## 疑似只存值（已注册但名称表明仅记录）
+
+- `8036` setting 80:36 — 参考: v →
+- `8050` setting 80:50 — 参考: v →; ends the turn
+- `8052` setting 80:52 — 参考: ms →
+- `8067` setting 80:67 — 参考: 80 66): n →
+- `8074` setting 80:74 — 参考: f →
+- `809A` item record count — 参考: out, id → code
+- `809C` push item record — 参考: id, data → code
+- `809D` read item record — 参考: buf, id, idx → code
+- `809E` drop item records — 参考: id, idx, count → code
+- `80AF` flag 80:AF — 参考: mode → ok
+- `80FD` launcher flag — 参考: → v
+- `8162` flag 81:62 — 参考: mode → ok
+- `8163` setting 81:63 — 参考: mode → ok
+- `9000` display update flag — 参考: full →
+- `9007` display setting 90:07 — 参考: ms →
+- `9009` display setting 90:09 — 参考: prio →
+- `900C` display setting 90:0C — 参考: shown, level →
+- `9035` object setting 90:35 — 参考: h, v →
+- `9038` set object property — 参考: h, no, a, b →
+- `903C` object setting 90:3C — 参考: h, bmp →
+- `903D` object query 90:3D — 参考: h → hit
+- `903F` object setting 90:3F — 参考: h →
+- `9041` object setting 90:41 — 参考: bmp, second, level →
+- `9042` object setting 90:42 — 参考: b0, b1, b2, b3, x, y →
+- `9045` object setting 90:45 — 参考: bmp, vec1, vec2, level, amount →
+- `9046` object setting 90:46 — 参考: bmp, type, level →
+- `9048` object setting 90:48 — 参考: bmp, x, y, w, h →
+- `9049` object setting 90:49 — 参考: bmp, scale, option →
+- `9053` object setting 90:53 — 参考: h, x, y, w, hgt →
+- `9055` object setting 90:55 — 参考: h, bmp →
+- `9065` filter setting 90:65 — 参考: h, colour, level, prio →
+- `9084` window object flag — 参考: h, f →
+- `9094` setting 90:94 — 参考: ms →
+- `9095` setting 90:95 — 参考: steps, ms →
+- `9096` setting 90:96 — 参考: steps, ms →
+- `9097` setting 90:97 — 参考: on, ms →
+- `909A` setting 90:9A — 参考: mode, x, y →
+- `909B` typesetting setting 90:9B — 参考: on, ms →
+- `909C` setting 90:9C — 参考: on →
+- `909E` setting 90:9E — 参考: count, bmp →
+- `909F` setting 90:9F — 参考: f →
+- `90DD` swap display flag — 参考: v → old
+- `9131` object setting 91:31 — 参考: h, v →
+- `9133` object setting 91:33 — 参考: h, fx, fy, fz →
+- `9141` object setting 91:41 — 参考: layer →
+- `9142` object setting 91:42 — 参考: layer, on →
+- `9143` object setting 91:43 — 参考: layer, x, y →
+- `9144` object setting 91:44 — 参考: layer, effect →
+- `9145` object setting 91:45 — 参考: layer, level →
+- `9146` object setting 91:46 — 参考: layer, bmp, cx, cy →
+- `9147` object setting 91:47 — 参考: layer, angle, sx, sy, smooth →
+- `918E` window object query 91:8E — 参考: h → status
+- `9288` window object setting 92:88 — 参考: h, on →
+- `928C` window object setting 92:8C — 参考: h, on →
+
+## 本项目有而参考项目无
+
+8016 805F 8069 806A 80D8 9100 9106 9109 910D 910E 9116 9117 911A 911B 911D 9136 9137 9138 913D 913E 913F 9155 9190 9198 9199 919A 919B 919F 91F5 91F6 91F8 9212 9214 9216 9217 921E 9290 9297 9299 929C 92F0 A021 A024
+
+## 系统脚本实际用到的子操作码（analysis/out/used_ops.tsv，来自 110 个 sysprg/system/autoload 脚本，共 136 个）
+
+缺失：92:01、92:10（1.667 专有 / 距离型向量，需分析）
+
+已注册但只存值：
+- 90:94 字间隔、90:95 滚动、90:96 淡出、90:97 自动前进、90:9B 起始延迟 — 文字速度/自动模式不起作用
+- 90:09 绘制优先级下限；90:35 进度（擦除/涟漪）；90:38 对象参数；90:65 滤镜；90:00 显示刷新；90:07 同步加载窗口
+- 91:00、91:09 开关；91:33 固定位置；90:DD 旋钮全局开关
+- 80:52 空闲睡眠、80:FD 启动器标志
+注：story 脚本不在该语料内，真实用量需另行统计。

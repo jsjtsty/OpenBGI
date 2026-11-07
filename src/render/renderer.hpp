@@ -1,4 +1,5 @@
 #pragma once
+#include <array>
 #include <cstdint>
 #include <memory>
 #include <vector>
@@ -48,6 +49,12 @@ struct RendererOptions {
     const char* driver = nullptr;       // "vulkan", "direct3d12", "metal"; null = SDL's choice
 };
 
+struct InputPress {
+    std::uint32_t key;
+    int x = 0, y = 0;
+    bool pointer = false;
+};
+
 // Presents textured, alpha-blended quads on a fixed logical canvas, letterboxed into the window.
 // Blend modes other than plain alpha belong to the compute path (render/gpu_blend), not here.
 class Renderer {
@@ -56,6 +63,8 @@ class Renderer {
     ~Renderer();
 
     const char* driver_name() const;
+    std::uint32_t logical_width() const;
+    std::uint32_t logical_height() const;
 
     // For compute-side users (render/display): the device and the packed shaders of this renderer.
     SDL_GPUDevice* native_device() const;
@@ -65,18 +74,22 @@ class Renderer {
     Result<std::unique_ptr<Texture>> create_target_texture(std::uint32_t w, std::uint32_t h);
 
     Result<std::unique_ptr<Texture>> create_texture(std::uint32_t w, std::uint32_t h, PixelFormat format, ByteView pixels);
+    Result<void> update_texture(Texture& texture, ByteView pixels);
 
     // Returns false when the window was closed (or asked to quit); pumps SDL events.
     bool poll_events();
     // Last key pressed since the previous call, as an SDL keycode (0 = none).
     std::uint32_t take_key();
     // Key and mouse-button presses since the previous call as Windows virtual-key codes (mouse: 1 left, 2 right, 4 middle,
-    // 5, 6), key repeats included: the numbering the game scripts use for their input.
-    std::vector<std::uint32_t> take_presses();
+    // 5, 6); keyboard auto-repeat is ignored until the key is released, while each mouse click counts.
+    std::vector<InputPress> take_presses();
+    // Current held state indexed by Windows virtual-key code.
+    std::array<bool, 256> held_inputs() const;
     // The pointer in logical canvas coordinates (outside the canvas when it is in the letterbox bars).
     std::pair<int, int> mouse_position() const;
     bool left_button_down() const; // the left mouse button is held
     int take_wheel();              // wheel notches since the last call (positive = away from the user)
+    std::vector<int> take_wheel_events(); // each event as +1 away / -1 toward, preserving order
 
     Result<void> begin_frame(const float clear_rgba[4]);
     void draw(const Texture& tex, const DrawParams& p);

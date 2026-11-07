@@ -1,0 +1,75 @@
+223 sub-opcodes registered
+frame 127: thread 0: sub-opcode 91:96 is not implemented
+  thread 0 ip=0x4AF78 modules=24
+  thread 1 ip=0x13 modules=1
+  thread 2 ip=0x3F modules=1
+  thread 3 ip=0x1F modules=1
+  thread 4 ip=0x28 modules=1
+  thread 5 ip=0x50 modules=1
+  thread 6 ip=0x19 modules=2
+  call from 0x17 (returns to 0x18)
+  call from 0xC12 (returns to 0xC13)
+  call from 0x22C0 (returns to 0x22C1)
+  call from 0x23A4 (returns to 0x23A5)
+  call from 0x6B5E (returns to 0x6B5F)
+  call from 0x786A (returns to 0x786B)
+  call from 0x864E (returns to 0x864F)
+  call from 0x4A376 (returns to 0x4A377)
+  call from 0x4AFD4 (returns to 0x4AFD5)
+  module autoload.arc/ipl._bp at 0x0 size 0x40
+  module system.arc/ipl._bp at 0x40 size 0x20F0
+  module sysprg.arc/title._bp at 0x2130 size 0x48F0
+  module sysprg.arc/scrdrv._bp at 0x6A20 size 0x5780
+  module sysprg.arc/scrdrv2._bp at 0xC1A0 size 0x860
+  module sysprg.arc/scrctrl._bp at 0xCA00 size 0x2460
+  module sysprg.arc/scrsys._bp at 0xEE60 size 0x4E00
+  module sysprg.arc/scrmsg._bp at 0x13C60 size 0x53C0
+  module sysprg.arc/scrmsg2._bp at 0x19020 size 0xDD0
+  module sysprg.arc/scrslct._bp at 0x19DF0 size 0x49F0
+  module sysprg.arc/scrslct2._bp at 0x1E7E0 size 0x37F0
+  module sysprg.arc/scrslct3._bp at 0x21FD0 size 0x2BE0
+  module sysprg.arc/scrslct4._bp at 0x24BB0 size 0x2BA0
+  module sysprg.arc/scrsnd._bp at 0x27750 size 0x4910
+  module sysprg.arc/scrgrp1._bp at 0x2C060 size 0x5380
+  module sysprg.arc/scrgrp2._bp at 0x313E0 size 0x48D0
+  module sysprg.arc/scrgrp3._bp at 0x35CB0 size 0x4900
+  module sysprg.arc/scrgrp4._bp at 0x3A5B0 size 0x4E90
+  module sysprg.arc/scrgrp5._bp at 0x3F440 size 0x56C0
+  module sysprg.arc/scrgrp6._bp at 0x44B00 size 0x4700
+  module sysprg.arc/script._bp at 0x49200 size 0x4B0
+  module sysprg.arc/kana._bp at 0x496B0 size 0x1B0
+  module sysprg.arc/lstvicctrl._bp at 0x49860 size 0xAF0
+  module sysprg.arc/msgwndctrl._bp at 0x4A350 size 0x1880
+  module sysprg.arc/sysmsg._bp at 0x0 size 0xE70
+  module sysprg.arc/playtimer._bp at 0x0 size 0x280
+  module sysprg.arc/moviemngr._bp at 0x0 size 0x240
+  module sysprg.arc/moviemngrbm._bp at 0x0 size 0x300
+  module sysprg.arc/anmmngrm._bp at 0x0 size 0x1800
+  module sysprg.arc/anmmngrs._bp at 0x0 size 0x480
+  module sysprg.arc/bsctrlanmfunc._bp at 0x480 size 0x1EE0
+last sub-opcodes:
+  t0 ip=492B8 80:35 -> 445
+  t0 ip=49310 80:30 -> 445
+  t0 ip=49335 81:E9 ->
+  t0 ip=49541 80:D2 -> 0
+  t0 ip=7983 80:40 -> 4A350
+  t0 ip=4D0B5 80:40 -> 4EFF0
+  t0 ip=4D2EA 80:41 -> 18
+  t0 ip=7990 80:41 -> 17
+  t0 ip=8495 80:D0 -> 0
+  t0 ip=849C 80:20 -> C4060F0
+  t0 ip=84AE 80:83 ->
+  t0 ip=84B5 80:20 -> C4860F0
+  t0 ip=84C9 80:C5 -> 0
+  t0 ip=850F 80:21 -> 1
+  t0 ip=8514 80:21 -> 1
+  t0 ip=799E 80:40 -> 4A350
+  t0 ip=7B91 90:37 ->
+  t0 ip=7BA2 90:38 ->
+  t0 ip=7BA9 90:4C ->
+  t0 ip=7C2D 80:40 -> 4EFF0
+  t0 ip=7FA6 80:41 -> 18
+  t0 ip=8392 80:41 -> 17
+  t0 ip=8520 80:D0 -> 0
+  t0 ip=8575 80:D0 -> 0
+  t0 ip=863F 80:40 -> 4A350

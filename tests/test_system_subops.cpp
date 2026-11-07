@@ -85,8 +85,8 @@ TEST_CASE("rolling hash 81:E9 matches the reference computation") {
     CHECK(rig.mem(0x200, 8) == std::vector<std::uint8_t>{0xf2, 0xc5, 0x17, 0x36, 0x1b, 0x51, 0xca, 0x3c});
 }
 
-TEST_CASE("global data: the original BGI.gdb is read, written back and read again") {
-    if (!std::filesystem::exists(obgi_test::game_dir() / "BGI.gdb")) return;
+TEST_CASE("global data: the original BGI.gdb is read, written back and read again" * doctest::test_suite("game")) {
+    REQUIRE(std::filesystem::exists(obgi_test::game_dir() / "BGI.gdb"));
     Rig rig;
     // 80:80 pushes left, top, status; the game's own file is the SDC packed one
     REQUIRE(rig.run(Asm().sub(0x80, 0x80).ret()).has_value());

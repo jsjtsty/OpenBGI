@@ -187,7 +187,7 @@ TEST_CASE("message batches take the buffer address from the top of the stack") {
 TEST_CASE("unloading a program block counts the blocks left, not the first one") {
     Fixture f;
     f.provider.put("lib", Asm().ret());
-    f.provider.put("main", Asm().i32(0x300).i32(0x310).sub(0x80, 0x40).i8(0).sub(0x80, 0x41).ret());
+    f.provider.put("main", Asm().i32(0x300).i32(0x310).sub(0x80, 0x40).i8(0).sub(0x80, 0x41).sub(0x80, 0x5f).ret());
     f.provider.put("lib", Asm().ret());
     REQUIRE(f.vm.spawn(small(), "x.arc", "main"));
     Thread* t = f.vm.find(1);
@@ -269,8 +269,8 @@ TEST_CASE("the expression stack is a ring; memory faults are reported") {
     CHECK_FALSE(g.vm.run_frame(0).has_value());
 }
 
-TEST_CASE("boot: autoload ipl loads system ipl, then stops at the first unimplemented sub-opcode") {
-    if (!obgi_test::game_dir().empty() && !std::filesystem::exists(obgi_test::game_dir())) return;
+TEST_CASE("boot: autoload ipl loads system ipl, then stops at the first unimplemented sub-opcode" * doctest::test_suite("game")) {
+    REQUIRE(std::filesystem::exists(obgi_test::game_dir()));
     ArcProgramProvider provider(obgi_test::game_dir());
     SubopRegistry registry;
     register_core_subops(registry);

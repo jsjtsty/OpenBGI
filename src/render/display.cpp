@@ -31,6 +31,7 @@ struct PresentParams {
 struct GpuSlot {
     SlotInfo info;
     SDL_GPUBuffer* buffer = nullptr;
+    std::uint64_t generation = 0;
 };
 
 } // namespace
@@ -47,6 +48,7 @@ struct Display::Impl {
     SDL_GPUComputePipeline* present_pipeline = nullptr;
     SDL_GPUBuffer* dummy = nullptr; // bound as the unused read-only buffer of fills
     std::map<std::uint32_t, GpuSlot> slots;
+    std::uint64_t next_generation = 0;
     // a wipe sprite's picture and gray pattern as pixels, and the progress its temporary slot was last made for
     struct WipeCache {
         std::uint32_t src = 0, gray = 0, progress = 0xFFFFFFFFu, mode = 0;
@@ -294,6 +296,11 @@ const SlotInfo* Display::slot(std::uint32_t id) const {
     return it == impl_->slots.end() ? nullptr : &it->second.info;
 }
 
+std::uint64_t Display::slot_generation(std::uint32_t id) const {
+    const auto it = impl_->slots.find(id);
+    return it == impl_->slots.end() ? 0 : it->second.generation;
+}
+
 Result<void> Display::create_slot(std::uint32_t id, std::uint32_t w, std::uint32_t h, SlotFormat format) {
     Impl& m = *impl_;
     if (std::getenv("OBGI_SLOTS")) std::fprintf(stderr, "slot %u create %ux%u fmt %u\n", id, w, h, static_cast<unsigned>(format));
@@ -305,6 +312,7 @@ Result<void> Display::create_slot(std::uint32_t id, std::uint32_t w, std::uint32
     GpuSlot& s = m.slots[id];
     s.info = {w, h, format};
     s.buffer = *buf;
+    s.generation = ++m.next_generation;
     return m.fill(s, 0);
 }
 
@@ -328,6 +336,14 @@ Result<void> Display::fill_slot(std::uint32_t id, std::uint32_t packed) {
 Result<void> Display::upload_slot(std::uint32_t id, std::uint32_t w, std::uint32_t h, SlotFormat format,
                                   std::span<const std::uint32_t> packed) {
     if (packed.size() < std::size_t{w} * h) return fail(Errc::Range, "slot pixel data too small");
+    // Animated CPU-rendered effects upload their full-size result every frame.
+    // Recreating the GPU buffer also cleared it before the upload, doubling work
+    // and forcing needless driver allocations on every transition step.
+    auto it = impl_->slots.find(id);
+    if (it != impl_->slots.end() && it->second.info.width == w && it->second.info.height == h && it->second.info.format == format) {
+        impl_->stale(id);
+        return impl_->upload(it->second.buffer, packed.first(std::size_t{w} * h));
+    }
     if (auto r = create_slot(id, w, h, format); !r) return r;
     return impl_->upload(impl_->slots[id].buffer, packed.first(std::size_t{w} * h));
 }
@@ -350,67 +366,13 @@ Result<std::vector<std::uint32_t>> Display::read_slot(std::uint32_t id) {
     return impl_->download(it->second);
 }
 
-Sprite* Display::find_sprite(std::uint32_t id) {
-    // handle 0 is the background object, whose position, level, progress and visibility are the upper picture's
-    if (id == 0)
-        if (auto bg = sprites_.find(kBackgroundUpper); bg != sprites_.end()) return &bg->second;
-    auto it = sprites_.find(id);
-    return it == sprites_.end() ? nullptr : &it->second;
-}
-
-void Display::set_visible(std::uint32_t id, bool on, int depth) {
-    Sprite* sp = find_sprite(id);
-    if (!sp || depth > 16) return;
-    sp->visible = on;
-    for (auto& kv : sprites_)
-        if (kv.second.has_master && kv.second.master == id) set_visible(kv.first, on, depth + 1);
-}
-
-void Display::set_progress(std::uint32_t id, std::uint32_t v, int depth) {
-    Sprite* sp = find_sprite(id);
-    if (!sp || depth > 16) return;
-    sp->progress = v;
-    for (auto& kv : sprites_)
-        if (kv.second.has_master && kv.second.master == id) set_progress(kv.first, v, depth + 1);
-}
-
-void Display::set_fade(std::uint32_t id, std::uint32_t v, int depth) {
-    Sprite* sp = find_sprite(id);
-    if (!sp || depth > 16) return;
-    sp->fade = v;
-    for (auto& kv : sprites_)
-        if (kv.second.has_master && kv.second.master == id) set_fade(kv.first, v, depth + 1);
-}
-
-void Display::set_opacity(std::uint32_t id, std::uint32_t v, int depth) {
-    Sprite* sp = find_sprite(id);
-    if (!sp || depth > 16) return;
-    sp->opacity = v;
-    for (auto& kv : sprites_)
-        if (kv.second.has_master && kv.second.master == id) set_opacity(kv.first, v, depth + 1);
-}
-
-void Display::resolve_masters() {
-    // masters first: a sprite is settled after the one it follows (chains are short; cycles are cut by `done`)
-    std::map<std::uint32_t, bool> done;
-    auto settle = [&](auto&& self, std::uint32_t id, int depth) -> void {
-        Sprite* sp = find_sprite(id);
-        if (!sp || done[id]) return;
-        done[id] = true;
-        if (!sp->has_master || depth > 16) return;
-        self(self, sp->master, depth + 1);
-        Sprite* ms = find_sprite(sp->master);
-        if (!ms) return;
-        if (sp->moved) { // moved by the script itself: remember the new offset
-            sp->master_dx = sp->x - ms->x;
-            sp->master_dy = sp->y - ms->y;
-            sp->moved = false;
-        }
-        sp->x = ms->x + sp->master_dx;
-        sp->y = ms->y + sp->master_dy;
-    };
-    for (auto& kv : sprites_) settle(settle, kv.first, 0);
-}
+Sprite* Display::find_sprite(std::uint32_t id) { return scene_.find_sprite(id); }
+void Display::set_visible(std::uint32_t id, bool value, int depth) { scene_.set_visible(id, value, depth); }
+void Display::set_level(std::uint32_t id, std::uint32_t value, int depth) { scene_.set_level(id, value, depth); }
+void Display::set_progress(std::uint32_t id, std::uint32_t value, int depth) { scene_.set_progress(id, value, depth); }
+void Display::set_fade(std::uint32_t id, std::uint32_t value, int depth) { scene_.set_fade(id, value, depth); }
+void Display::set_opacity(std::uint32_t id, std::uint32_t value, int depth) { scene_.set_opacity(id, value, depth); }
+void Display::resolve_masters() { scene_.resolve_masters(); }
 
 // Renders the current background type (bg_fx) on the CPU into the temporary slot 0x7F400000 that the lower background sprite shows
 // (gfx/background/*.c: each type's render slot). A picture that is gone or does not fit paints black, as in the reference.
@@ -621,7 +583,7 @@ bool Display::screen_rect(std::uint32_t id, std::int32_t& left, std::int32_t& to
     return true;
 }
 
-Result<void> Display::compose() {
+Result<void> Display::compose(std::optional<std::uint32_t> max_priority) {
     Impl& m = *impl_;
     if (auto r = m.fill(m.screen, 0); !r) return r;
     resolve_masters();
@@ -640,10 +602,10 @@ Result<void> Display::compose() {
     };
     std::set<std::uint32_t> window_parts;
     if (!windows_shown || windows_level)
-        for (const auto& kv : sprites_)
+        for (const auto& kv : scene_.objects())
             if (in_window(kv.first)) window_parts.insert(kv.first);
-    for (const auto& kv : sprites_)
-        if (kv.second.is_shown() && (kv.second.priority >= draw_limit || kv.second.background) &&
+    for (const auto& kv : scene_.objects())
+        if (kv.second.is_shown() && (max_priority || kv.second.priority >= draw_limit || kv.second.background) &&
             !(!windows_shown && window_parts.count(kv.first)))
             order.push_back(&kv);
     // the original's sort key: (priority * 16 + class order) << 16, plus the bias, plus the creation counter
@@ -666,13 +628,15 @@ Result<void> Display::compose() {
         // sort mode 1 (dispobj.c: DispObj_SortKey): the priority, then the depth over its whole range, no class order
         if (sp.sort_mode == 1) return (std::int64_t{sp.priority} << 16) + static_cast<std::uint32_t>(sp.sort_bias - (sp.depth >> 16) + 0x7fff);
         const std::int64_t hi = (std::int64_t{sp.priority} * 16 + class_order(kv->first, sp)) * 65536 + sp.sort_bias;
+        // These are two layers of one logical background, independent of allocation order.
+        if (kv->first == kBackgroundLower || kv->first == kBackgroundUpper) return hi + (kv->first == kBackgroundUpper ? 1 : 0);
         // a projected plane is ordered by depth, a larger z (farther away) sorting lower; the others by creation order
         if (sp.projected) return hi + ((0xffff8000u - static_cast<std::uint32_t>(static_cast<std::uint16_t>(sp.proj_depth() >> 16))) & 0xffffu);
-        const auto cr = created_.find(kv->first);
-        return hi + (cr == created_.end() ? 0 : cr->second & 0x7FFF);
+        return hi + (scene_.creation_order(kv->first) & 0x7FFF);
     };
     std::stable_sort(order.begin(), order.end(), [&](auto* a, auto* b) { return sort_key(a) < sort_key(b); });
     for (const auto* kv : order) {
+        if (max_priority && sort_key(kv) > (std::int64_t{*max_priority} * 0x100000 + 0xFFFFF)) continue;
         const Sprite& sp = kv->second;
         if (std::getenv("OBGI_SPRITES")) std::fprintf(stderr, "sprite %X slot %u at %d,%d blend %u alpha %u prio %u%s""\n", kv->first, sp.slot, sp.x, sp.y, sp.blend, sp.alpha, sp.priority, m.slots.count(sp.slot) ? "" : " (no slot)");
         if (sp.filter_kind >= 0) {
@@ -976,6 +940,32 @@ Result<void> Display::compose() {
             !r)
             return r;
     }
+    return {};
+}
+
+Result<void> Display::snapshot(std::uint32_t id, std::optional<std::uint32_t> max_priority) {
+    auto& m = *impl_;
+    auto buffer = m.make_buffer(m.screen.info.width * m.screen.info.height);
+    if (!buffer) return std::unexpected(buffer.error());
+    GpuSlot target{m.screen.info, *buffer, ++m.next_generation};
+    Result<void> rendered;
+    if (!max_priority) {
+        // 90:04 copies the already composed back buffer, including the frame
+        // visible before scripts changed or removed any scene objects.
+        rendered = m.do_blit(target, 0, 0, m.screen, 0, 0, m.screen.info.width, m.screen.info.height, 0, 0x100);
+    } else {
+        struct TargetScope {
+            GpuSlot& screen;
+            GpuSlot& target;
+            TargetScope(GpuSlot& screen, GpuSlot& target) : screen(screen), target(target) { std::swap(screen, target); }
+            ~TargetScope() { std::swap(screen, target); }
+        } scope(m.screen, target);
+        rendered = compose(max_priority);
+    }
+    if (!rendered) { SDL_ReleaseGPUBuffer(m.device, target.buffer); return rendered; }
+    if (const auto old = m.slots.find(id); old != m.slots.end()) SDL_ReleaseGPUBuffer(m.device, old->second.buffer);
+    m.stale(id);
+    m.slots[id] = target;
     return {};
 }
 

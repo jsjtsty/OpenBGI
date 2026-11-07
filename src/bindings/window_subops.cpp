@@ -43,35 +43,6 @@ void add_range_pair(vm::SubopRegistry& r, SystemState& s, std::uint16_t id, cons
 
 } // namespace
 
-std::vector<std::uint32_t> SystemState::input_numbers(std::uint32_t bit) const {
-    if (auto it = input_maps.find(bit); it != input_maps.end()) return it->second;
-    switch (bit) { // the original's initial table
-    case 0x1: return {1};
-    case 0x2: return {2};
-    case 0x4: return {4};
-    case 0x10: return {5};
-    case 0x20: return {6};
-    case 0x40: return {0x0E};
-    case 0x80: return {0x0F};
-    case 0x100: return {0x0D};
-    case 0x200: return {0x20};
-    case 0x1000: return {0x26};
-    case 0x2000: return {0x28};
-    case 0x4000: return {0x25};
-    case 0x8000: return {0x27};
-    case 0x2000000: return {0x30, 0x60};
-    case 0x40000000: return {0x09};
-    case 0x80000000: return {0x11};
-    default:
-        if (bit >= 0x10000 && bit <= 0x1000000) { // digits 1..9
-            std::uint32_t k = 0;
-            while ((0x10000u << k) != bit) ++k;
-            return {0x31 + k, 0x61 + k};
-        }
-        return {};
-    }
-}
-
 namespace {
 
 // a zero-terminated list of at most 15 numbers at a script address (0 = no list)
@@ -134,10 +105,15 @@ void register_window_subops(vm::SubopRegistry& r, SystemState& state, Display* d
         s->input_maps[mask] = std::move(list);
         return 0;
     });
-    // (input number): bit 15 of the key's current state, i.e. whether it is held down. Held state is not tracked; never held.
-    add(r, 0x8011, "input held", 1, 1, [](Ctx& c) {
-        c.pop();
-        c.push(0);
+    // (virtual key): whether the key/button is currently held (GetAsyncKeyState bit 15 in the original).
+    add(r, 0x8011, "input held", 1, 1, [s](Ctx& c) {
+        const Word vk = c.pop();
+        if (!c.ok()) return 0;
+        if (vk >= s->input_held.size()) {
+            c.fail(Errc::Range, "virtual key out of range: " + std::to_string(vk));
+            return 0;
+        }
+        c.push(s->input_held[vk] ? 1u : 0u);
         return 0;
     });
     // (list address): the sum of the press counts of the zero-terminated list of input numbers
@@ -161,20 +137,11 @@ void register_window_subops(vm::SubopRegistry& r, SystemState& state, Display* d
         c.push(sum);
         return 0;
     });
-    // 80:1A (priority): the logical input mask of what was pressed since the last poll at that priority (bits as in 80:1B: the
-    // mouse buttons 1 2 4 0x10 0x20, the standard-key groups above). The input layers are not modelled, every poll sees all input.
-    // The first poll of a priority starts counting from the current state.
+    // 80:1A (priority): consumes pending triggers through the key and mouse priority layers.
     add(r, 0x801A, "poll input", 1, 1, [s](Ctx& c) {
         const Word prio = c.pop();
         if (!c.ok()) return 0;
-        auto [it, fresh] = s->poll_seen.try_emplace(prio, s->input_counts);
-        Word mask = 0;
-        if (!fresh)
-            for (Word bit = 1; bit != 0; bit <<= 1)
-                for (Word n : s->input_numbers(bit))
-                    if (n < s->input_counts.size() && s->input_counts[n] != it->second[n]) mask |= bit;
-        it->second = s->input_counts;
-        c.push(mask);
+        c.push(poll_input(*s, prio));
         return 0;
     });
     add(r, 0x8062, "window numbers", 2, 0, [s](Ctx& c) {
@@ -295,18 +262,20 @@ void register_window_subops(vm::SubopRegistry& r, SystemState& state, Display* d
         const std::int64_t frame_ms = std::max<std::int64_t>(1, 1000 / fps);
         const auto input_total = [s] { std::uint32_t sum = 0; for (std::uint32_t n : s->input_counts) sum += n; return sum; };
         const std::uint32_t input_at_start = input_total();
-        vm::Vm* machine = &c.vm;
-        c.t.wait.kind = vm::WaitObject::Kind::Poll;
-        c.t.wait.poll = [display, offsets, start, frame_ms, skip, input_total, input_at_start, machine]() {
-            const std::int64_t frame = (machine->now_ms - start) / frame_ms;
+        vm::WaitObject wait;
+        wait.kind = vm::WaitObject::Kind::Poll;
+        wait.cleanup = [display] { display->present_dx = display->present_dy = 0; };
+        wait.poll = [display, offsets, start, frame_ms, skip, input_total, input_at_start](const vm::WaitContext& context) -> Result<vm::WaitUpdate> {
+            const std::int64_t frame = (context.now_ms - start) / frame_ms;
             if (frame >= static_cast<std::int64_t>(offsets->size()) || (skip && input_total() != input_at_start)) {
                 display->present_dx = display->present_dy = 0; // the window is repainted unshifted when it ends
-                return true;
+                return vm::WaitUpdate::complete();
             }
             display->present_dx = (*offsets)[static_cast<std::size_t>(frame)].first;
             display->present_dy = (*offsets)[static_cast<std::size_t>(frame)].second;
-            return false;
+            return vm::WaitUpdate::pending();
         };
+        c.suspend(std::move(wait), 0);
         return static_cast<int>(vm::StayThread);
     });
     add_record(r, state, 0x8164, "client size", 2);

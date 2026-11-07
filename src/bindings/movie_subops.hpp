@@ -9,6 +9,7 @@ namespace obgi {
 
 struct MovieHost {
     ArcResourceFinder* resources = nullptr;
+    MoviePlayer* player = nullptr;
     // Plays a movie file to its end; the application decides how (window, sound device). Null = movies are skipped.
     std::function<Result<MovieEnd>(ByteView file, const std::string& name)> play;
     bool quit_requested = false; // set when the window was closed during a movie

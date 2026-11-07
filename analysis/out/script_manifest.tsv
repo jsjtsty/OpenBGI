@@ -1,0 +1,164 @@
+archive	member	size	format	header_field	section_start	names_count	name_list_end	possible_exports	exports_end	status
+autoload.arc	ipl._bp	80	bp	16	64					OK
+data01100.arc	_bgscroll	2130	compiled	276	304	20	284	1	302	OK
+data01100.arc	_bschange	28774	compiled	276	304	20	284	1	302	OK
+data01100.arc	_bserase	1757	compiled	276	304	20	284	1	301	OK
+data01100.arc	_bseraseall	752	compiled	292	320	20	284	1	304	OK
+data01100.arc	_bseraseex	3447	compiled	276	304	20	284	1	303	OK
+data01100.arc	_bustshot	9414	compiled	276	304	20	284	1	302	OK
+data01100.arc	_bustshotmotion	23244	compiled	292	320	20	284	1	308	OK
+data01100.arc	_bustshotshiftx	7876	compiled	292	320	20	284	1	308	OK
+data01100.arc	_bustshotshiftz	37900	compiled	292	320	20	284	1	308	OK
+data01100.arc	_bustshottest	725792	compiled	276	304	21	294	0	298	OK
+data01100.arc	_controlmotion	21975	compiled	324	352	20	284	2	339	OK
+data01100.arc	_eventcgmotion	20319	compiled	292	320	20	284	1	307	OK
+data01100.arc	_eventcgmotionerase	1872	compiled	292	320	20	284	1	312	OK
+data01100.arc	_languageselect	2293	compiled	36	64	1	46	0	50	OK
+data01100.arc	_loopse1	1093	compiled	276	304	20	284	1	301	OK
+data01100.arc	_presetbg	14026	compiled	276	304	20	284	1	302	OK
+data01100.arc	_select2	661	compiled	276	304	20	284	1	301	OK
+data01100.arc	_select3	745	compiled	276	304	20	284	1	301	OK
+data01100.arc	_select4	829	compiled	276	304	20	284	1	301	OK
+data01100.arc	_start	535	compiled	276	304	21	294	0	298	OK
+data01100.arc	_takeoverbg	14467	compiled	292	320	20	284	1	304	OK
+data01100.arc	_takeoverbg_br	14589	compiled	292	320	20	284	1	307	OK
+data01100.arc	_takeoverbg_ex	14589	compiled	292	320	20	284	1	307	OK
+data01100.arc	debug	472	compiled	36	64	0	36	1	49	OK
+data01100.arc	main	742	compiled	276	304	21	294	0	298	OK
+data01100.arc	makerlogo	3209	compiled	276	304	21	294	0	298	OK
+data01120.arc	ac2_00common	1327596	compiled	276	304	21	294	0	298	OK
+data01120.arc	ac2_01sweet	383214	compiled	276	304	21	294	0	298	OK
+data01120.arc	ac2_10ichika	648473	compiled	276	304	21	294	0	298	OK
+data01120.arc	ac2_20nana	670252	compiled	276	304	21	294	0	298	OK
+data01120.arc	ac2_30kaguya	802451	compiled	276	304	21	294	0	298	OK
+data01121.arc	ac2_19ichika	491174	compiled	276	304	21	294	0	298	OK
+data01121.arc	ac2_29nana	388894	compiled	276	304	21	294	0	298	OK
+data01121.arc	ac2_39kaguya	270374	compiled	276	304	21	294	0	298	OK
+data01121.arc	ac2_40harem	151772	compiled	276	304	21	294	0	298	OK
+data01130.arc	setupforgallery	20334	compiled	36	64	0	36	1	49	OK
+data01130.arc	setupformusic	3270	compiled	36	64	0	36	1	49	OK
+data01130.arc	setupforomake	545	compiled	36	64	0	36	1	49	OK
+data01131.arc	ac2_hscene002	754	compiled	276	304	21	294	0	298	OK
+data01131.arc	ac2_hscene301	755	compiled	276	304	21	294	0	298	OK
+data01131.arc	ac2_hscene302	755	compiled	276	304	21	294	0	298	OK
+data01131.arc	ac2_hscene303	755	compiled	276	304	21	294	0	298	OK
+data01131.arc	ac2_hscene304	755	compiled	276	304	21	294	0	298	OK
+data01131.arc	ac2_hscene401	753	compiled	276	304	21	294	0	298	OK
+data01131.arc	ac2_hscene402	753	compiled	276	304	21	294	0	298	OK
+data01131.arc	ac2_hscene403	753	compiled	276	304	21	294	0	298	OK
+data01131.arc	ac2_hscene404	753	compiled	276	304	21	294	0	298	OK
+data01131.arc	ac2_hscene501	755	compiled	276	304	21	294	0	298	OK
+data01131.arc	ac2_hscene502	755	compiled	276	304	21	294	0	298	OK
+data01131.arc	ac2_hscene503	755	compiled	276	304	21	294	0	298	OK
+data01131.arc	setupforgallery_r18	37487	compiled	36	64	0	36	1	49	OK
+data01131.arc	setupforreplay	2489	compiled	36	64	0	36	1	49	OK
+sysprg.arc	environ._bp	2048	bp	16	2032					OK
+sysprg.arc	kana._bp	448	bp	16	432					OK
+sysprg.arc	bitmap._bp	19632	bp	16	19616					OK
+sysprg.arc	bitmap2._bp	2336	bp	16	2320					OK
+sysprg.arc	title._bp	18688	bp	16	18672					OK
+sysprg.arc	titlebg._bp	128	bp	16	112					OK
+sysprg.arc	titlesub._bp	192	bp	16	176					OK
+sysprg.arc	scrdrv._bp	22416	bp	16	22400					OK
+sysprg.arc	scrdrv2._bp	2160	bp	16	2144					OK
+sysprg.arc	scrmain._bp	2064	bp	16	2048					OK
+sysprg.arc	scrctrl._bp	9328	bp	16	9312					OK
+sysprg.arc	scrsys._bp	19984	bp	16	19968					OK
+sysprg.arc	scrmsg._bp	21456	bp	16	21440					OK
+sysprg.arc	scrmsg2._bp	3552	bp	16	3536					OK
+sysprg.arc	scrslct._bp	18944	bp	16	18928					OK
+sysprg.arc	scrslct2._bp	14336	bp	16	14320					OK
+sysprg.arc	scrslct3._bp	11248	bp	16	11232					OK
+sysprg.arc	scrslct4._bp	11184	bp	16	11168					OK
+sysprg.arc	scrslct5._bp	6384	bp	16	6368					OK
+sysprg.arc	scrsnd._bp	18720	bp	16	18704					OK
+sysprg.arc	scrgrp1._bp	21392	bp	16	21376					OK
+sysprg.arc	scrgrp2._bp	18656	bp	16	18640					OK
+sysprg.arc	scrgrp3._bp	18704	bp	16	18688					OK
+sysprg.arc	scrgrp4._bp	20128	bp	16	20112					OK
+sysprg.arc	scrgrp5._bp	22224	bp	16	22208					OK
+sysprg.arc	scrgrp6._bp	18192	bp	16	18176					OK
+sysprg.arc	recoveryrip._bp	2192	bp	16	2176					OK
+sysprg.arc	crcltitm._bp	2064	bp	16	2048					OK
+sysprg.arc	loadbmpdx._bp	2800	bp	16	2784					OK
+sysprg.arc	loadsysbmp._bp	208	bp	16	192					OK
+sysprg.arc	updtscrnimg._bp	6160	bp	16	6144					OK
+sysprg.arc	syswnd._bp	6768	bp	16	6752					OK
+sysprg.arc	syswndsubec._bp	192	bp	16	176					OK
+sysprg.arc	cnfgwnd._bp	22864	bp	16	22848					OK
+sysprg.arc	cnfgwndsub._bp	4976	bp	16	4960					OK
+sysprg.arc	cnfgwndicn1._bp	16512	bp	16	16496					OK
+sysprg.arc	cnfgwndenv._bp	10560	bp	16	10544					OK
+sysprg.arc	cnfgsmpltxt2._bp	1904	bp	16	1888					OK
+sysprg.arc	palletctrl._bp	3360	bp	16	3344					OK
+sysprg.arc	cnfgbgmngr._bp	512	bp	16	496					OK
+sysprg.arc	envinfoctrl._bp	4256	bp	16	4240					OK
+sysprg.arc	cnfgsldctrl._bp	3808	bp	16	3792					OK
+sysprg.arc	cnfgfntwnd._bp	5312	bp	16	5296					OK
+sysprg.arc	cnfgclrwnd._bp	6240	bp	16	6224					OK
+sysprg.arc	yesnownd._bp	5040	bp	16	5024					OK
+sysprg.arc	usdtwnd._bp	22576	bp	16	22560					OK
+sysprg.arc	usdtwndsub._bp	5104	bp	16	5088					OK
+sysprg.arc	userdata._bp	5328	bp	16	5312					OK
+sysprg.arc	encdusdt._bp	1600	bp	16	1584					OK
+sysprg.arc	logwnd._bp	21680	bp	16	21664					OK
+sysprg.arc	scene._bp	128	bp	16	112					OK
+sysprg.arc	prtclctrl._bp	1632	bp	16	1616					OK
+sysprg.arc	rainfall._bp	320	bp	16	304					OK
+sysprg.arc	msgwndctrl._bp	6288	bp	16	6272					OK
+sysprg.arc	scenario._bp	336	bp	16	320					OK
+sysprg.arc	script._bp	1216	bp	16	1200					OK
+sysprg.arc	rplctrl._bp	224	bp	16	208					OK
+sysprg.arc	lstvicctrl._bp	2816	bp	16	2800					OK
+sysprg.arc	sbjctnobjct._bp	640	bp	16	624					OK
+sysprg.arc	flowchart._bp	11280	bp	16	11264					OK
+sysprg.arc	makermngr._bp	1360	bp	16	1344					OK
+sysprg.arc	smpleffect._bp	688	bp	16	672					OK
+sysprg.arc	cvrbtmpctrl._bp	464	bp	16	448					OK
+sysprg.arc	pediawnd._bp	5984	bp	16	5968					OK
+sysprg.arc	gesture._bp	880	bp	16	864					OK
+sysprg.arc	touches._bp	8560	bp	16	8544					OK
+sysprg.arc	bookmark._bp	19632	bp	16	19616					OK
+sysprg.arc	autosave._bp	1696	bp	16	1680					OK
+sysprg.arc	fontinfo._bp	464	bp	16	448					OK
+sysprg.arc	mwopctymngr._bp	960	bp	16	944					OK
+sysprg.arc	omake._bp	2960	bp	16	2944					OK
+sysprg.arc	omakecg._bp	11024	bp	16	11008					OK
+sysprg.arc	omakemusic._bp	10960	bp	16	10944					OK
+sysprg.arc	omakebsview._bp	10848	bp	16	10832					OK
+sysprg.arc	enlrdcticon._bp	1232	bp	16	1216					OK
+sysprg.arc	sysmsg._bp	3712	bp	16	3696					OK
+sysprg.arc	screensaver._bp	880	bp	16	864					OK
+sysprg.arc	playtimer._bp	656	bp	16	640					OK
+sysprg.arc	msctmntr._bp	176	bp	16	160					OK
+sysprg.arc	dbgmngr._bp	5968	bp	16	5952					OK
+sysprg.arc	iconmngr._bp	17744	bp	16	17728					OK
+sysprg.arc	iconmngr2._bp	3024	bp	16	3008					OK
+sysprg.arc	iconmngrec._bp	11696	bp	16	11680					OK
+sysprg.arc	anmmngrm._bp	6160	bp	16	6144					OK
+sysprg.arc	anmmngrs._bp	1168	bp	16	1152					OK
+sysprg.arc	mtnmngr._bp	3088	bp	16	3072					OK
+sysprg.arc	mtnmngrslm._bp	240	bp	16	224					OK
+sysprg.arc	mtnmngrslmx._bp	272	bp	16	256					OK
+sysprg.arc	mtnmngrbcm._bp	288	bp	16	272					OK
+sysprg.arc	mtnmngrsf._bp	416	bp	16	400					OK
+sysprg.arc	mtnmngrsfo._bp	9520	bp	16	9504					OK
+sysprg.arc	mtnmngrscs._bp	416	bp	16	400					OK
+sysprg.arc	mtnmngrmc._bp	688	bp	16	672					OK
+sysprg.arc	rplmngr._bp	256	bp	16	240					OK
+sysprg.arc	moviemngr._bp	592	bp	16	576					OK
+sysprg.arc	moviemngrbm._bp	784	bp	16	768					OK
+sysprg.arc	infotlpmngr._bp	6416	bp	16	6400					OK
+sysprg.arc	sndmngr._bp	512	bp	16	496					OK
+sysprg.arc	bgmmngr._bp	256	bp	16	240					OK
+sysprg.arc	playtimer._bp	656	bp	16	640					OK
+sysprg.arc	sprmvmnt._bp	1120	bp	16	1104					OK
+sysprg.arc	bsctrl._bp	20128	bp	16	20112					OK
+sysprg.arc	bsctrl2._bp	17200	bp	16	17184					OK
+sysprg.arc	bsctrlanmfunc._bp	7920	bp	16	7904					OK
+sysprg.arc	wndctrl._bp	688	bp	16	672					OK
+sysprg.arc	endsys._bp	3504	bp	16	3488					OK
+sysprg.arc	gotitle._bp	2480	bp	16	2464					OK
+sysprg.arc	loadusdt._bp	2512	bp	16	2496					OK
+system.arc	ipl._bp	8448	bp	16	8432					OK
+system.arc	framework._bs	53413	compiled	1700	1728	1	46	94	1718	OK

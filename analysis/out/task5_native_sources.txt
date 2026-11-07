@@ -1,0 +1,8182 @@
+
+=== T1 80:17 00496d20 ===
+
+undefined4 __cdecl FUN_00496d20(void *param_1)
+
+{
+  undefined4 uVar1;
+  
+  uVar1 = FUN_0047bf50();
+  FUN_0044d2c0(param_1,uVar1);
+  return 0;
+}
+
+
+
+--- 00496d20 ---
+
+undefined4 __cdecl FUN_00496d20(void *param_1)
+
+{
+  undefined4 uVar1;
+  
+  uVar1 = FUN_0047bf50();
+  FUN_0044d2c0(param_1,uVar1);
+  return 0;
+}
+
+
+
+--- 0047bf50 ---
+
+undefined4 FUN_0047bf50(void)
+
+{
+  bool bVar1;
+  ushort uVar2;
+  int iVar3;
+  int iVar4;
+  uint uVar5;
+  int extraout_ECX;
+  int iVar6;
+  int *piVar7;
+  int local_8;
+  
+  local_8 = DAT_00549f04;
+  bVar1 = false;
+  iVar3 = FUN_004aba70();
+  iVar6 = extraout_ECX;
+  if ((iVar3 != 0) && (iVar6 = extraout_ECX, DAT_0052f31c != 0)) {
+    iVar3 = 0;
+    iVar6 = extraout_ECX;
+    if (DAT_0052f320 != 0) {
+      piVar7 = &DAT_0052f320;
+      iVar4 = DAT_0052f320;
+      do {
+        uVar2 = FUN_0047b530(iVar4);
+        if ((bVar1) || ((uVar2 & 0x8000) != 0)) {
+          bVar1 = true;
+        }
+        if (DAT_00549f00 == 0) {
+          if (((uVar2 & 0x8000) != 0) && (DAT_005481ac != 0)) goto LAB_0047bfff;
+        }
+        else {
+          uVar5 = FUN_0047bc40(*piVar7);
+          if ((uVar5 != 0) && (DAT_005481ac != 0)) {
+            local_8 = 1;
+          }
+        }
+        iVar3 = iVar3 + 1;
+        iVar4 = (&DAT_0052f320)[iVar3];
+        piVar7 = &DAT_0052f320 + iVar3;
+        iVar6 = local_8;
+      } while (iVar4 != 0);
+    }
+  }
+  if ((DAT_00549f00 != 0) && (!bVar1)) {
+    DAT_00549f00 = 0;
+  }
+  if (iVar6 != 0) {
+LAB_0047bfff:
+    if (DAT_0052f5bc != 0) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+
+
+=== T1 81:0F 0049a0a0 ===
+
+undefined4 __cdecl FUN_0049a0a0(void *param_1)
+
+{
+  BOOL BVar1;
+  
+  BVar1 = IsIconic(DAT_0054863c);
+  FUN_0044d2c0(param_1,BVar1);
+  return 0;
+}
+
+
+
+--- 0049a0a0 ---
+
+undefined4 __cdecl FUN_0049a0a0(void *param_1)
+
+{
+  BOOL BVar1;
+  
+  BVar1 = IsIconic(DAT_0054863c);
+  FUN_0044d2c0(param_1,BVar1);
+  return 0;
+}
+
+
+
+=== T1 80:1C 00496e80 ===
+
+undefined4 __cdecl FUN_00496e80(void *param_1)
+
+{
+  uint uVar1;
+  undefined4 uVar2;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0047c190(uVar1);
+  FUN_0044d2c0(param_1,uVar2);
+  return 0;
+}
+
+
+
+--- 00496e80 ---
+
+undefined4 __cdecl FUN_00496e80(void *param_1)
+
+{
+  uint uVar1;
+  undefined4 uVar2;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0047c190(uVar1);
+  FUN_0044d2c0(param_1,uVar2);
+  return 0;
+}
+
+
+
+--- 0047c190 ---
+
+void __fastcall FUN_0047c190(uint param_1)
+
+{
+  int *piVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_EDX;
+  int iVar4;
+  uint local_cc [25];
+  undefined *local_68 [4];
+  undefined *local_58;
+  undefined4 *local_54;
+  undefined4 *local_50;
+  undefined4 *local_4c;
+  undefined4 *local_48;
+  undefined4 *local_44;
+  undefined4 *local_40;
+  undefined4 *local_3c;
+  undefined4 *local_38;
+  undefined *local_34;
+  undefined *local_30;
+  undefined *local_2c;
+  undefined *local_28;
+  undefined *local_24;
+  undefined *local_20;
+  undefined *local_1c;
+  undefined *local_18;
+  undefined *local_14;
+  undefined *local_10;
+  undefined4 *local_c;
+  uint local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_cc + 0x32);
+  local_cc[0] = 1;
+  iVar4 = 0;
+  local_cc[1] = 2;
+  local_cc[2] = 4;
+  uVar2 = 1;
+  local_cc[3] = 0x10;
+  iVar3 = 0;
+  local_cc[4] = 0x20;
+  local_cc[5] = 0x40;
+  local_cc[6] = 0x80;
+  local_cc[7] = 0x100;
+  local_cc[8] = 0x200;
+  local_cc[9] = 0x1000;
+  local_cc[10] = 0x2000;
+  local_cc[0xb] = 0x4000;
+  local_cc[0xc] = 0x8000;
+  local_cc[0xd] = 0x10000;
+  local_cc[0xe] = 0x20000;
+  local_cc[0xf] = 0x40000;
+  local_cc[0x10] = 0x80000;
+  local_cc[0x11] = 0x100000;
+  local_cc[0x12] = 0x200000;
+  local_cc[0x13] = 0x400000;
+  local_cc[0x14] = 0x800000;
+  local_cc[0x15] = 0x1000000;
+  local_cc[0x16] = 0x2000000;
+  local_cc[0x17] = 0x40000000;
+  local_cc[0x18] = 0;
+  local_68[0] = (undefined *)&DAT_0052f498;
+  local_68[1] = (undefined *)&DAT_0052f520;
+  local_68[2] = &DAT_0052f490;
+  local_68[3] = &DAT_0052f314;
+  local_58 = &DAT_0052f5b4;
+  local_54 = &DAT_0052f550;
+  local_50 = &DAT_0052f4e0;
+  local_4c = &DAT_0052f610;
+  local_48 = &DAT_0052f5c0;
+  local_44 = &DAT_0052f410;
+  local_40 = &DAT_0052f3b8;
+  local_3c = &DAT_0052f4a0;
+  local_38 = &DAT_0052f450;
+  local_34 = &DAT_0052f5a8;
+  local_30 = &DAT_0052f544;
+  local_2c = &DAT_0052f36c;
+  local_28 = &DAT_0052f590;
+  local_24 = &DAT_0052f308;
+  local_20 = &DAT_0052f27c;
+  local_1c = &DAT_0052f600;
+  local_18 = &DAT_0052f528;
+  local_14 = &DAT_0052f59c;
+  local_10 = &DAT_0052f404;
+  local_c = &DAT_0052f378;
+  do {
+    if ((param_1 & uVar2) != 0) {
+      piVar1 = *(int **)((int)local_cc + iVar3 + 100);
+      iVar3 = *piVar1;
+      while (iVar3 != 0) {
+        FUN_0047bd70(iVar3);
+        iVar3 = piVar1[extraout_EDX + 1];
+      }
+    }
+    iVar4 = iVar4 + 1;
+    iVar3 = iVar4 * 4;
+    uVar2 = local_cc[iVar4];
+  } while (uVar2 != 0);
+  __security_check_cookie(local_8 ^ (uint)(local_cc + 0x32));
+  return;
+}
+
+
+
+=== T1 80:12 00496c70 ===
+
+undefined4 __cdecl FUN_00496c70(void *param_1)
+
+{
+  int *piVar1;
+  int iVar2;
+  int extraout_EDX;
+  int iVar3;
+  
+  piVar1 = (int *)FUN_0049d1f0((int)param_1);
+  iVar3 = 0;
+  iVar2 = *piVar1;
+  while (iVar2 != 0) {
+    iVar2 = FUN_0047bd70(iVar2);
+    iVar3 = iVar3 + iVar2;
+    iVar2 = *(int *)(extraout_EDX + 4);
+  }
+  FUN_0044d2c0(param_1,iVar3);
+  return 0;
+}
+
+
+
+--- 00496c70 ---
+
+undefined4 __cdecl FUN_00496c70(void *param_1)
+
+{
+  int *piVar1;
+  int iVar2;
+  int extraout_EDX;
+  int iVar3;
+  
+  piVar1 = (int *)FUN_0049d1f0((int)param_1);
+  iVar3 = 0;
+  iVar2 = *piVar1;
+  while (iVar2 != 0) {
+    iVar2 = FUN_0047bd70(iVar2);
+    iVar3 = iVar3 + iVar2;
+    iVar2 = *(int *)(extraout_EDX + 4);
+  }
+  FUN_0044d2c0(param_1,iVar3);
+  return 0;
+}
+
+
+
+--- 0047bd70 ---
+
+undefined4 __fastcall FUN_0047bd70(int param_1)
+
+{
+  return *(undefined4 *)(&DAT_0054870c + param_1 * 0x18);
+}
+
+
+
+=== T1 80:14 00496cd0 ===
+
+undefined4 __cdecl FUN_00496cd0(int param_1)
+
+{
+  undefined4 uVar1;
+  
+  uVar1 = FUN_0044d2a0(param_1);
+  FUN_0047ba30(uVar1);
+  return 0;
+}
+
+
+
+--- 00496cd0 ---
+
+undefined4 __cdecl FUN_00496cd0(int param_1)
+
+{
+  undefined4 uVar1;
+  
+  uVar1 = FUN_0044d2a0(param_1);
+  FUN_0047ba30(uVar1);
+  return 0;
+}
+
+
+
+--- 0047ba30 ---
+
+void __fastcall FUN_0047ba30(undefined4 param_1)
+
+{
+  DAT_0052f5bc = param_1;
+  return;
+}
+
+
+
+=== T1 80:18 00496d40 ===
+
+undefined4 __cdecl FUN_00496d40(int param_1)
+
+{
+  int iVar1;
+  uint uVar2;
+  
+  iVar1 = FUN_0044d2a0(param_1);
+  uVar2 = iVar1 << 0x10 | 0xffff;
+  FUN_0047b6a0(uVar2);
+  FUN_0047b6f0(uVar2);
+  FUN_0047c020(uVar2);
+  return 0;
+}
+
+
+
+--- 00496d40 ---
+
+undefined4 __cdecl FUN_00496d40(int param_1)
+
+{
+  int iVar1;
+  uint uVar2;
+  
+  iVar1 = FUN_0044d2a0(param_1);
+  uVar2 = iVar1 << 0x10 | 0xffff;
+  FUN_0047b6a0(uVar2);
+  FUN_0047b6f0(uVar2);
+  FUN_0047c020(uVar2);
+  return 0;
+}
+
+
+
+--- 0047b6a0 ---
+
+void __fastcall FUN_0047b6a0(uint param_1)
+
+{
+  FUN_0047b650((uint *)&DAT_005486b4,param_1,(uint *)&DAT_0052f534,0);
+  return;
+}
+
+
+
+--- 0047b6f0 ---
+
+void __fastcall FUN_0047b6f0(uint param_1)
+
+{
+  uint local_14 [4];
+  
+  local_14[0] = 0;
+  local_14[1] = 0;
+  local_14[2] = 0;
+  local_14[3] = 0;
+  FUN_0047b650((uint *)&DAT_005486d0,param_1,local_14,0);
+  return;
+}
+
+
+
+--- 0047c020 ---
+
+uint __fastcall FUN_0047c020(uint param_1)
+
+{
+  uint uVar1;
+  int iVar2;
+  uint uVar3;
+  
+  uVar3 = 0;
+  uVar1 = FUN_0047b7d0(param_1);
+  if (uVar1 != 0) {
+    uVar3 = FUN_0047bd80();
+    iVar2 = FUN_0047bf50();
+    if (iVar2 != 0) {
+      uVar3 = uVar3 | 0x80000000;
+    }
+  }
+  iVar2 = FUN_0047b7f0();
+  if (iVar2 != 0) {
+    uVar1 = FUN_0047bc40(1);
+    if (uVar1 != 0) {
+      uVar3 = uVar3 | 1;
+    }
+    uVar1 = FUN_0047bc40(2);
+    if (uVar1 != 0) {
+      uVar3 = uVar3 | 2;
+    }
+    uVar1 = FUN_0047bc40(4);
+    if (uVar1 != 0) {
+      uVar3 = uVar3 | 4;
+    }
+    uVar1 = FUN_0047bc40(5);
+    if (uVar1 != 0) {
+      uVar3 = uVar3 | 0x10;
+    }
+    uVar1 = FUN_0047bc40(6);
+    if (uVar1 != 0) {
+      uVar3 = uVar3 | 0x20;
+    }
+  }
+  return uVar3;
+}
+
+
+
+=== T1 80:19 00496d80 ===
+
+undefined4 __cdecl FUN_00496d80(int param_1)
+
+{
+  int iVar1;
+  uint uVar2;
+  
+  iVar1 = FUN_0044d2a0(param_1);
+  uVar2 = iVar1 << 0x10 | 0xffff;
+  FUN_0047c020(uVar2);
+  FUN_0047b760(uVar2);
+  FUN_0047b770(uVar2);
+  return 0;
+}
+
+
+
+--- 00496d80 ---
+
+undefined4 __cdecl FUN_00496d80(int param_1)
+
+{
+  int iVar1;
+  uint uVar2;
+  
+  iVar1 = FUN_0044d2a0(param_1);
+  uVar2 = iVar1 << 0x10 | 0xffff;
+  FUN_0047c020(uVar2);
+  FUN_0047b760(uVar2);
+  FUN_0047b770(uVar2);
+  return 0;
+}
+
+
+
+--- 0047c020 ---
+
+uint __fastcall FUN_0047c020(uint param_1)
+
+{
+  uint uVar1;
+  int iVar2;
+  uint uVar3;
+  
+  uVar3 = 0;
+  uVar1 = FUN_0047b7d0(param_1);
+  if (uVar1 != 0) {
+    uVar3 = FUN_0047bd80();
+    iVar2 = FUN_0047bf50();
+    if (iVar2 != 0) {
+      uVar3 = uVar3 | 0x80000000;
+    }
+  }
+  iVar2 = FUN_0047b7f0();
+  if (iVar2 != 0) {
+    uVar1 = FUN_0047bc40(1);
+    if (uVar1 != 0) {
+      uVar3 = uVar3 | 1;
+    }
+    uVar1 = FUN_0047bc40(2);
+    if (uVar1 != 0) {
+      uVar3 = uVar3 | 2;
+    }
+    uVar1 = FUN_0047bc40(4);
+    if (uVar1 != 0) {
+      uVar3 = uVar3 | 4;
+    }
+    uVar1 = FUN_0047bc40(5);
+    if (uVar1 != 0) {
+      uVar3 = uVar3 | 0x10;
+    }
+    uVar1 = FUN_0047bc40(6);
+    if (uVar1 != 0) {
+      uVar3 = uVar3 | 0x20;
+    }
+  }
+  return uVar3;
+}
+
+
+
+--- 0047b760 ---
+
+void __fastcall FUN_0047b760(int param_1)
+
+{
+  FUN_0047b720((int *)&DAT_005486b4,param_1);
+  return;
+}
+
+
+
+--- 0047b770 ---
+
+void __fastcall FUN_0047b770(int param_1)
+
+{
+  FUN_0047b720((int *)&DAT_005486d0,param_1);
+  return;
+}
+
+
+
+=== T1 80:0F 00496c00 ===
+
+undefined4 __cdecl FUN_00496c00(void *param_1)
+
+{
+  undefined4 uVar1;
+  
+  uVar1 = FUN_004aba70();
+  FUN_0044d2c0(param_1,uVar1);
+  return 0;
+}
+
+
+
+--- 00496c00 ---
+
+undefined4 __cdecl FUN_00496c00(void *param_1)
+
+{
+  undefined4 uVar1;
+  
+  uVar1 = FUN_004aba70();
+  FUN_0044d2c0(param_1,uVar1);
+  return 0;
+}
+
+
+
+--- 004aba70 ---
+
+undefined4 FUN_004aba70(void)
+
+{
+  return DAT_0054815c;
+}
+
+
+
+=== T1 91:96 00493490 ===
+
+undefined4 __cdecl FUN_00493490(void *param_1)
+
+{
+  undefined1 (*pauVar1) [16];
+  undefined4 uVar2;
+  
+  pauVar1 = (undefined1 (*) [16])FUN_0049d1f0((int)param_1);
+  uVar2 = thunk_FUN_0043a9e0(pauVar1);
+  FUN_0044d2c0(param_1,uVar2);
+  return 0;
+}
+
+
+
+--- 00493490 ---
+
+undefined4 __cdecl FUN_00493490(void *param_1)
+
+{
+  undefined1 (*pauVar1) [16];
+  undefined4 uVar2;
+  
+  pauVar1 = (undefined1 (*) [16])FUN_0049d1f0((int)param_1);
+  uVar2 = thunk_FUN_0043a9e0(pauVar1);
+  FUN_0044d2c0(param_1,uVar2);
+  return 0;
+}
+
+
+
+--- 0043a9e0 ---
+
+void __fastcall FUN_0043a9e0(undefined1 (*param_1) [16])
+
+{
+  FUN_0043adb0(0x5381c0,param_1);
+  return;
+}
+
+
+
+=== T1 91:B8 00493ae0 ===
+
+undefined4 __cdecl FUN_00493ae0(void *param_1)
+
+{
+  uint uVar1;
+  undefined4 uVar2;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0047a530(uVar1,1);
+  FUN_0044d2c0(param_1,uVar2);
+  return 0;
+}
+
+
+
+--- 00493ae0 ---
+
+undefined4 __cdecl FUN_00493ae0(void *param_1)
+
+{
+  uint uVar1;
+  undefined4 uVar2;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0047a530(uVar1,1);
+  FUN_0044d2c0(param_1,uVar2);
+  return 0;
+}
+
+
+
+--- 0047a530 ---
+
+undefined4 __fastcall FUN_0047a530(uint param_1,int param_2)
+
+{
+  void *pvVar1;
+  void *pvVar2;
+  undefined4 *puVar3;
+  undefined4 uVar4;
+  void *local_10;
+  undefined1 *puStack_c;
+  undefined4 local_8;
+  
+  local_8 = 0xffffffff;
+  puStack_c = &LAB_004f3da4;
+  local_10 = ExceptionList;
+  ExceptionList = &local_10;
+  pvVar1 = (void *)FUN_004487f0(param_1);
+  if (param_2 == 0) {
+    pvVar2 = (void *)FUN_004cf50d(0xa4);
+    local_8 = 0;
+    puVar3 = FUN_00451370(pvVar2,pvVar1);
+  }
+  else {
+    if (param_2 != 1) {
+      ExceptionList = local_10;
+      return 0;
+    }
+    pvVar2 = (void *)FUN_004cf50d(0xd8);
+    local_8 = 1;
+    puVar3 = FUN_00454290(pvVar2,pvVar1);
+  }
+  local_8 = 0xffffffff;
+  if (puVar3 == (undefined4 *)0x0) {
+    ExceptionList = local_10;
+    return 0;
+  }
+  uVar4 = FUN_0047a380((int)puVar3);
+  ExceptionList = local_10;
+  return uVar4;
+}
+
+
+
+=== T1 91:BA 00493b10 ===
+
+undefined4 __cdecl FUN_00493b10(int *param_1)
+
+{
+  uint *puVar1;
+  uint *puVar2;
+  int iVar3;
+  
+  puVar1 = (uint *)FUN_0049d1f0((int)param_1);
+  puVar2 = (uint *)FUN_0044d2a0((int)param_1);
+  iVar3 = FUN_0047aad0(puVar2,puVar1,param_1);
+  FUN_0044d2c0(param_1,iVar3);
+  return 0;
+}
+
+
+
+--- 00493b10 ---
+
+undefined4 __cdecl FUN_00493b10(int *param_1)
+
+{
+  uint *puVar1;
+  uint *puVar2;
+  int iVar3;
+  
+  puVar1 = (uint *)FUN_0049d1f0((int)param_1);
+  puVar2 = (uint *)FUN_0044d2a0((int)param_1);
+  iVar3 = FUN_0047aad0(puVar2,puVar1,param_1);
+  FUN_0044d2c0(param_1,iVar3);
+  return 0;
+}
+
+
+
+--- 0047aad0 ---
+
+int __fastcall FUN_0047aad0(uint *param_1,uint *param_2,int *param_3)
+
+{
+  void *this;
+  int iVar1;
+  uint *local_8;
+  
+  local_8 = param_1;
+  this = (void *)FUN_0047a510((int)param_1);
+  if (this == (void *)0x0) {
+    iVar1 = 1;
+  }
+  else {
+    iVar1 = FUN_00451e90((int)this);
+    if (iVar1 != 1) {
+      return 4;
+    }
+    iVar1 = FUN_0047a910(&local_8,param_2,param_3);
+    if (iVar1 == 0) {
+      iVar1 = FUN_004543c0(this,local_8);
+      if (iVar1 != 0) {
+        if (iVar1 == -0x7fffffff) {
+          FUN_0047a8c0((int *)local_8);
+          return 2;
+        }
+        if (iVar1 == -0x7ffffffe) {
+          FUN_0047a8c0((int *)local_8);
+          return 3;
+        }
+      }
+      FUN_0047a8c0((int *)local_8);
+      return 0;
+    }
+  }
+  return iVar1;
+}
+
+
+
+=== T1 90:B9 0048e030 ===
+
+undefined4 __cdecl FUN_0048e030(void *param_1)
+
+{
+  int iVar1;
+  undefined4 uVar2;
+  
+  iVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = thunk_FUN_0047a3f0(iVar1);
+  FUN_0044d2c0(param_1,uVar2);
+  return 0;
+}
+
+
+
+--- 0048e030 ---
+
+undefined4 __cdecl FUN_0048e030(void *param_1)
+
+{
+  int iVar1;
+  undefined4 uVar2;
+  
+  iVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = thunk_FUN_0047a3f0(iVar1);
+  FUN_0044d2c0(param_1,uVar2);
+  return 0;
+}
+
+
+
+--- 0047a3f0 ---
+
+undefined4 __fastcall FUN_0047a3f0(int param_1)
+
+{
+  int *piVar1;
+  int *piVar2;
+  int *piVar3;
+  int *piVar4;
+  
+  piVar3 = (int *)&DAT_00548664;
+  piVar4 = DAT_0054866c;
+  do {
+    piVar2 = piVar4;
+    piVar1 = piVar3;
+    if (piVar2 == (int *)0x0) {
+      return 0;
+    }
+    piVar3 = piVar2;
+    piVar4 = (int *)piVar2[2];
+  } while (*piVar2 != param_1);
+  piVar1[2] = piVar2[2];
+  if ((undefined4 *)piVar2[1] != (undefined4 *)0x0) {
+    (*(code *)**(undefined4 **)piVar2[1])(1);
+  }
+  FUN_004cf53d(piVar2);
+  return 1;
+}
+
+
+
+=== T1 90:05 00488a50 ===
+
+undefined4 __cdecl FUN_00488a50(int *param_1)
+
+{
+  void *pvVar1;
+  void *pvVar2;
+  int extraout_ECX;
+  
+  pvVar1 = (void *)FUN_0044d2a0((int)param_1);
+  pvVar2 = (void *)FUN_0044d2a0(extraout_ECX);
+  FUN_004a8860(pvVar1,param_1);
+  FUN_004a8800(pvVar2,param_1);
+  FUN_0046ed80((int)pvVar2,(int)pvVar1);
+  return 0;
+}
+
+
+
+--- 00488a50 ---
+
+undefined4 __cdecl FUN_00488a50(int *param_1)
+
+{
+  void *pvVar1;
+  void *pvVar2;
+  int extraout_ECX;
+  
+  pvVar1 = (void *)FUN_0044d2a0((int)param_1);
+  pvVar2 = (void *)FUN_0044d2a0(extraout_ECX);
+  FUN_004a8860(pvVar1,param_1);
+  FUN_004a8800(pvVar2,param_1);
+  FUN_0046ed80((int)pvVar2,(int)pvVar1);
+  return 0;
+}
+
+
+
+--- 004a8860 ---
+
+void __fastcall FUN_004a8860(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if ((void *)0xffff < param_1) {
+    FUN_00402010(param_1,local_108,&DAT_00519510,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_2);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 004a8800 ---
+
+void __fastcall FUN_004a8800(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if (((int)param_1 < 0) || (0x3fff < (int)param_1)) {
+    FUN_00402010(param_1,local_108,&DAT_00519108,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_2);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046ed80 ---
+
+void __fastcall FUN_0046ed80(int param_1,int param_2)
+
+{
+  FUN_0044af40(param_1,param_2);
+  return;
+}
+
+
+
+=== T1 90:20 00489ad0 ===
+
+void __cdecl FUN_00489ad0(int *param_1)
+
+{
+  void *pvVar1;
+  int iVar2;
+  int iVar3;
+  int iVar4;
+  void *pvVar5;
+  uint uVar6;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  int extraout_ECX_03;
+  int *extraout_ECX_04;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  pvVar1 = (void *)FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0044d2a0(extraout_ECX_01);
+  pvVar5 = (void *)FUN_0044d2a0(extraout_ECX_02);
+  uVar6 = FUN_0044d2a0(extraout_ECX_03);
+  FUN_004a8860(pvVar1,extraout_ECX_04);
+  FUN_004a8a70(pvVar5,param_1);
+  iVar2 = FUN_004a0e60(param_1,uVar6,0,0,0,0,(int)pvVar5,iVar4,iVar3,0,iVar2,(int)pvVar1);
+  if (iVar2 == -0x7fffffff) {
+    FUN_00402010(this,local_108,&DAT_00517770,(char)iVar3);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (iVar2 == -1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 00489ad0 ---
+
+void __cdecl FUN_00489ad0(int *param_1)
+
+{
+  void *pvVar1;
+  int iVar2;
+  int iVar3;
+  int iVar4;
+  void *pvVar5;
+  uint uVar6;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  int extraout_ECX_03;
+  int *extraout_ECX_04;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  pvVar1 = (void *)FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0044d2a0(extraout_ECX_01);
+  pvVar5 = (void *)FUN_0044d2a0(extraout_ECX_02);
+  uVar6 = FUN_0044d2a0(extraout_ECX_03);
+  FUN_004a8860(pvVar1,extraout_ECX_04);
+  FUN_004a8a70(pvVar5,param_1);
+  iVar2 = FUN_004a0e60(param_1,uVar6,0,0,0,0,(int)pvVar5,iVar4,iVar3,0,iVar2,(int)pvVar1);
+  if (iVar2 == -0x7fffffff) {
+    FUN_00402010(this,local_108,&DAT_00517770,(char)iVar3);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (iVar2 == -1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 004a8860 ---
+
+void __fastcall FUN_004a8860(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if ((void *)0xffff < param_1) {
+    FUN_00402010(param_1,local_108,&DAT_00519510,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_2);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 004a8a70 ---
+
+void __fastcall FUN_004a8a70(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if ((void *)0x100 < param_1) {
+    FUN_00402010(param_1,local_108,&DAT_0051bf68,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_2);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 004a0e60 ---
+
+undefined4 __fastcall
+FUN_004a0e60(void *param_1,uint param_2,int param_3,int param_4,int param_5,int param_6,int param_7,
+            int param_8,int param_9,int param_10,int param_11,int param_12)
+
+{
+  int iVar1;
+  void *this;
+  undefined4 *this_00;
+  void *local_10;
+  undefined1 *puStack_c;
+  undefined4 local_8;
+  
+  local_8 = 0xffffffff;
+  puStack_c = &LAB_004f4872;
+  local_10 = ExceptionList;
+  if (param_9 == 0) {
+    return 0x80000001;
+  }
+  ExceptionList = &local_10;
+  iVar1 = FUN_0044b270(DAT_005485ec,param_2);
+  if (iVar1 == 0) {
+    ExceptionList = local_10;
+    return 0xffffffff;
+  }
+  this = (void *)FUN_004cf50d(0xa8);
+  local_8 = 0;
+  this_00 = FUN_00437ba0(this,param_1,param_2);
+  local_8 = 0xffffffff;
+  if (param_6 == 0) {
+    FUN_00437cf0(this_00,param_7,param_8,param_9,param_10);
+  }
+  else {
+    FUN_00437d30(this_00,param_3,param_4,param_5,param_7,param_8,param_9,param_10);
+  }
+  FUN_00437e50(this_00,param_11,param_12);
+  FUN_0044d3b0(param_1,this_00);
+  ExceptionList = local_10;
+  return 0;
+}
+
+
+
+=== T2 80:81 004984a0 ===
+
+undefined4 __cdecl FUN_004984a0(void *param_1)
+
+{
+  undefined4 uVar1;
+  
+  uVar1 = FUN_004790b0();
+  FUN_0044d2c0(param_1,uVar1);
+  return 0;
+}
+
+
+
+--- 004984a0 ---
+
+undefined4 __cdecl FUN_004984a0(void *param_1)
+
+{
+  undefined4 uVar1;
+  
+  uVar1 = FUN_004790b0();
+  FUN_0044d2c0(param_1,uVar1);
+  return 0;
+}
+
+
+
+--- 004790b0 ---
+
+void FUN_004790b0(void)
+
+{
+  uint *puVar1;
+  int iVar2;
+  uint *puVar3;
+  uint uVar4;
+  char *pcVar5;
+  DWORD DVar6;
+  size_t sVar7;
+  uint *puVar8;
+  uint *puVar9;
+  undefined1 auStack_654 [4];
+  uint *local_650;
+  int local_64c;
+  size_t local_648;
+  int local_644;
+  tagRECT local_640;
+  char local_630 [784];
+  char local_320 [788];
+  uint local_c;
+  
+  local_c = DAT_0052e2f8 ^ (uint)auStack_654;
+  iVar2 = FUN_004a5f00((uint *)0x0,-0x80000000);
+  local_644 = iVar2 + 4;
+  FUN_00450640((int *)0x0,&local_64c);
+  sVar7 = local_64c + 0x100424 + iVar2 + 4;
+  local_648 = sVar7;
+  puVar3 = (uint *)FUN_004cf54b(sVar7);
+  local_650 = puVar3;
+  FUN_004a4e30((int)puVar3,"BURIKO GDB 3.00");
+  puVar3[4] = sVar7;
+  GetWindowRect(DAT_0054863c,&local_640);
+  puVar8 = DAT_005485e0;
+  puVar3[5] = local_640.left;
+  puVar3[6] = local_640.top;
+  puVar1 = DAT_005482bc;
+  puVar3[7] = 0x400;
+  puVar9 = puVar3 + 8;
+  for (iVar2 = 0x100; iVar2 != 0; iVar2 = iVar2 + -1) {
+    *puVar9 = *puVar8;
+    puVar8 = puVar8 + 1;
+    puVar9 = puVar9 + 1;
+  }
+  puVar3[0x108] = 0x100000;
+  FUN_004da7c0(puVar3 + 0x109,puVar1,0x100000);
+  uVar4 = FUN_004a5f80(-0x80000000);
+  puVar3[0x40109] = uVar4;
+  FUN_004a5f00(puVar3 + 0x4010a,-0x80000000);
+  FUN_00450640((int *)(local_644 + (int)(puVar3 + 0x40109)),&local_64c);
+  sVar7 = local_648;
+  pcVar5 = (char *)FUN_004cf54b(local_648 * 2);
+  puVar1 = local_650;
+  DVar6 = FUN_004a23d0(pcVar5,local_650,sVar7);
+  local_650 = (uint *)DVar6;
+  if (DVar6 == 0) {
+    FUN_00478ff0((int)local_630,"BGIError.txt");
+    FUN_004738b0(local_630,puVar1,local_648);
+    FUN_00471c20(&DAT_00516970);
+  }
+  FUN_00478ff0((int)local_320,"BGI.gdb");
+  FUN_004738b0(local_320,pcVar5,DVar6);
+  thunk_FUN_004e0964(pcVar5);
+  thunk_FUN_004e0964(puVar1);
+  __security_check_cookie(local_c ^ (uint)auStack_654);
+  return;
+}
+
+
+
+=== T2 B0:C5 004887b0 ===
+
+undefined4 __cdecl FUN_004887b0(void *param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0049d1f0(extraout_ECX);
+  uVar1 = thunk_FUN_00433050(uVar2,(BYTE)uVar1);
+  FUN_0044d2c0(param_1,uVar1);
+  return 0;
+}
+
+
+
+--- 004887b0 ---
+
+undefined4 __cdecl FUN_004887b0(void *param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0049d1f0(extraout_ECX);
+  uVar1 = thunk_FUN_00433050(uVar2,(BYTE)uVar1);
+  FUN_0044d2c0(param_1,uVar1);
+  return 0;
+}
+
+
+
+--- 00433050 ---
+
+void __fastcall FUN_00433050(undefined4 param_1,BYTE param_2)
+
+{
+  HDC hdc;
+  undefined4 local_70;
+  undefined4 local_6c;
+  undefined4 local_68;
+  tagLOGFONTW local_64;
+  uint local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)&(&local_64)[1].lfWidth;
+  _memset(&local_64,0,0x5c);
+  local_64.lfFaceName[0] = L'\0';
+  local_64.lfPitchAndFamily = '\0';
+  local_70 = 0;
+  local_68 = 0;
+  local_6c = param_1;
+  local_64.lfCharSet = param_2;
+  hdc = GetDC((HWND)0x0);
+  EnumFontFamiliesExW(hdc,&local_64,FUN_00434960,(LPARAM)&local_70,0);
+  ReleaseDC((HWND)0x0,hdc);
+  __security_check_cookie(local_8 ^ (uint)&(&local_64)[1].lfWidth);
+  return;
+}
+
+
+
+=== T2 B0:C6 004887e0 ===
+
+undefined4 __cdecl FUN_004887e0(void *param_1)
+
+{
+  char *pcVar1;
+  uint *puVar2;
+  undefined4 uVar3;
+  
+  pcVar1 = (char *)FUN_0049d1f0((int)param_1);
+  puVar2 = (uint *)FUN_0049d1f0((int)param_1);
+  uVar3 = thunk_FUN_00433180(puVar2,pcVar1);
+  FUN_0044d2c0(param_1,uVar3);
+  return 0;
+}
+
+
+
+--- 004887e0 ---
+
+undefined4 __cdecl FUN_004887e0(void *param_1)
+
+{
+  char *pcVar1;
+  uint *puVar2;
+  undefined4 uVar3;
+  
+  pcVar1 = (char *)FUN_0049d1f0((int)param_1);
+  puVar2 = (uint *)FUN_0049d1f0((int)param_1);
+  uVar3 = thunk_FUN_00433180(puVar2,pcVar1);
+  FUN_0044d2c0(param_1,uVar3);
+  return 0;
+}
+
+
+
+--- 00433180 ---
+
+undefined4 __fastcall FUN_00433180(uint *param_1,char *param_2)
+
+{
+  int iVar1;
+  int *piVar2;
+  
+  piVar2 = &DAT_00501ff0;
+  do {
+    iVar1 = FUN_004330d0(param_1,param_2,(BYTE)*piVar2);
+    if (iVar1 != 0) {
+      return 1;
+    }
+    iVar1 = *piVar2;
+    piVar2 = piVar2 + 1;
+  } while (iVar1 != 0);
+  return 0;
+}
+
+
+
+=== T2 80:0D 00496b60 ===
+
+void __cdecl FUN_00496b60(void *param_1)
+
+{
+  void *this;
+  uint uVar1;
+  undefined1 auStack_48 [8];
+  _MEMORYSTATUS local_40;
+  uint local_14;
+  
+  local_14 = DAT_0052e2f8 ^ (uint)auStack_48;
+  local_40.dwMemoryLoad = 0;
+  local_40.dwTotalPhys = 0;
+  local_40.dwAvailPhys = 0;
+  local_40.dwTotalPageFile = 0;
+  local_40.dwAvailPageFile = 0;
+  local_40.dwTotalVirtual = 0;
+  local_40.dwAvailVirtual = 0;
+  local_40.dwLength = 0x20;
+  GlobalMemoryStatus(&local_40);
+  uVar1 = 0x7fffffff;
+  if (local_40.dwTotalPhys < 0x80000000) {
+    uVar1 = local_40.dwTotalPhys;
+  }
+  FUN_0044d2c0(param_1,uVar1);
+  uVar1 = 0x7fffffff;
+  if (local_40.dwAvailPhys < 0x80000000) {
+    uVar1 = local_40.dwAvailPhys;
+  }
+  FUN_0044d2c0(this,uVar1);
+  __security_check_cookie(local_14 ^ (uint)auStack_48);
+  return;
+}
+
+
+
+--- 00496b60 ---
+
+void __cdecl FUN_00496b60(void *param_1)
+
+{
+  void *this;
+  uint uVar1;
+  undefined1 auStack_48 [8];
+  _MEMORYSTATUS local_40;
+  uint local_14;
+  
+  local_14 = DAT_0052e2f8 ^ (uint)auStack_48;
+  local_40.dwMemoryLoad = 0;
+  local_40.dwTotalPhys = 0;
+  local_40.dwAvailPhys = 0;
+  local_40.dwTotalPageFile = 0;
+  local_40.dwAvailPageFile = 0;
+  local_40.dwTotalVirtual = 0;
+  local_40.dwAvailVirtual = 0;
+  local_40.dwLength = 0x20;
+  GlobalMemoryStatus(&local_40);
+  uVar1 = 0x7fffffff;
+  if (local_40.dwTotalPhys < 0x80000000) {
+    uVar1 = local_40.dwTotalPhys;
+  }
+  FUN_0044d2c0(param_1,uVar1);
+  uVar1 = 0x7fffffff;
+  if (local_40.dwAvailPhys < 0x80000000) {
+    uVar1 = local_40.dwAvailPhys;
+  }
+  FUN_0044d2c0(this,uVar1);
+  __security_check_cookie(local_14 ^ (uint)auStack_48);
+  return;
+}
+
+
+
+=== T2 81:30 0049a6d0 ===
+
+byte __cdecl FUN_0049a6d0(void *param_1)
+
+{
+  uint uVar1;
+  uint uVar2;
+  char *pcVar3;
+  char *pcVar4;
+  undefined4 uVar5;
+  int iVar6;
+  void *this;
+  undefined4 *puVar7;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  LPVOID extraout_ECX_01;
+  void *local_10;
+  undefined1 *puStack_c;
+  undefined4 local_8;
+  
+  local_8 = 0xffffffff;
+  puStack_c = &LAB_004f4472;
+  local_10 = ExceptionList;
+  ExceptionList = &local_10;
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  pcVar3 = (char *)FUN_0049d1f0(extraout_ECX_00);
+  pcVar4 = (char *)FUN_0049d1f0((int)param_1);
+  uVar5 = FUN_0049d1f0((int)param_1);
+  iVar6 = FUN_0049c270();
+  if (iVar6 == 0) {
+    uVar5 = FUN_00475750(extraout_ECX_01,pcVar4,pcVar3,uVar2,uVar1,(uint *)0x0);
+    FUN_0044d2c0(param_1,uVar5);
+  }
+  else {
+    this = (void *)FUN_004cf50d(0x658);
+    local_8 = 0;
+    puVar7 = FUN_0045ce30(this,param_1,uVar5,pcVar4,pcVar3,uVar2,uVar1);
+    local_8 = 0xffffffff;
+    FUN_0044d3b0(param_1,puVar7);
+    FUN_0049c260(0);
+  }
+  ExceptionList = local_10;
+  return -(iVar6 != 0) & 2;
+}
+
+
+
+--- 0049a6d0 ---
+
+byte __cdecl FUN_0049a6d0(void *param_1)
+
+{
+  uint uVar1;
+  uint uVar2;
+  char *pcVar3;
+  char *pcVar4;
+  undefined4 uVar5;
+  int iVar6;
+  void *this;
+  undefined4 *puVar7;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  LPVOID extraout_ECX_01;
+  void *local_10;
+  undefined1 *puStack_c;
+  undefined4 local_8;
+  
+  local_8 = 0xffffffff;
+  puStack_c = &LAB_004f4472;
+  local_10 = ExceptionList;
+  ExceptionList = &local_10;
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  pcVar3 = (char *)FUN_0049d1f0(extraout_ECX_00);
+  pcVar4 = (char *)FUN_0049d1f0((int)param_1);
+  uVar5 = FUN_0049d1f0((int)param_1);
+  iVar6 = FUN_0049c270();
+  if (iVar6 == 0) {
+    uVar5 = FUN_00475750(extraout_ECX_01,pcVar4,pcVar3,uVar2,uVar1,(uint *)0x0);
+    FUN_0044d2c0(param_1,uVar5);
+  }
+  else {
+    this = (void *)FUN_004cf50d(0x658);
+    local_8 = 0;
+    puVar7 = FUN_0045ce30(this,param_1,uVar5,pcVar4,pcVar3,uVar2,uVar1);
+    local_8 = 0xffffffff;
+    FUN_0044d3b0(param_1,puVar7);
+    FUN_0049c260(0);
+  }
+  ExceptionList = local_10;
+  return -(iVar6 != 0) & 2;
+}
+
+
+
+--- 0049c270 ---
+
+undefined4 FUN_0049c270(void)
+
+{
+  return DAT_0054a444;
+}
+
+
+
+--- 00475750 ---
+
+void __fastcall
+FUN_00475750(LPVOID param_1,char *param_2,char *param_3,uint param_4,uint param_5,uint *param_6)
+
+{
+  int iVar1;
+  uint uVar2;
+  undefined1 local_31c [788];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_31c + 0x318);
+  if (param_5 < 0x4000001) {
+    iVar1 = FUN_004755b0(param_1,param_6,&DAT_00547db8,param_3,param_4,param_5);
+    if (iVar1 == 1) {
+      if (param_2 == (char *)0x0) {
+        FUN_004755b0(param_1,param_6,&DAT_005470a0,param_3,param_4,param_5);
+        __security_check_cookie(local_8 ^ (uint)(local_31c + 0x318));
+        return;
+      }
+      FUN_004a5030(local_31c,&DAT_00547db8,param_2,-1);
+      uVar2 = FUN_004756b0((int)param_1,local_31c,param_3,param_4,param_5);
+      if (((uVar2 == 0x80000010) || (uVar2 == 0x80000020)) &&
+         (iVar1 = FUN_004723a0((short *)&DAT_00546778), iVar1 != 0)) {
+        FUN_004a5030(local_31c,&DAT_005470a0,param_2,-1);
+        uVar2 = FUN_004756b0((int)param_1,local_31c,param_3,param_4,param_5);
+      }
+      switch(uVar2) {
+      case 0x80000010:
+      case 0x80000020:
+        __security_check_cookie(local_8 ^ (uint)(local_31c + 0x318));
+        return;
+      default:
+        if (param_6 != (uint *)0x0) {
+          *param_6 = uVar2;
+        }
+        __security_check_cookie(local_8 ^ (uint)(local_31c + 0x318));
+        return;
+      case 0x80000030:
+        __security_check_cookie(local_8 ^ (uint)(local_31c + 0x318));
+        return;
+      case 0x80000040:
+        goto switchD_0047587c_caseD_80000040;
+      }
+    }
+  }
+  else {
+switchD_0047587c_caseD_80000040:
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_31c + 0x318));
+  return;
+}
+
+
+
+--- 004cf50d ---
+
+void __cdecl FUN_004cf50d(size_t param_1)
+
+{
+  int iVar1;
+  int aiStack_10 [2];
+  
+  do {
+    aiStack_10[1] = 0x4cf527;
+    iVar1 = FUN_004e18ce(param_1);
+    if (iVar1 != 0) {
+      return;
+    }
+    iVar1 = __callnewh(param_1);
+  } while (iVar1 != 0);
+  if (param_1 == 0xffffffff) {
+    FUN_004d021b(aiStack_10);
+                    /* WARNING: Subroutine does not return */
+    __CxxThrowException_8(aiStack_10,&DAT_0052a070);
+  }
+  FUN_004d029d();
+  return;
+}
+
+
+
+--- 0045ce30 ---
+
+undefined4 * __thiscall
+FUN_0045ce30(void *this,undefined4 param_1,undefined4 param_2,char *param_3,char *param_4,
+            int param_5,int param_6)
+
+{
+  void *local_10;
+  undefined1 *puStack_c;
+  undefined4 local_8;
+  
+  local_8 = 0xffffffff;
+  puStack_c = &LAB_004f2588;
+  local_10 = ExceptionList;
+  ExceptionList = &local_10;
+  FUN_00441b00(this,param_1,param_3,param_4,param_5,param_6);
+  *(undefined ***)this = DCProcReadBinary::vftable;
+  *(undefined4 *)((int)this + 0x654) = param_2;
+  ExceptionList = local_10;
+  return this;
+}
+
+
+
+--- 0044d3b0 ---
+
+void __thiscall FUN_0044d3b0(void *this,undefined4 param_1)
+
+{
+  if (*(undefined4 **)((int)this + 0x5c) != (undefined4 *)0x0) {
+    (**(code **)**(undefined4 **)((int)this + 0x5c))(1);
+  }
+  *(undefined4 *)((int)this + 0x5c) = param_1;
+  FUN_0044d110(this,1);
+  return;
+}
+
+
+
+--- 0049c260 ---
+
+void __fastcall FUN_0049c260(undefined4 param_1)
+
+{
+  DAT_0054a444 = param_1;
+  return;
+}
+
+
+
+=== T2 81:0E 0049a070 ===
+
+undefined4 __cdecl FUN_0049a070(int param_1)
+
+{
+  uint *puVar1;
+  
+  puVar1 = (uint *)FUN_0049d1f0(param_1);
+  FUN_0046b2f0((undefined4 *)0x0);
+  FUN_0046b320(puVar1,1);
+  return 0;
+}
+
+
+
+--- 0049a070 ---
+
+undefined4 __cdecl FUN_0049a070(int param_1)
+
+{
+  uint *puVar1;
+  
+  puVar1 = (uint *)FUN_0049d1f0(param_1);
+  FUN_0046b2f0((undefined4 *)0x0);
+  FUN_0046b320(puVar1,1);
+  return 0;
+}
+
+
+
+--- 0046b2f0 ---
+
+bool __fastcall FUN_0046b2f0(undefined4 *param_1)
+
+{
+  undefined4 *puVar1;
+  uint uVar2;
+  int iVar3;
+  
+  iVar3 = *DAT_00546194;
+  puVar1 = &DAT_00545c9c;
+  if (param_1 != (undefined4 *)0x0) {
+    puVar1 = param_1;
+  }
+  uVar2 = FUN_0046b2a0();
+  iVar3 = (**(code **)(iVar3 + 0x20))(DAT_00546194,uVar2,puVar1);
+  return -1 < iVar3;
+}
+
+
+
+--- 0046b320 ---
+
+void __fastcall FUN_0046b320(uint *param_1,int param_2)
+
+{
+  uint uVar1;
+  
+  if (param_2 == 0) {
+    *param_1 = DAT_00545c9c;
+    param_1[1] = DAT_00545ca0;
+    return;
+  }
+  uVar1 = DAT_00545c9c;
+  if (9 < (DAT_00545c9c * 4) / DAT_00545ca0) {
+    uVar1 = DAT_00545c9c >> 1;
+  }
+  *param_1 = uVar1;
+  uVar1 = DAT_00545ca0;
+  if ((DAT_00545ca0 / DAT_00545c9c != 0) && ((DAT_00545ca0 * 100) / DAT_00545c9c < 0x7d)) {
+    uVar1 = DAT_00545ca0 >> 1;
+  }
+  param_1[1] = uVar1;
+  return;
+}
+
+
+
+=== T2 90:16 00489110 ===
+
+undefined4 __cdecl FUN_00489110(void *param_1)
+
+{
+  int iVar1;
+  undefined4 *puVar2;
+  undefined4 uVar3;
+  int extraout_ECX;
+  
+  iVar1 = FUN_0044d2a0((int)param_1);
+  puVar2 = (undefined4 *)FUN_0049d1f0(extraout_ECX);
+  uVar3 = FUN_00402d10(puVar2,iVar1);
+  *puVar2 = 0;
+  FUN_0044d2c0(param_1,uVar3);
+  return 0;
+}
+
+
+
+--- 00489110 ---
+
+undefined4 __cdecl FUN_00489110(void *param_1)
+
+{
+  int iVar1;
+  undefined4 *puVar2;
+  undefined4 uVar3;
+  int extraout_ECX;
+  
+  iVar1 = FUN_0044d2a0((int)param_1);
+  puVar2 = (undefined4 *)FUN_0049d1f0(extraout_ECX);
+  uVar3 = FUN_00402d10(puVar2,iVar1);
+  *puVar2 = 0;
+  FUN_0044d2c0(param_1,uVar3);
+  return 0;
+}
+
+
+
+--- 00402d10 ---
+
+void __fastcall FUN_00402d10(undefined4 *param_1,int param_2)
+
+{
+  FUN_00408fc0(DAT_00548630,param_1,param_2);
+  return;
+}
+
+
+
+=== T2 91:8D 004930e0 ===
+
+undefined4 __cdecl FUN_004930e0(int *param_1)
+
+{
+  uint uVar1;
+  int iVar2;
+  void *this;
+  void *this_00;
+  undefined4 local_10;
+  undefined4 local_c;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0046ffe0(&local_10,uVar1);
+  if (iVar2 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  FUN_0044d2c0(param_1,iVar2);
+  FUN_0044d2c0(this,local_10);
+  FUN_0044d2c0(this_00,local_c);
+  return 0;
+}
+
+
+
+--- 004930e0 ---
+
+undefined4 __cdecl FUN_004930e0(int *param_1)
+
+{
+  uint uVar1;
+  int iVar2;
+  void *this;
+  void *this_00;
+  undefined4 local_10;
+  undefined4 local_c;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0046ffe0(&local_10,uVar1);
+  if (iVar2 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  FUN_0044d2c0(param_1,iVar2);
+  FUN_0044d2c0(this,local_10);
+  FUN_0044d2c0(this_00,local_c);
+  return 0;
+}
+
+
+
+--- 0046ffe0 ---
+
+void __fastcall FUN_0046ffe0(undefined4 *param_1,uint param_2)
+
+{
+  FUN_004490e0(param_1,param_2);
+  return;
+}
+
+
+
+=== T2 91:8E 00493140 ===
+
+undefined4 __cdecl FUN_00493140(int *param_1)
+
+{
+  uint uVar1;
+  undefined4 *puVar2;
+  undefined4 local_8;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  puVar2 = FUN_0046fff0(&local_8,uVar1);
+  if (puVar2 == (undefined4 *)0xffffffff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  FUN_0044d2c0(param_1,local_8);
+  return 0;
+}
+
+
+
+--- 00493140 ---
+
+undefined4 __cdecl FUN_00493140(int *param_1)
+
+{
+  uint uVar1;
+  undefined4 *puVar2;
+  undefined4 local_8;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  puVar2 = FUN_0046fff0(&local_8,uVar1);
+  if (puVar2 == (undefined4 *)0xffffffff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  FUN_0044d2c0(param_1,local_8);
+  return 0;
+}
+
+
+
+--- 0046fff0 ---
+
+undefined4 * __fastcall FUN_0046fff0(undefined4 *param_1,uint param_2)
+
+{
+  int iVar1;
+  
+  iVar1 = FUN_00449110(param_1,param_2);
+  if (iVar1 == 0) {
+    return (undefined4 *)0x0;
+  }
+  if (iVar1 == 0xff) {
+    return (undefined4 *)0xffffffff;
+  }
+  return param_1;
+}
+
+
+
+=== T2 80:89 004986b0 ===
+
+undefined4 __cdecl FUN_004986b0(void *param_1)
+
+{
+  int iVar1;
+  uint uVar2;
+  char *pcVar3;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  
+  iVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  pcVar3 = (char *)FUN_0049d1f0(extraout_ECX_00);
+  iVar1 = FUN_00479070(pcVar3,uVar2,iVar1);
+  if (iVar1 == 0) {
+    iVar1 = 0;
+  }
+  else {
+    if (iVar1 == -0x7ffffffe) {
+      FUN_0044d2c0(param_1,1);
+      return 0;
+    }
+    if (iVar1 == -0x7ffffffd) {
+      FUN_0044d2c0(param_1,2);
+      return 0;
+    }
+  }
+  FUN_0044d2c0(param_1,iVar1);
+  return 0;
+}
+
+
+
+--- 004986b0 ---
+
+undefined4 __cdecl FUN_004986b0(void *param_1)
+
+{
+  int iVar1;
+  uint uVar2;
+  char *pcVar3;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  
+  iVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  pcVar3 = (char *)FUN_0049d1f0(extraout_ECX_00);
+  iVar1 = FUN_00479070(pcVar3,uVar2,iVar1);
+  if (iVar1 == 0) {
+    iVar1 = 0;
+  }
+  else {
+    if (iVar1 == -0x7ffffffe) {
+      FUN_0044d2c0(param_1,1);
+      return 0;
+    }
+    if (iVar1 == -0x7ffffffd) {
+      FUN_0044d2c0(param_1,2);
+      return 0;
+    }
+  }
+  FUN_0044d2c0(param_1,iVar1);
+  return 0;
+}
+
+
+
+--- 00479070 ---
+
+void __fastcall FUN_00479070(char *param_1,uint param_2,int param_3)
+
+{
+  FUN_004504b0(param_1,param_2,param_3);
+  return;
+}
+
+
+
+=== T2 80:8A 00498730 ===
+
+undefined4 __cdecl FUN_00498730(void *param_1)
+
+{
+  int iVar1;
+  int iVar2;
+  uint uVar3;
+  char *pcVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  
+  iVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  pcVar4 = (char *)FUN_0049d1f0(extraout_ECX_01);
+  uVar3 = FUN_00479080(pcVar4,uVar3,iVar2,iVar1);
+  if (uVar3 < 0x80000004) {
+    if (uVar3 == 0x80000003) {
+      FUN_0044d2c0(param_1,2);
+      return 0;
+    }
+    if (uVar3 == 0) {
+      FUN_0044d2c0(param_1,0);
+      return 0;
+    }
+    if (uVar3 == 0x80000002) {
+      FUN_0044d2c0(param_1,1);
+      return 0;
+    }
+  }
+  else if (uVar3 == 0x80000004) {
+    uVar3 = 3;
+  }
+  FUN_0044d2c0(param_1,uVar3);
+  return 0;
+}
+
+
+
+--- 00498730 ---
+
+undefined4 __cdecl FUN_00498730(void *param_1)
+
+{
+  int iVar1;
+  int iVar2;
+  uint uVar3;
+  char *pcVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  
+  iVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  pcVar4 = (char *)FUN_0049d1f0(extraout_ECX_01);
+  uVar3 = FUN_00479080(pcVar4,uVar3,iVar2,iVar1);
+  if (uVar3 < 0x80000004) {
+    if (uVar3 == 0x80000003) {
+      FUN_0044d2c0(param_1,2);
+      return 0;
+    }
+    if (uVar3 == 0) {
+      FUN_0044d2c0(param_1,0);
+      return 0;
+    }
+    if (uVar3 == 0x80000002) {
+      FUN_0044d2c0(param_1,1);
+      return 0;
+    }
+  }
+  else if (uVar3 == 0x80000004) {
+    uVar3 = 3;
+  }
+  FUN_0044d2c0(param_1,uVar3);
+  return 0;
+}
+
+
+
+--- 00479080 ---
+
+void __fastcall FUN_00479080(char *param_1,uint param_2,int param_3,int param_4)
+
+{
+  FUN_00450520(param_1,param_2,param_3,param_4);
+  return;
+}
+
+
+
+=== T2 80:8B 004987d0 ===
+
+undefined4 __cdecl FUN_004987d0(void *param_1)
+
+{
+  uint uVar1;
+  char *pcVar2;
+  uint *puVar3;
+  int iVar4;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  pcVar2 = (char *)FUN_0049d1f0(extraout_ECX);
+  puVar3 = (uint *)FUN_0049d1f0((int)param_1);
+  iVar4 = FUN_004790a0(puVar3,pcVar2,uVar1);
+  if (iVar4 == 0) {
+    iVar4 = 0;
+  }
+  else {
+    if (iVar4 == -0x7ffffffe) {
+      FUN_0044d2c0(param_1,1);
+      return 0;
+    }
+    if (iVar4 == -0x7ffffffd) {
+      FUN_0044d2c0(param_1,2);
+      return 0;
+    }
+  }
+  FUN_0044d2c0(param_1,iVar4);
+  return 0;
+}
+
+
+
+--- 004987d0 ---
+
+undefined4 __cdecl FUN_004987d0(void *param_1)
+
+{
+  uint uVar1;
+  char *pcVar2;
+  uint *puVar3;
+  int iVar4;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  pcVar2 = (char *)FUN_0049d1f0(extraout_ECX);
+  puVar3 = (uint *)FUN_0049d1f0((int)param_1);
+  iVar4 = FUN_004790a0(puVar3,pcVar2,uVar1);
+  if (iVar4 == 0) {
+    iVar4 = 0;
+  }
+  else {
+    if (iVar4 == -0x7ffffffe) {
+      FUN_0044d2c0(param_1,1);
+      return 0;
+    }
+    if (iVar4 == -0x7ffffffd) {
+      FUN_0044d2c0(param_1,2);
+      return 0;
+    }
+  }
+  FUN_0044d2c0(param_1,iVar4);
+  return 0;
+}
+
+
+
+--- 004790a0 ---
+
+void __fastcall FUN_004790a0(uint *param_1,char *param_2,uint param_3)
+
+{
+  FUN_004505e0(param_1,param_2,param_3);
+  return;
+}
+
+
+
+=== T2 6C None ===
+
+=== T2 6E None ===
+
+=== T2 73 None ===
+
+=== T2 77 None ===
+
+=== T2 7C None ===
+
+=== T2 7D None ===
+
+=== T2 7E None ===
+
+=== T2 78 None ===
+
+=== T2 90:09 00488b00 ===
+
+undefined4 __cdecl FUN_00488b00(int param_1)
+
+{
+  void *pvVar1;
+  int *extraout_ECX;
+  
+  pvVar1 = (void *)FUN_0044d2a0(param_1);
+  FUN_004a8860(pvVar1,extraout_ECX);
+  FUN_0046eda0((int)pvVar1);
+  return 0;
+}
+
+
+
+--- 00488b00 ---
+
+undefined4 __cdecl FUN_00488b00(int param_1)
+
+{
+  void *pvVar1;
+  int *extraout_ECX;
+  
+  pvVar1 = (void *)FUN_0044d2a0(param_1);
+  FUN_004a8860(pvVar1,extraout_ECX);
+  FUN_0046eda0((int)pvVar1);
+  return 0;
+}
+
+
+
+--- 004a8860 ---
+
+void __fastcall FUN_004a8860(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if ((void *)0xffff < param_1) {
+    FUN_00402010(param_1,local_108,&DAT_00519510,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_2);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046eda0 ---
+
+void __fastcall FUN_0046eda0(int param_1)
+
+{
+  FUN_0044b100(DAT_005485ec,param_1);
+  return;
+}
+
+
+
+=== T2 90:DD 0048eef0 ===
+
+undefined4 __cdecl FUN_0048eef0(void *param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 extraout_ECX;
+  
+  FUN_0044d2a0((int)param_1);
+  FUN_00470bc0();
+  uVar1 = FUN_00470bb0(extraout_ECX);
+  FUN_0044d2c0(param_1,uVar1);
+  return 0;
+}
+
+
+
+--- 0048eef0 ---
+
+undefined4 __cdecl FUN_0048eef0(void *param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 extraout_ECX;
+  
+  FUN_0044d2a0((int)param_1);
+  FUN_00470bc0();
+  uVar1 = FUN_00470bb0(extraout_ECX);
+  FUN_0044d2c0(param_1,uVar1);
+  return 0;
+}
+
+
+
+--- 00470bc0 ---
+
+undefined4 FUN_00470bc0(void)
+
+{
+  return DAT_0052ec40;
+}
+
+
+
+--- 00470bb0 ---
+
+void __fastcall FUN_00470bb0(undefined4 param_1)
+
+{
+  DAT_0052ec40 = param_1;
+  return;
+}
+
+
+
+=== T2 80:98 00498bb0 ===
+
+undefined4 __cdecl FUN_00498bb0(void *param_1)
+
+{
+  int iVar1;
+  int iVar2;
+  int *piVar3;
+  undefined4 uVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  
+  iVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0044d2a0(extraout_ECX);
+  piVar3 = (int *)FUN_0049d1f0(extraout_ECX_00);
+  uVar4 = FUN_00479ff0(piVar3,iVar2,iVar1);
+  FUN_0044d2c0(param_1,uVar4);
+  return 0;
+}
+
+
+
+--- 00498bb0 ---
+
+undefined4 __cdecl FUN_00498bb0(void *param_1)
+
+{
+  int iVar1;
+  int iVar2;
+  int *piVar3;
+  undefined4 uVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  
+  iVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0044d2a0(extraout_ECX);
+  piVar3 = (int *)FUN_0049d1f0(extraout_ECX_00);
+  uVar4 = FUN_00479ff0(piVar3,iVar2,iVar1);
+  FUN_0044d2c0(param_1,uVar4);
+  return 0;
+}
+
+
+
+--- 00479ff0 ---
+
+undefined4 __fastcall FUN_00479ff0(int *param_1,int param_2,int param_3)
+
+{
+  int *piVar1;
+  
+  if (param_2 == 0) {
+    return 2;
+  }
+  if (param_3 == 0) {
+    return 2;
+  }
+  piVar1 = (int *)FUN_004cf50d(0x18);
+  DAT_00548648 = DAT_00548648 + 1;
+  *piVar1 = DAT_00548648;
+  piVar1[1] = param_2;
+  piVar1[2] = param_3;
+  piVar1[3] = 1;
+  piVar1[4] = 0;
+  piVar1[5] = (int)DAT_0054865c;
+  DAT_0054865c = piVar1;
+  *param_1 = *piVar1;
+  return 0;
+}
+
+
+
+=== T3 90:31 0048a540 ===
+
+undefined4 __cdecl FUN_0048a540(int *param_1)
+
+{
+  undefined4 uVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0046ee20(uVar2,uVar1);
+  if (iVar3 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0048a540 ---
+
+undefined4 __cdecl FUN_0048a540(int *param_1)
+
+{
+  undefined4 uVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0046ee20(uVar2,uVar1);
+  if (iVar3 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0046ee20 ---
+
+void __fastcall FUN_0046ee20(uint param_1,undefined4 param_2)
+
+{
+  FUN_0044b380(param_1,param_2);
+  return;
+}
+
+
+
+=== T3 90:35 0048a670 ===
+
+undefined4 __cdecl FUN_0048a670(int *param_1)
+
+{
+  void *pvVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  
+  pvVar1 = (void *)FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  FUN_004a8a70(pvVar1,param_1);
+  iVar3 = FUN_0046eea0(uVar2,pvVar1);
+  if (iVar3 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0048a670 ---
+
+undefined4 __cdecl FUN_0048a670(int *param_1)
+
+{
+  void *pvVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  
+  pvVar1 = (void *)FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  FUN_004a8a70(pvVar1,param_1);
+  iVar3 = FUN_0046eea0(uVar2,pvVar1);
+  if (iVar3 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 004a8a70 ---
+
+void __fastcall FUN_004a8a70(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if ((void *)0x100 < param_1) {
+    FUN_00402010(param_1,local_108,&DAT_0051bf68,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_2);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046eea0 ---
+
+void __fastcall FUN_0046eea0(uint param_1,undefined4 param_2)
+
+{
+  FUN_0044b610(param_1,param_2);
+  return;
+}
+
+
+
+=== T3 90:36 0048a6c0 ===
+
+undefined4 __cdecl FUN_0048a6c0(int *param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  uint uVar3;
+  int iVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0046eec0(uVar3,uVar2,uVar1);
+  if (iVar4 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0048a6c0 ---
+
+undefined4 __cdecl FUN_0048a6c0(int *param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  uint uVar3;
+  int iVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0046eec0(uVar3,uVar2,uVar1);
+  if (iVar4 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0046eec0 ---
+
+void __fastcall FUN_0046eec0(uint param_1,undefined4 param_2,undefined4 param_3)
+
+{
+  FUN_0044b6c0(param_1,param_2,param_3);
+  return;
+}
+
+
+
+=== T3 90:37 0048a710 ===
+
+undefined4 __cdecl FUN_0048a710(int *param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  uint uVar3;
+  int iVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0046eeb0(uVar3,uVar2,uVar1);
+  if (iVar4 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0048a710 ---
+
+undefined4 __cdecl FUN_0048a710(int *param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  uint uVar3;
+  int iVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0046eeb0(uVar3,uVar2,uVar1);
+  if (iVar4 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0046eeb0 ---
+
+void __fastcall FUN_0046eeb0(uint param_1,undefined4 param_2,undefined4 param_3)
+
+{
+  FUN_0044b660(param_1,param_2,param_3);
+  return;
+}
+
+
+
+=== T3 90:39 0048a830 ===
+
+undefined4 __cdecl FUN_0048a830(int *param_1)
+
+{
+  void *pvVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  
+  pvVar1 = (void *)FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  FUN_004a8a70(pvVar1,param_1);
+  iVar3 = FUN_0046ee90(uVar2,pvVar1);
+  if (iVar3 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0048a830 ---
+
+undefined4 __cdecl FUN_0048a830(int *param_1)
+
+{
+  void *pvVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  
+  pvVar1 = (void *)FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  FUN_004a8a70(pvVar1,param_1);
+  iVar3 = FUN_0046ee90(uVar2,pvVar1);
+  if (iVar3 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 004a8a70 ---
+
+void __fastcall FUN_004a8a70(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if ((void *)0x100 < param_1) {
+    FUN_00402010(param_1,local_108,&DAT_0051bf68,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_2);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046ee90 ---
+
+void __fastcall FUN_0046ee90(uint param_1,undefined4 param_2)
+
+{
+  FUN_0044b5c0(param_1,param_2);
+  return;
+}
+
+
+
+=== T3 90:3A 0048a880 ===
+
+undefined4 __cdecl FUN_0048a880(int *param_1)
+
+{
+  void *pvVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  
+  pvVar1 = (void *)FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  FUN_004a8860(pvVar1,param_1);
+  iVar3 = FUN_0046ef40(uVar2,pvVar1);
+  if (iVar3 == 0xff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0048a880 ---
+
+undefined4 __cdecl FUN_0048a880(int *param_1)
+
+{
+  void *pvVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  
+  pvVar1 = (void *)FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  FUN_004a8860(pvVar1,param_1);
+  iVar3 = FUN_0046ef40(uVar2,pvVar1);
+  if (iVar3 == 0xff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 004a8860 ---
+
+void __fastcall FUN_004a8860(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if ((void *)0xffff < param_1) {
+    FUN_00402010(param_1,local_108,&DAT_00519510,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_2);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046ef40 ---
+
+void __fastcall FUN_0046ef40(uint param_1,undefined4 param_2)
+
+{
+  FUN_0044b920(param_1,param_2);
+  return;
+}
+
+
+
+=== T3 90:3C 0048a8d0 ===
+
+void __cdecl FUN_0048a8d0(int *param_1)
+
+{
+  int iVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  iVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0046ef50(uVar2,iVar1);
+  if (iVar3 == 1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051875c,param_1);
+  }
+  if (iVar3 == 2) {
+    FUN_00402010(this,local_108,&DAT_00518730,(char)iVar1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (iVar3 == 0xff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0048a8d0 ---
+
+void __cdecl FUN_0048a8d0(int *param_1)
+
+{
+  int iVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  iVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0046ef50(uVar2,iVar1);
+  if (iVar3 == 1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051875c,param_1);
+  }
+  if (iVar3 == 2) {
+    FUN_00402010(this,local_108,&DAT_00518730,(char)iVar1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (iVar3 == 0xff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046ef50 ---
+
+void __fastcall FUN_0046ef50(uint param_1,int param_2)
+
+{
+  FUN_0044b9a0(param_1,param_2);
+  return;
+}
+
+
+
+=== T3 90:3D 0048a960 ===
+
+undefined4 __cdecl FUN_0048a960(int *param_1)
+
+{
+  bool bVar1;
+  uint uVar2;
+  undefined3 extraout_var;
+  undefined4 local_8;
+  
+  uVar2 = FUN_0044d2a0((int)param_1);
+  bVar1 = FUN_0046ef70(&local_8,uVar2);
+  if (CONCAT31(extraout_var,bVar1) == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  FUN_0044d2c0(param_1,local_8);
+  return 0;
+}
+
+
+
+--- 0048a960 ---
+
+undefined4 __cdecl FUN_0048a960(int *param_1)
+
+{
+  bool bVar1;
+  uint uVar2;
+  undefined3 extraout_var;
+  undefined4 local_8;
+  
+  uVar2 = FUN_0044d2a0((int)param_1);
+  bVar1 = FUN_0046ef70(&local_8,uVar2);
+  if (CONCAT31(extraout_var,bVar1) == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  FUN_0044d2c0(param_1,local_8);
+  return 0;
+}
+
+
+
+--- 0046ef70 ---
+
+bool __fastcall FUN_0046ef70(undefined4 *param_1,uint param_2)
+
+{
+  bool bVar1;
+  int *piVar2;
+  int unaff_ESI;
+  int iStack_18;
+  int iStack_14;
+  int local_10 [3];
+  
+  piVar2 = (int *)FUN_0044b270(DAT_005485ec,param_2);
+  if (piVar2 == (int *)0x0) {
+    return false;
+  }
+  (**(code **)(*piVar2 + 0x34))(local_10);
+  FUN_0049d940(local_10 + -3);
+  bVar1 = FUN_0044bae0(param_1,param_2,unaff_ESI - iStack_14,iStack_18 - local_10[0]);
+  return bVar1;
+}
+
+
+
+=== T3 90:3F 0048a9a0 ===
+
+undefined4 __cdecl FUN_0048a9a0(int *param_1)
+
+{
+  uint uVar1;
+  int iVar2;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0046efd0(uVar1);
+  if (iVar2 == 3) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005186e0,param_1);
+  }
+  if (iVar2 == 4) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00518690,param_1);
+  }
+  if (iVar2 == 0xff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0048a9a0 ---
+
+undefined4 __cdecl FUN_0048a9a0(int *param_1)
+
+{
+  uint uVar1;
+  int iVar2;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0046efd0(uVar1);
+  if (iVar2 == 3) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005186e0,param_1);
+  }
+  if (iVar2 == 4) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00518690,param_1);
+  }
+  if (iVar2 == 0xff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0046efd0 ---
+
+void __fastcall FUN_0046efd0(uint param_1)
+
+{
+  FUN_0044bb50(param_1);
+  return;
+}
+
+
+
+=== T3 90:40 0048a9f0 ===
+
+void __cdecl FUN_0048a9f0(int *param_1)
+
+{
+  int iVar1;
+  int iVar2;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  iVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0046f030(iVar1);
+  if (iVar2 == 0) {
+    FUN_00402010(this,local_108,&DAT_00518898,(char)iVar1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0048a9f0 ---
+
+void __cdecl FUN_0048a9f0(int *param_1)
+
+{
+  int iVar1;
+  int iVar2;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  iVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0046f030(iVar1);
+  if (iVar2 == 0) {
+    FUN_00402010(this,local_108,&DAT_00518898,(char)iVar1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046f030 ---
+
+void __fastcall FUN_0046f030(int param_1)
+
+{
+  FUN_00445860(param_1);
+  return;
+}
+
+
+
+=== T3 90:41 0048aa60 ===
+
+void __cdecl FUN_0048aa60(int *param_1)
+
+{
+  void *pvVar1;
+  int iVar2;
+  int iVar3;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  pvVar1 = (void *)FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  FUN_004a8a70(pvVar1,param_1);
+  iVar2 = FUN_0046f040(iVar3,iVar2,pvVar1);
+  if (iVar2 == 0) {
+    FUN_00402010(this,local_108,&DAT_00518840,(char)iVar3);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0048aa60 ---
+
+void __cdecl FUN_0048aa60(int *param_1)
+
+{
+  void *pvVar1;
+  int iVar2;
+  int iVar3;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  pvVar1 = (void *)FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  FUN_004a8a70(pvVar1,param_1);
+  iVar2 = FUN_0046f040(iVar3,iVar2,pvVar1);
+  if (iVar2 == 0) {
+    FUN_00402010(this,local_108,&DAT_00518840,(char)iVar3);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 004a8a70 ---
+
+void __fastcall FUN_004a8a70(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if ((void *)0x100 < param_1) {
+    FUN_00402010(param_1,local_108,&DAT_0051bf68,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_2);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046f040 ---
+
+void __fastcall FUN_0046f040(int param_1,int param_2,undefined4 param_3)
+
+{
+  FUN_00445890(param_1,param_2,param_3);
+  return;
+}
+
+
+
+=== T3 90:42 0048aaf0 ===
+
+void __cdecl FUN_0048aaf0(int *param_1)
+
+{
+  int iVar1;
+  int iVar2;
+  int iVar3;
+  int iVar4;
+  int iVar5;
+  int iVar6;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  int extraout_ECX_03;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  iVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0044d2a0(extraout_ECX_01);
+  iVar5 = FUN_0044d2a0(extraout_ECX_02);
+  iVar6 = FUN_0044d2a0(extraout_ECX_03);
+  iVar1 = FUN_0046f050(iVar6,iVar5,iVar4,iVar3,iVar2,iVar1);
+  if (iVar1 == 1) {
+    FUN_00402010(this,local_108,&DAT_005187f8,(char)iVar2);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (iVar1 == 2) {
+    FUN_00402010(this,local_108,&DAT_00518798,(char)iVar6);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0048aaf0 ---
+
+void __cdecl FUN_0048aaf0(int *param_1)
+
+{
+  int iVar1;
+  int iVar2;
+  int iVar3;
+  int iVar4;
+  int iVar5;
+  int iVar6;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  int extraout_ECX_03;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  iVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0044d2a0(extraout_ECX_01);
+  iVar5 = FUN_0044d2a0(extraout_ECX_02);
+  iVar6 = FUN_0044d2a0(extraout_ECX_03);
+  iVar1 = FUN_0046f050(iVar6,iVar5,iVar4,iVar3,iVar2,iVar1);
+  if (iVar1 == 1) {
+    FUN_00402010(this,local_108,&DAT_005187f8,(char)iVar2);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (iVar1 == 2) {
+    FUN_00402010(this,local_108,&DAT_00518798,(char)iVar6);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046f050 ---
+
+void __fastcall
+FUN_0046f050(int param_1,int param_2,int param_3,int param_4,int param_5,int param_6)
+
+{
+  FUN_004458d0(param_1,param_2,param_3,param_4,param_5,param_6);
+  return;
+}
+
+
+
+=== T3 90:43 0048abe0 ===
+
+void __cdecl FUN_0048abe0(int *param_1)
+
+{
+  void *pvVar1;
+  undefined4 uVar2;
+  int iVar3;
+  int iVar4;
+  undefined4 uVar5;
+  undefined4 uVar6;
+  int iVar7;
+  undefined4 uVar8;
+  undefined4 uVar9;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  int extraout_ECX_03;
+  int extraout_ECX_04;
+  int extraout_ECX_05;
+  int extraout_ECX_06;
+  int *extraout_ECX_07;
+  void *this;
+  char *pcVar10;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  pvVar1 = (void *)FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0044d2a0(extraout_ECX_01);
+  uVar5 = FUN_0044d2a0(extraout_ECX_02);
+  uVar6 = FUN_0044d2a0(extraout_ECX_03);
+  iVar7 = FUN_0044d2a0(extraout_ECX_04);
+  uVar8 = FUN_0044d2a0(extraout_ECX_05);
+  uVar9 = FUN_0044d2a0(extraout_ECX_06);
+  FUN_004a8a70(pvVar1,extraout_ECX_07);
+  uVar2 = FUN_0046f070(uVar9,uVar8,iVar7,uVar6,uVar5,iVar4,iVar3,uVar2,pvVar1);
+  switch(uVar2) {
+  case 1:
+    pcVar10 = &DAT_00517180;
+    break;
+  case 2:
+    FUN_00402010(this,local_108,&DAT_00517180,(char)iVar4);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  case 3:
+    FUN_00402010(this,local_108,&DAT_00517180,(char)iVar3);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  case 4:
+    pcVar10 = &DAT_00517f9c;
+    iVar7 = iVar3;
+    break;
+  case 5:
+    pcVar10 = &DAT_00518948;
+    iVar7 = iVar3;
+    break;
+  default:
+    __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+    return;
+  }
+  FUN_00402010(this,local_108,pcVar10,(char)iVar7);
+                    /* WARNING: Subroutine does not return */
+  FUN_00471e50(local_108,param_1);
+}
+
+
+
+--- 0048abe0 ---
+
+void __cdecl FUN_0048abe0(int *param_1)
+
+{
+  void *pvVar1;
+  undefined4 uVar2;
+  int iVar3;
+  int iVar4;
+  undefined4 uVar5;
+  undefined4 uVar6;
+  int iVar7;
+  undefined4 uVar8;
+  undefined4 uVar9;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  int extraout_ECX_03;
+  int extraout_ECX_04;
+  int extraout_ECX_05;
+  int extraout_ECX_06;
+  int *extraout_ECX_07;
+  void *this;
+  char *pcVar10;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  pvVar1 = (void *)FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0044d2a0(extraout_ECX_01);
+  uVar5 = FUN_0044d2a0(extraout_ECX_02);
+  uVar6 = FUN_0044d2a0(extraout_ECX_03);
+  iVar7 = FUN_0044d2a0(extraout_ECX_04);
+  uVar8 = FUN_0044d2a0(extraout_ECX_05);
+  uVar9 = FUN_0044d2a0(extraout_ECX_06);
+  FUN_004a8a70(pvVar1,extraout_ECX_07);
+  uVar2 = FUN_0046f070(uVar9,uVar8,iVar7,uVar6,uVar5,iVar4,iVar3,uVar2,pvVar1);
+  switch(uVar2) {
+  case 1:
+    pcVar10 = &DAT_00517180;
+    break;
+  case 2:
+    FUN_00402010(this,local_108,&DAT_00517180,(char)iVar4);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  case 3:
+    FUN_00402010(this,local_108,&DAT_00517180,(char)iVar3);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  case 4:
+    pcVar10 = &DAT_00517f9c;
+    iVar7 = iVar3;
+    break;
+  case 5:
+    pcVar10 = &DAT_00518948;
+    iVar7 = iVar3;
+    break;
+  default:
+    __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+    return;
+  }
+  FUN_00402010(this,local_108,pcVar10,(char)iVar7);
+                    /* WARNING: Subroutine does not return */
+  FUN_00471e50(local_108,param_1);
+}
+
+
+
+--- 004a8a70 ---
+
+void __fastcall FUN_004a8a70(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if ((void *)0x100 < param_1) {
+    FUN_00402010(param_1,local_108,&DAT_0051bf68,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_2);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046f070 ---
+
+void __fastcall
+FUN_0046f070(undefined4 param_1,undefined4 param_2,int param_3,undefined4 param_4,undefined4 param_5
+            ,int param_6,int param_7,undefined4 param_8,undefined4 param_9)
+
+{
+  FUN_00445930(param_1,param_2,param_3,param_4,param_5,param_6,param_7,param_8,param_9);
+  return;
+}
+
+
+
+=== T3 90:44 0048ad60 ===
+
+void __cdecl FUN_0048ad60(int *param_1)
+
+{
+  undefined4 uVar1;
+  int iVar2;
+  int iVar3;
+  char *pcVar4;
+  int extraout_ECX;
+  int iVar5;
+  void *this;
+  char unaff_DI;
+  undefined4 local_888 [32];
+  char local_808 [1024];
+  char local_408 [1024];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_408 + 0x404);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0049d1f0(extraout_ECX);
+  iVar3 = FUN_0044d2a0((int)param_1);
+  iVar5 = 0;
+  if (0 < iVar3) {
+    do {
+      if (0x1f < iVar5) break;
+      local_888[iVar5] = *(undefined4 *)(iVar2 + iVar5 * 4);
+      iVar5 = iVar5 + 1;
+    } while (iVar5 < iVar3);
+  }
+  iVar2 = FUN_0046f0a0(iVar3,(int)local_888,uVar1);
+  if (iVar2 == 1) {
+    FUN_00402010(this,local_408,&DAT_0051751c,(char)iVar3);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_408,param_1);
+  }
+  if (iVar2 != 2) {
+    __security_check_cookie(local_8 ^ (uint)(local_408 + 0x404));
+    return;
+  }
+  FUN_00402010(this,local_408,&DAT_0051892c,unaff_DI);
+  iVar2 = 0;
+  if (0 < iVar3) {
+    do {
+      pcVar4 = &DAT_005188e0;
+      if (iVar2 < iVar3 + -1) {
+        pcVar4 = "%s%d , ";
+      }
+      FUN_00402010((void *)(iVar3 + -1),local_808,pcVar4,(char)local_408);
+      FUN_004a4e30((int)local_408,local_808);
+      iVar2 = iVar2 + 1;
+    } while (iVar2 < iVar3);
+  }
+                    /* WARNING: Subroutine does not return */
+  FUN_00471e50(local_408,param_1);
+}
+
+
+
+--- 0048ad60 ---
+
+void __cdecl FUN_0048ad60(int *param_1)
+
+{
+  undefined4 uVar1;
+  int iVar2;
+  int iVar3;
+  char *pcVar4;
+  int extraout_ECX;
+  int iVar5;
+  void *this;
+  char unaff_DI;
+  undefined4 local_888 [32];
+  char local_808 [1024];
+  char local_408 [1024];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_408 + 0x404);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0049d1f0(extraout_ECX);
+  iVar3 = FUN_0044d2a0((int)param_1);
+  iVar5 = 0;
+  if (0 < iVar3) {
+    do {
+      if (0x1f < iVar5) break;
+      local_888[iVar5] = *(undefined4 *)(iVar2 + iVar5 * 4);
+      iVar5 = iVar5 + 1;
+    } while (iVar5 < iVar3);
+  }
+  iVar2 = FUN_0046f0a0(iVar3,(int)local_888,uVar1);
+  if (iVar2 == 1) {
+    FUN_00402010(this,local_408,&DAT_0051751c,(char)iVar3);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_408,param_1);
+  }
+  if (iVar2 != 2) {
+    __security_check_cookie(local_8 ^ (uint)(local_408 + 0x404));
+    return;
+  }
+  FUN_00402010(this,local_408,&DAT_0051892c,unaff_DI);
+  iVar2 = 0;
+  if (0 < iVar3) {
+    do {
+      pcVar4 = &DAT_005188e0;
+      if (iVar2 < iVar3 + -1) {
+        pcVar4 = "%s%d , ";
+      }
+      FUN_00402010((void *)(iVar3 + -1),local_808,pcVar4,(char)local_408);
+      FUN_004a4e30((int)local_408,local_808);
+      iVar2 = iVar2 + 1;
+    } while (iVar2 < iVar3);
+  }
+                    /* WARNING: Subroutine does not return */
+  FUN_00471e50(local_408,param_1);
+}
+
+
+
+--- 0046f0a0 ---
+
+void __fastcall FUN_0046f0a0(int param_1,int param_2,undefined4 param_3)
+
+{
+  FUN_00445a00(param_1,param_2,param_3);
+  return;
+}
+
+
+
+--- 004a4e30 ---
+
+void __cdecl FUN_004a4e30(int param_1,char *param_2)
+
+{
+  char cVar1;
+  int iVar2;
+  
+  iVar2 = param_1 - (int)param_2;
+  do {
+    cVar1 = *param_2;
+    param_2 = param_2 + 1;
+    param_2[iVar2 + -1] = cVar1;
+  } while (cVar1 != '\0');
+  return;
+}
+
+
+
+=== T3 90:45 0048ae90 ===
+
+void __cdecl FUN_0048ae90(int *param_1)
+
+{
+  undefined4 uVar1;
+  void *pvVar2;
+  int iVar3;
+  int iVar4;
+  int iVar5;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  void *this;
+  char *pcVar6;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  pvVar2 = (void *)FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0044d2a0(extraout_ECX_01);
+  iVar5 = FUN_0044d2a0(extraout_ECX_02);
+  FUN_004a8a70(pvVar2,param_1);
+  uVar1 = FUN_0046f0b0(iVar5,iVar4,iVar3,pvVar2,uVar1);
+  switch(uVar1) {
+  case 1:
+    break;
+  case 2:
+    pcVar6 = &DAT_00518ab8;
+    goto LAB_0048af50;
+  case 3:
+    iVar5 = iVar4;
+    break;
+  case 4:
+    pcVar6 = &DAT_00518a50;
+    iVar5 = iVar4;
+    goto LAB_0048af50;
+  case 5:
+    iVar5 = iVar3;
+    break;
+  case 6:
+    pcVar6 = &DAT_00518a50;
+    iVar5 = iVar3;
+    goto LAB_0048af50;
+  default:
+    __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+    return;
+  }
+  pcVar6 = &DAT_00517180;
+LAB_0048af50:
+  FUN_00402010(this,local_108,pcVar6,(char)iVar5);
+                    /* WARNING: Subroutine does not return */
+  FUN_00471e50(local_108,param_1);
+}
+
+
+
+--- 0048ae90 ---
+
+void __cdecl FUN_0048ae90(int *param_1)
+
+{
+  undefined4 uVar1;
+  void *pvVar2;
+  int iVar3;
+  int iVar4;
+  int iVar5;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  void *this;
+  char *pcVar6;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  pvVar2 = (void *)FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0044d2a0(extraout_ECX_01);
+  iVar5 = FUN_0044d2a0(extraout_ECX_02);
+  FUN_004a8a70(pvVar2,param_1);
+  uVar1 = FUN_0046f0b0(iVar5,iVar4,iVar3,pvVar2,uVar1);
+  switch(uVar1) {
+  case 1:
+    break;
+  case 2:
+    pcVar6 = &DAT_00518ab8;
+    goto LAB_0048af50;
+  case 3:
+    iVar5 = iVar4;
+    break;
+  case 4:
+    pcVar6 = &DAT_00518a50;
+    iVar5 = iVar4;
+    goto LAB_0048af50;
+  case 5:
+    iVar5 = iVar3;
+    break;
+  case 6:
+    pcVar6 = &DAT_00518a50;
+    iVar5 = iVar3;
+    goto LAB_0048af50;
+  default:
+    __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+    return;
+  }
+  pcVar6 = &DAT_00517180;
+LAB_0048af50:
+  FUN_00402010(this,local_108,pcVar6,(char)iVar5);
+                    /* WARNING: Subroutine does not return */
+  FUN_00471e50(local_108,param_1);
+}
+
+
+
+--- 004a8a70 ---
+
+void __fastcall FUN_004a8a70(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if ((void *)0x100 < param_1) {
+    FUN_00402010(param_1,local_108,&DAT_0051bf68,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_2);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046f0b0 ---
+
+void __fastcall
+FUN_0046f0b0(int param_1,int param_2,int param_3,undefined4 param_4,undefined4 param_5)
+
+{
+  FUN_00445a70(param_1,param_2,param_3,param_4,param_5);
+  return;
+}
+
+
+
+=== T3 90:46 0048af90 ===
+
+void __cdecl FUN_0048af90(int *param_1)
+
+{
+  void *pvVar1;
+  uint uVar2;
+  uint uVar3;
+  int iVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  void *this;
+  char *pcVar5;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  pvVar1 = (void *)FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  FUN_004a8a70(pvVar1,param_1);
+  iVar4 = FUN_0046f0d0(uVar3,uVar2,pvVar1);
+  if (iVar4 == 1) {
+    pcVar5 = &DAT_00517180;
+  }
+  else if (iVar4 == 2) {
+    pcVar5 = &DAT_00518ab8;
+  }
+  else {
+    if (iVar4 != 3) {
+      __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+      return;
+    }
+    pcVar5 = &DAT_00518394;
+    uVar3 = uVar2;
+  }
+  FUN_00402010(this,local_108,pcVar5,(char)uVar3);
+                    /* WARNING: Subroutine does not return */
+  FUN_00471e50(local_108,param_1);
+}
+
+
+
+--- 0048af90 ---
+
+void __cdecl FUN_0048af90(int *param_1)
+
+{
+  void *pvVar1;
+  uint uVar2;
+  uint uVar3;
+  int iVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  void *this;
+  char *pcVar5;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  pvVar1 = (void *)FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  FUN_004a8a70(pvVar1,param_1);
+  iVar4 = FUN_0046f0d0(uVar3,uVar2,pvVar1);
+  if (iVar4 == 1) {
+    pcVar5 = &DAT_00517180;
+  }
+  else if (iVar4 == 2) {
+    pcVar5 = &DAT_00518ab8;
+  }
+  else {
+    if (iVar4 != 3) {
+      __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+      return;
+    }
+    pcVar5 = &DAT_00518394;
+    uVar3 = uVar2;
+  }
+  FUN_00402010(this,local_108,pcVar5,(char)uVar3);
+                    /* WARNING: Subroutine does not return */
+  FUN_00471e50(local_108,param_1);
+}
+
+
+
+--- 004a8a70 ---
+
+void __fastcall FUN_004a8a70(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if ((void *)0x100 < param_1) {
+    FUN_00402010(param_1,local_108,&DAT_0051bf68,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_2);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046f0d0 ---
+
+void __fastcall FUN_0046f0d0(int param_1,uint param_2,undefined4 param_3)
+
+{
+  FUN_00445b40(param_1,param_2,param_3);
+  return;
+}
+
+
+
+=== T3 90:48 0048b160 ===
+
+void __cdecl FUN_0048b160(int *param_1)
+
+{
+  uint uVar1;
+  uint uVar2;
+  int iVar3;
+  int iVar4;
+  int iVar5;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0044d2a0(extraout_ECX_01);
+  iVar5 = FUN_0044d2a0(extraout_ECX_02);
+  iVar3 = FUN_0046f100(iVar5,iVar4,iVar3,uVar2,uVar1);
+  if (iVar3 == 1) {
+    FUN_00402010(this,local_108,&DAT_00517180,(char)iVar5);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (iVar3 == 2) {
+    FUN_00402010(this,local_108,&DAT_00518b4c,(char)uVar2);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0048b160 ---
+
+void __cdecl FUN_0048b160(int *param_1)
+
+{
+  uint uVar1;
+  uint uVar2;
+  int iVar3;
+  int iVar4;
+  int iVar5;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0044d2a0(extraout_ECX_01);
+  iVar5 = FUN_0044d2a0(extraout_ECX_02);
+  iVar3 = FUN_0046f100(iVar5,iVar4,iVar3,uVar2,uVar1);
+  if (iVar3 == 1) {
+    FUN_00402010(this,local_108,&DAT_00517180,(char)iVar5);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (iVar3 == 2) {
+    FUN_00402010(this,local_108,&DAT_00518b4c,(char)uVar2);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046f100 ---
+
+void __fastcall FUN_0046f100(int param_1,int param_2,int param_3,uint param_4,uint param_5)
+
+{
+  FUN_00445cb0(param_1,param_2,param_3,param_4,param_5);
+  return;
+}
+
+
+
+=== T3 90:49 0048b240 ===
+
+void __cdecl FUN_0048b240(int *param_1)
+
+{
+  undefined4 uVar1;
+  int iVar2;
+  int iVar3;
+  int iVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  void *this;
+  char *pcVar5;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0046f120(iVar3,iVar2,uVar1);
+  if (iVar4 == 1) {
+    pcVar5 = &DAT_00517180;
+  }
+  else {
+    if (iVar4 != 2) {
+      __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+      return;
+    }
+    pcVar5 = &DAT_00518458;
+    iVar3 = iVar2;
+  }
+  FUN_00402010(this,local_108,pcVar5,(char)iVar3);
+                    /* WARNING: Subroutine does not return */
+  FUN_00471e50(local_108,param_1);
+}
+
+
+
+--- 0048b240 ---
+
+void __cdecl FUN_0048b240(int *param_1)
+
+{
+  undefined4 uVar1;
+  int iVar2;
+  int iVar3;
+  int iVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  void *this;
+  char *pcVar5;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0046f120(iVar3,iVar2,uVar1);
+  if (iVar4 == 1) {
+    pcVar5 = &DAT_00517180;
+  }
+  else {
+    if (iVar4 != 2) {
+      __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+      return;
+    }
+    pcVar5 = &DAT_00518458;
+    iVar3 = iVar2;
+  }
+  FUN_00402010(this,local_108,pcVar5,(char)iVar3);
+                    /* WARNING: Subroutine does not return */
+  FUN_00471e50(local_108,param_1);
+}
+
+
+
+--- 0046f120 ---
+
+void __fastcall FUN_0046f120(int param_1,int param_2,undefined4 param_3)
+
+{
+  FUN_00445d40(param_1,param_2,param_3);
+  return;
+}
+
+
+
+=== T3 90:53 0048b4c0 ===
+
+undefined4 __cdecl FUN_0048b4c0(int *param_1)
+
+{
+  int iVar1;
+  int iVar2;
+  int iVar3;
+  uint uVar4;
+  uint uVar5;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  
+  iVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  uVar4 = FUN_0044d2a0(extraout_ECX_01);
+  uVar5 = FUN_0044d2a0(extraout_ECX_02);
+  iVar1 = FUN_0046f440(uVar5,uVar4,iVar3,iVar2,iVar1);
+  if (iVar1 == 10) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00518cf8,param_1);
+  }
+  if (iVar1 == 0xff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005178b0,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0048b4c0 ---
+
+undefined4 __cdecl FUN_0048b4c0(int *param_1)
+
+{
+  int iVar1;
+  int iVar2;
+  int iVar3;
+  uint uVar4;
+  uint uVar5;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  
+  iVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  uVar4 = FUN_0044d2a0(extraout_ECX_01);
+  uVar5 = FUN_0044d2a0(extraout_ECX_02);
+  iVar1 = FUN_0046f440(uVar5,uVar4,iVar3,iVar2,iVar1);
+  if (iVar1 == 10) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00518cf8,param_1);
+  }
+  if (iVar1 == 0xff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005178b0,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0046f440 ---
+
+void __fastcall FUN_0046f440(uint param_1,uint param_2,int param_3,int param_4,int param_5)
+
+{
+  FUN_00447070(param_1,param_2,param_3,param_4,param_5);
+  return;
+}
+
+
+
+=== T3 90:55 0048b570 ===
+
+void __cdecl FUN_0048b570(int *param_1)
+
+{
+  int iVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  void *this;
+  char *pcVar4;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  iVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0046f410(uVar2,iVar1);
+  if (iVar3 == 1) {
+    pcVar4 = &DAT_00518ccc;
+  }
+  else {
+    if (iVar3 != 2) {
+      if (iVar3 == 0xff) {
+                    /* WARNING: Subroutine does not return */
+        FUN_00471e50(&DAT_005178b0,param_1);
+      }
+      __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+      return;
+    }
+    pcVar4 = &DAT_00518e20;
+  }
+  FUN_00402010(this,local_108,pcVar4,(char)iVar1);
+                    /* WARNING: Subroutine does not return */
+  FUN_00471e50(local_108,param_1);
+}
+
+
+
+--- 0048b570 ---
+
+void __cdecl FUN_0048b570(int *param_1)
+
+{
+  int iVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  void *this;
+  char *pcVar4;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  iVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0046f410(uVar2,iVar1);
+  if (iVar3 == 1) {
+    pcVar4 = &DAT_00518ccc;
+  }
+  else {
+    if (iVar3 != 2) {
+      if (iVar3 == 0xff) {
+                    /* WARNING: Subroutine does not return */
+        FUN_00471e50(&DAT_005178b0,param_1);
+      }
+      __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+      return;
+    }
+    pcVar4 = &DAT_00518e20;
+  }
+  FUN_00402010(this,local_108,pcVar4,(char)iVar1);
+                    /* WARNING: Subroutine does not return */
+  FUN_00471e50(local_108,param_1);
+}
+
+
+
+--- 0046f410 ---
+
+void __fastcall FUN_0046f410(uint param_1,int param_2)
+
+{
+  FUN_00446ed0(param_1,param_2);
+  return;
+}
+
+
+
+=== T3 91:31 004907d0 ===
+
+undefined4 __cdecl FUN_004907d0(int *param_1)
+
+{
+  undefined4 uVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0046ee30(uVar2,uVar1);
+  if (iVar3 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 004907d0 ---
+
+undefined4 __cdecl FUN_004907d0(int *param_1)
+
+{
+  undefined4 uVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0046ee30(uVar2,uVar1);
+  if (iVar3 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0046ee30 ---
+
+void __fastcall FUN_0046ee30(uint param_1,undefined4 param_2)
+
+{
+  FUN_0044b3e0(param_1,param_2);
+  return;
+}
+
+
+
+=== T3 91:32 None ===
+
+=== T3 91:33 00490810 ===
+
+undefined4 __cdecl FUN_00490810(int *param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  undefined4 uVar3;
+  uint uVar4;
+  int iVar5;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  uVar4 = FUN_0044d2a0(extraout_ECX_01);
+  iVar5 = FUN_0046ee60(uVar4,uVar3,uVar2,uVar1);
+  if (iVar5 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 00490810 ---
+
+undefined4 __cdecl FUN_00490810(int *param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  undefined4 uVar3;
+  uint uVar4;
+  int iVar5;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  uVar4 = FUN_0044d2a0(extraout_ECX_01);
+  iVar5 = FUN_0046ee60(uVar4,uVar3,uVar2,uVar1);
+  if (iVar5 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0046ee60 ---
+
+void __fastcall FUN_0046ee60(uint param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4)
+
+{
+  FUN_0044b4f0(param_1,param_2,param_3,param_4);
+  return;
+}
+
+
+
+=== T3 91:34 None ===
+
+=== T3 91:35 None ===
+
+=== T3 91:36 00490860 ===
+
+undefined4 __cdecl FUN_00490860(int *param_1)
+
+{
+  int iVar1;
+  int iVar2;
+  int iVar3;
+  uint uVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  
+  iVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  uVar4 = FUN_0044d2a0(extraout_ECX_01);
+  iVar1 = FUN_0046eef0(uVar4,iVar3,iVar2,iVar1);
+  if (iVar1 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 00490860 ---
+
+undefined4 __cdecl FUN_00490860(int *param_1)
+
+{
+  int iVar1;
+  int iVar2;
+  int iVar3;
+  uint uVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  
+  iVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  uVar4 = FUN_0044d2a0(extraout_ECX_01);
+  iVar1 = FUN_0046eef0(uVar4,iVar3,iVar2,iVar1);
+  if (iVar1 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0046eef0 ---
+
+void __fastcall FUN_0046eef0(uint param_1,int param_2,int param_3,int param_4)
+
+{
+  FUN_0044b7a0(param_1,param_2,param_3,param_4);
+  return;
+}
+
+
+
+=== T3 91:37 004908b0 ===
+
+undefined4 __cdecl FUN_004908b0(int *param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  undefined4 uVar3;
+  uint uVar4;
+  int iVar5;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  uVar4 = FUN_0044d2a0(extraout_ECX_01);
+  iVar5 = FUN_0046eed0(uVar4,uVar3,uVar2,uVar1);
+  if (iVar5 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 004908b0 ---
+
+undefined4 __cdecl FUN_004908b0(int *param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  undefined4 uVar3;
+  uint uVar4;
+  int iVar5;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  uVar4 = FUN_0044d2a0(extraout_ECX_01);
+  iVar5 = FUN_0046eed0(uVar4,uVar3,uVar2,uVar1);
+  if (iVar5 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0046eed0 ---
+
+void __fastcall FUN_0046eed0(uint param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4)
+
+{
+  FUN_0044b720(param_1,param_2,param_3,param_4);
+  return;
+}
+
+
+
+=== T3 91:38 00490900 ===
+
+void __cdecl FUN_00490900(int *param_1)
+
+{
+  undefined4 uVar1;
+  uint uVar2;
+  undefined4 uVar3;
+  int iVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0049d1f0(extraout_ECX_00);
+  iVar4 = FUN_0046ef30(uVar3,uVar2,uVar1);
+  if (iVar4 == 5) {
+    FUN_00402010(this,local_108,&DAT_005185c0,(char)uVar1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (iVar4 == 0xfe) {
+    FUN_00402010(this,local_108,&DAT_0051a3c8,(char)uVar1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (iVar4 == 0xff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 00490900 ---
+
+void __cdecl FUN_00490900(int *param_1)
+
+{
+  undefined4 uVar1;
+  uint uVar2;
+  undefined4 uVar3;
+  int iVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0049d1f0(extraout_ECX_00);
+  iVar4 = FUN_0046ef30(uVar3,uVar2,uVar1);
+  if (iVar4 == 5) {
+    FUN_00402010(this,local_108,&DAT_005185c0,(char)uVar1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (iVar4 == 0xfe) {
+    FUN_00402010(this,local_108,&DAT_0051a3c8,(char)uVar1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (iVar4 == 0xff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046ef30 ---
+
+void __fastcall FUN_0046ef30(undefined4 param_1,uint param_2,undefined4 param_3)
+
+{
+  FUN_0044b8d0(param_1,param_2,param_3);
+  return;
+}
+
+
+
+=== T3 91:39 None ===
+
+=== T3 91:3A None ===
+
+=== T3 91:3B None ===
+
+=== T3 91:3C None ===
+
+=== T3 91:3D 004909c0 ===
+
+undefined4 __cdecl FUN_004909c0(int *param_1)
+
+{
+  uint uVar1;
+  int *piVar2;
+  int iVar3;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  piVar2 = (int *)FUN_0049d1f0(extraout_ECX);
+  iVar3 = FUN_0046efe0(piVar2,uVar1);
+  if (iVar3 == 0xff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 004909c0 ---
+
+undefined4 __cdecl FUN_004909c0(int *param_1)
+
+{
+  uint uVar1;
+  int *piVar2;
+  int iVar3;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  piVar2 = (int *)FUN_0049d1f0(extraout_ECX);
+  iVar3 = FUN_0046efe0(piVar2,uVar1);
+  if (iVar3 == 0xff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_005184dc,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0046efe0 ---
+
+void __fastcall FUN_0046efe0(int *param_1,uint param_2)
+
+{
+  FUN_0044bba0(param_1,param_2);
+  return;
+}
+
+
+
+=== T3 91:3E 00490a00 ===
+
+undefined4 __cdecl FUN_00490a00(int *param_1)
+
+{
+  int iVar1;
+  int iVar2;
+  uint uVar3;
+  uint uVar4;
+  undefined4 uVar5;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  
+  iVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  uVar4 = FUN_0044d2a0(extraout_ECX_01);
+  uVar5 = FUN_0046eff0(uVar4,uVar3,iVar2,iVar1);
+  switch(uVar5) {
+  case 6:
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a35c,param_1);
+  case 7:
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a31c,param_1);
+  case 8:
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a4a8,param_1);
+  default:
+    return 0;
+  case 0xff:
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a390,param_1);
+  }
+}
+
+
+
+--- 00490a00 ---
+
+undefined4 __cdecl FUN_00490a00(int *param_1)
+
+{
+  int iVar1;
+  int iVar2;
+  uint uVar3;
+  uint uVar4;
+  undefined4 uVar5;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  
+  iVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  uVar4 = FUN_0044d2a0(extraout_ECX_01);
+  uVar5 = FUN_0046eff0(uVar4,uVar3,iVar2,iVar1);
+  switch(uVar5) {
+  case 6:
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a35c,param_1);
+  case 7:
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a31c,param_1);
+  case 8:
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a4a8,param_1);
+  default:
+    return 0;
+  case 0xff:
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a390,param_1);
+  }
+}
+
+
+
+--- 0046eff0 ---
+
+void __fastcall FUN_0046eff0(uint param_1,uint param_2,int param_3,int param_4)
+
+{
+  FUN_0044bbd0(param_1,param_2,param_3,param_4);
+  return;
+}
+
+
+
+=== T3 91:3F 00490ba0 ===
+
+undefined4 __cdecl FUN_00490ba0(int *param_1)
+
+{
+  uint uVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0046f010(uVar2,uVar1);
+  if (iVar3 == 6) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a35c,param_1);
+  }
+  if (iVar3 == 9) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a474,param_1);
+  }
+  if (iVar3 == 0xff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a390,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 00490ba0 ---
+
+undefined4 __cdecl FUN_00490ba0(int *param_1)
+
+{
+  uint uVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0046f010(uVar2,uVar1);
+  if (iVar3 == 6) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a35c,param_1);
+  }
+  if (iVar3 == 9) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a474,param_1);
+  }
+  if (iVar3 == 0xff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a390,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0046f010 ---
+
+void __fastcall FUN_0046f010(uint param_1,uint param_2)
+
+{
+  FUN_0044bc70(param_1,param_2);
+  return;
+}
+
+
+
+=== T3 91:40 00490c00 ===
+
+void __cdecl FUN_00490c00(int *param_1)
+
+{
+  undefined4 uVar1;
+  int iVar2;
+  int iVar3;
+  undefined4 uVar4;
+  undefined4 uVar5;
+  undefined4 uVar6;
+  void *pvVar7;
+  undefined4 uVar8;
+  undefined4 uVar9;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  int extraout_ECX_03;
+  int extraout_ECX_04;
+  int extraout_ECX_05;
+  int extraout_ECX_06;
+  int *extraout_ECX_07;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  uVar4 = FUN_0044d2a0(extraout_ECX_01);
+  uVar5 = FUN_0044d2a0(extraout_ECX_02);
+  uVar6 = FUN_0044d2a0(extraout_ECX_03);
+  pvVar7 = (void *)FUN_0044d2a0(extraout_ECX_04);
+  uVar8 = FUN_0044d2a0(extraout_ECX_05);
+  uVar9 = FUN_0044d2a0(extraout_ECX_06);
+  FUN_004a8800(pvVar7,extraout_ECX_07);
+  iVar2 = FUN_0046f150(uVar9,uVar8,(int)pvVar7,uVar6,uVar5,uVar4,iVar3,iVar2,uVar1);
+  if (iVar2 == 3) {
+    FUN_00402010(this,local_108,&DAT_00518730,(char)pvVar7);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (iVar2 == 4) {
+    FUN_00402010(this,local_108,&DAT_00518d8c,(char)iVar3);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 00490c00 ---
+
+void __cdecl FUN_00490c00(int *param_1)
+
+{
+  undefined4 uVar1;
+  int iVar2;
+  int iVar3;
+  undefined4 uVar4;
+  undefined4 uVar5;
+  undefined4 uVar6;
+  void *pvVar7;
+  undefined4 uVar8;
+  undefined4 uVar9;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  int extraout_ECX_03;
+  int extraout_ECX_04;
+  int extraout_ECX_05;
+  int extraout_ECX_06;
+  int *extraout_ECX_07;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  uVar4 = FUN_0044d2a0(extraout_ECX_01);
+  uVar5 = FUN_0044d2a0(extraout_ECX_02);
+  uVar6 = FUN_0044d2a0(extraout_ECX_03);
+  pvVar7 = (void *)FUN_0044d2a0(extraout_ECX_04);
+  uVar8 = FUN_0044d2a0(extraout_ECX_05);
+  uVar9 = FUN_0044d2a0(extraout_ECX_06);
+  FUN_004a8800(pvVar7,extraout_ECX_07);
+  iVar2 = FUN_0046f150(uVar9,uVar8,(int)pvVar7,uVar6,uVar5,uVar4,iVar3,iVar2,uVar1);
+  if (iVar2 == 3) {
+    FUN_00402010(this,local_108,&DAT_00518730,(char)pvVar7);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (iVar2 == 4) {
+    FUN_00402010(this,local_108,&DAT_00518d8c,(char)iVar3);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 004a8800 ---
+
+void __fastcall FUN_004a8800(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if (((int)param_1 < 0) || (0x3fff < (int)param_1)) {
+    FUN_00402010(param_1,local_108,&DAT_00519108,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_2);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046f150 ---
+
+void __fastcall
+FUN_0046f150(undefined4 param_1,undefined4 param_2,int param_3,undefined4 param_4,undefined4 param_5
+            ,undefined4 param_6,int param_7,int param_8,undefined4 param_9)
+
+{
+  FUN_00445e50(param_1,param_2,param_3,param_4,param_5,param_6,param_7,param_8,param_9);
+  return;
+}
+
+
+
+=== T3 91:41 00490d30 ===
+
+void __cdecl FUN_00490d30(int *param_1)
+
+{
+  uint uVar1;
+  int iVar2;
+  void *this;
+  char extraout_DL;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0046f180(uVar1);
+  if (iVar2 == 1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a440,param_1);
+  }
+  if (iVar2 == 2) {
+    FUN_00402010(this,local_108,&DAT_0051a418,extraout_DL);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 00490d30 ---
+
+void __cdecl FUN_00490d30(int *param_1)
+
+{
+  uint uVar1;
+  int iVar2;
+  void *this;
+  char extraout_DL;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0046f180(uVar1);
+  if (iVar2 == 1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a440,param_1);
+  }
+  if (iVar2 == 2) {
+    FUN_00402010(this,local_108,&DAT_0051a418,extraout_DL);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046f180 ---
+
+void __fastcall FUN_0046f180(uint param_1)
+
+{
+  FUN_00445ef0(param_1);
+  return;
+}
+
+
+
+=== T3 91:42 00490db0 ===
+
+void __cdecl FUN_00490db0(int *param_1)
+
+{
+  undefined4 uVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0046f190(uVar2,uVar1);
+  if (iVar3 == 1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a440,param_1);
+  }
+  if (iVar3 == 2) {
+    FUN_00402010(this,local_108,&DAT_0051a418,(char)uVar2);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 00490db0 ---
+
+void __cdecl FUN_00490db0(int *param_1)
+
+{
+  undefined4 uVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0046f190(uVar2,uVar1);
+  if (iVar3 == 1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a440,param_1);
+  }
+  if (iVar3 == 2) {
+    FUN_00402010(this,local_108,&DAT_0051a418,(char)uVar2);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046f190 ---
+
+void __fastcall FUN_0046f190(uint param_1,undefined4 param_2)
+
+{
+  FUN_00445f40(param_1,param_2);
+  return;
+}
+
+
+
+=== T3 91:43 00490e30 ===
+
+void __cdecl FUN_00490e30(int *param_1)
+
+{
+  uint uVar1;
+  uint uVar2;
+  uint uVar3;
+  int iVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0046f1a0(uVar3,uVar2,uVar1);
+  if (iVar4 == 1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a440,param_1);
+  }
+  if (iVar4 == 2) {
+    FUN_00402010(this,local_108,&DAT_0051a418,(char)uVar3);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 00490e30 ---
+
+void __cdecl FUN_00490e30(int *param_1)
+
+{
+  uint uVar1;
+  uint uVar2;
+  uint uVar3;
+  int iVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0046f1a0(uVar3,uVar2,uVar1);
+  if (iVar4 == 1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a440,param_1);
+  }
+  if (iVar4 == 2) {
+    FUN_00402010(this,local_108,&DAT_0051a418,(char)uVar3);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046f1a0 ---
+
+void __fastcall FUN_0046f1a0(uint param_1,uint param_2,uint param_3)
+
+{
+  FUN_00445fb0(param_1,param_2,param_3);
+  return;
+}
+
+
+
+=== T3 91:44 00490ed0 ===
+
+void __cdecl FUN_00490ed0(int *param_1)
+
+{
+  void *pvVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  pvVar1 = (void *)FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  FUN_004a88f0(pvVar1,param_1);
+  iVar3 = FUN_0046f1b0(uVar2,pvVar1);
+  if (iVar3 == 1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a440,param_1);
+  }
+  if (iVar3 == 2) {
+    FUN_00402010(this,local_108,&DAT_0051a418,(char)uVar2);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 00490ed0 ---
+
+void __cdecl FUN_00490ed0(int *param_1)
+
+{
+  void *pvVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  pvVar1 = (void *)FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  FUN_004a88f0(pvVar1,param_1);
+  iVar3 = FUN_0046f1b0(uVar2,pvVar1);
+  if (iVar3 == 1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a440,param_1);
+  }
+  if (iVar3 == 2) {
+    FUN_00402010(this,local_108,&DAT_0051a418,(char)uVar2);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 004a88f0 ---
+
+void __fastcall FUN_004a88f0(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if ((void *)0x80 < param_1) {
+    switch(param_1) {
+    case (void *)0xc0:
+    case (void *)0xc1:
+    case (void *)0xf0:
+    case (void *)0xff:
+      goto switchD_004a891c_caseD_0;
+    default:
+switchD_004a891c_caseD_a:
+      FUN_00402010(param_1,local_108,&DAT_0051c0bc,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+      FUN_00471e50(local_108,param_2);
+    }
+  }
+  if (param_1 == (void *)0x80) {
+switchD_004a891c_caseD_0:
+    __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+    return;
+  }
+  switch(param_1) {
+  case (void *)0x0:
+  case (void *)0x1:
+  case (void *)0x2:
+  case (void *)0x3:
+  case (void *)0x4:
+  case (void *)0x5:
+  case (void *)0x6:
+  case (void *)0x7:
+  case (void *)0x8:
+  case (void *)0x9:
+  case (void *)0x20:
+  case (void *)0x21:
+  case (void *)0x22:
+  case (void *)0x23:
+  case (void *)0x24:
+  case (void *)0x25:
+  case (void *)0x26:
+  case (void *)0x27:
+  case (void *)0x40:
+  case (void *)0x41:
+    goto switchD_004a891c_caseD_0;
+  default:
+    goto switchD_004a891c_caseD_a;
+  }
+}
+
+
+
+--- 0046f1b0 ---
+
+void __fastcall FUN_0046f1b0(uint param_1,undefined4 param_2)
+
+{
+  FUN_00446030(param_1,param_2);
+  return;
+}
+
+
+
+=== T3 91:45 00490f60 ===
+
+void __cdecl FUN_00490f60(int *param_1)
+
+{
+  void *pvVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  pvVar1 = (void *)FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  FUN_004a8a70(pvVar1,param_1);
+  iVar3 = FUN_0046f1c0(uVar2,pvVar1);
+  if (iVar3 == 1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a440,param_1);
+  }
+  if (iVar3 == 2) {
+    FUN_00402010(this,local_108,&DAT_0051a418,(char)uVar2);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 00490f60 ---
+
+void __cdecl FUN_00490f60(int *param_1)
+
+{
+  void *pvVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  pvVar1 = (void *)FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  FUN_004a8a70(pvVar1,param_1);
+  iVar3 = FUN_0046f1c0(uVar2,pvVar1);
+  if (iVar3 == 1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a440,param_1);
+  }
+  if (iVar3 == 2) {
+    FUN_00402010(this,local_108,&DAT_0051a418,(char)uVar2);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 004a8a70 ---
+
+void __fastcall FUN_004a8a70(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if ((void *)0x100 < param_1) {
+    FUN_00402010(param_1,local_108,&DAT_0051bf68,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_2);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046f1c0 ---
+
+void __fastcall FUN_0046f1c0(uint param_1,undefined4 param_2)
+
+{
+  FUN_004460b0(param_1,param_2);
+  return;
+}
+
+
+
+=== T3 91:46 00490ff0 ===
+
+void __cdecl FUN_00490ff0(int *param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  void *pvVar3;
+  void *pvVar4;
+  int iVar5;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  void *this;
+  char *pcVar6;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  pvVar3 = (void *)FUN_0044d2a0(extraout_ECX_00);
+  pvVar4 = (void *)FUN_0044d2a0(extraout_ECX_01);
+  FUN_004a8800(pvVar3,param_1);
+  iVar5 = FUN_0046f1d0((uint)pvVar4,(int)pvVar3,uVar2,uVar1);
+  if (iVar5 == 1) {
+    pcVar6 = &DAT_0051a440;
+  }
+  else {
+    if (iVar5 == 2) {
+      pcVar6 = &DAT_0051a418;
+    }
+    else {
+      if (iVar5 != 3) {
+        __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+        return;
+      }
+      pcVar6 = &DAT_00518730;
+      pvVar4 = pvVar3;
+    }
+    FUN_00402010(this,local_108,pcVar6,(char)pvVar4);
+    pcVar6 = local_108;
+  }
+                    /* WARNING: Subroutine does not return */
+  FUN_00471e50(pcVar6,param_1);
+}
+
+
+
+--- 00490ff0 ---
+
+void __cdecl FUN_00490ff0(int *param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  void *pvVar3;
+  void *pvVar4;
+  int iVar5;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  void *this;
+  char *pcVar6;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  pvVar3 = (void *)FUN_0044d2a0(extraout_ECX_00);
+  pvVar4 = (void *)FUN_0044d2a0(extraout_ECX_01);
+  FUN_004a8800(pvVar3,param_1);
+  iVar5 = FUN_0046f1d0((uint)pvVar4,(int)pvVar3,uVar2,uVar1);
+  if (iVar5 == 1) {
+    pcVar6 = &DAT_0051a440;
+  }
+  else {
+    if (iVar5 == 2) {
+      pcVar6 = &DAT_0051a418;
+    }
+    else {
+      if (iVar5 != 3) {
+        __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+        return;
+      }
+      pcVar6 = &DAT_00518730;
+      pvVar4 = pvVar3;
+    }
+    FUN_00402010(this,local_108,pcVar6,(char)pvVar4);
+    pcVar6 = local_108;
+  }
+                    /* WARNING: Subroutine does not return */
+  FUN_00471e50(pcVar6,param_1);
+}
+
+
+
+--- 004a8800 ---
+
+void __fastcall FUN_004a8800(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if (((int)param_1 < 0) || (0x3fff < (int)param_1)) {
+    FUN_00402010(param_1,local_108,&DAT_00519108,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_2);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046f1d0 ---
+
+void __fastcall FUN_0046f1d0(uint param_1,int param_2,undefined4 param_3,undefined4 param_4)
+
+{
+  FUN_00446130(param_1,param_2,param_3,param_4);
+  return;
+}
+
+
+
+=== T3 91:47 004910b0 ===
+
+void __cdecl FUN_004910b0(int *param_1)
+
+{
+  undefined4 uVar1;
+  int iVar2;
+  int iVar3;
+  undefined4 uVar4;
+  uint uVar5;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  uVar4 = FUN_0044d2a0(extraout_ECX_01);
+  uVar5 = FUN_0044d2a0(extraout_ECX_02);
+  iVar2 = FUN_0046f1f0(uVar5,uVar4,iVar3,iVar2,uVar1);
+  if (iVar2 == 1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a440,param_1);
+  }
+  if (iVar2 == 2) {
+    FUN_00402010(this,local_108,&DAT_0051a418,(char)uVar5);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (iVar2 == 4) {
+    FUN_00402010(this,local_108,&DAT_00518d8c,(char)iVar3);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 004910b0 ---
+
+void __cdecl FUN_004910b0(int *param_1)
+
+{
+  undefined4 uVar1;
+  int iVar2;
+  int iVar3;
+  undefined4 uVar4;
+  uint uVar5;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  uVar4 = FUN_0044d2a0(extraout_ECX_01);
+  uVar5 = FUN_0044d2a0(extraout_ECX_02);
+  iVar2 = FUN_0046f1f0(uVar5,uVar4,iVar3,iVar2,uVar1);
+  if (iVar2 == 1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a440,param_1);
+  }
+  if (iVar2 == 2) {
+    FUN_00402010(this,local_108,&DAT_0051a418,(char)uVar5);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (iVar2 == 4) {
+    FUN_00402010(this,local_108,&DAT_00518d8c,(char)iVar3);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046f1f0 ---
+
+void __fastcall
+FUN_0046f1f0(uint param_1,undefined4 param_2,int param_3,int param_4,undefined4 param_5)
+
+{
+  FUN_004461d0(param_1,param_2,param_3,param_4,param_5);
+  return;
+}
+
+
+
+=== T3 91:48 004911a0 ===
+
+void __cdecl FUN_004911a0(int *param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  uint uVar3;
+  int iVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0046f210(uVar3,uVar2,uVar1);
+  if (iVar4 == 1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a440,param_1);
+  }
+  if (iVar4 == 2) {
+    FUN_00402010(this,local_108,&DAT_0051a418,(char)uVar3);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 004911a0 ---
+
+void __cdecl FUN_004911a0(int *param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  uint uVar3;
+  int iVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0046f210(uVar3,uVar2,uVar1);
+  if (iVar4 == 1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a440,param_1);
+  }
+  if (iVar4 == 2) {
+    FUN_00402010(this,local_108,&DAT_0051a418,(char)uVar3);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046f210 ---
+
+void __fastcall FUN_0046f210(uint param_1,undefined4 param_2,undefined4 param_3)
+
+{
+  FUN_00446270(param_1,param_2,param_3);
+  return;
+}
+
+
+
+=== T3 91:49 00491240 ===
+
+void __cdecl FUN_00491240(int *param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  uint uVar3;
+  int iVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0046f220(uVar3,uVar2,uVar1);
+  if (iVar4 == 1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a440,param_1);
+  }
+  if (iVar4 == 2) {
+    FUN_00402010(this,local_108,&DAT_0051a418,(char)uVar3);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 00491240 ---
+
+void __cdecl FUN_00491240(int *param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  uint uVar3;
+  int iVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0046f220(uVar3,uVar2,uVar1);
+  if (iVar4 == 1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a440,param_1);
+  }
+  if (iVar4 == 2) {
+    FUN_00402010(this,local_108,&DAT_0051a418,(char)uVar3);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046f220 ---
+
+void __fastcall FUN_0046f220(uint param_1,undefined4 param_2,undefined4 param_3)
+
+{
+  FUN_004462c0(param_1,param_2,param_3);
+  return;
+}
+
+
+
+=== T3 91:4A 004912e0 ===
+
+void __cdecl FUN_004912e0(int *param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  undefined4 uVar3;
+  uint uVar4;
+  int iVar5;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  uVar4 = FUN_0044d2a0(extraout_ECX_01);
+  iVar5 = FUN_0046f230(uVar4,uVar3,uVar2,uVar1);
+  if (iVar5 == 1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a440,param_1);
+  }
+  if (iVar5 == 2) {
+    FUN_00402010(this,local_108,&DAT_0051a418,(char)uVar4);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 004912e0 ---
+
+void __cdecl FUN_004912e0(int *param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  undefined4 uVar3;
+  uint uVar4;
+  int iVar5;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  uVar4 = FUN_0044d2a0(extraout_ECX_01);
+  iVar5 = FUN_0046f230(uVar4,uVar3,uVar2,uVar1);
+  if (iVar5 == 1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051a440,param_1);
+  }
+  if (iVar5 == 2) {
+    FUN_00402010(this,local_108,&DAT_0051a418,(char)uVar4);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046f230 ---
+
+void __fastcall FUN_0046f230(uint param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4)
+
+{
+  FUN_00446310(param_1,param_2,param_3,param_4);
+  return;
+}
+
+
+
+=== T3 91:55 00491390 ===
+
+undefined4 __cdecl FUN_00491390(void *param_1)
+
+{
+  uint uVar1;
+  uint uVar2;
+  undefined4 uVar3;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0046f420(uVar2,uVar1);
+  FUN_0044d2c0(param_1,uVar3);
+  return 0;
+}
+
+
+
+--- 00491390 ---
+
+undefined4 __cdecl FUN_00491390(void *param_1)
+
+{
+  uint uVar1;
+  uint uVar2;
+  undefined4 uVar3;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0046f420(uVar2,uVar1);
+  FUN_0044d2c0(param_1,uVar3);
+  return 0;
+}
+
+
+
+--- 0046f420 ---
+
+void __fastcall FUN_0046f420(uint param_1,uint param_2)
+
+{
+  FUN_00446f50(param_1,param_2);
+  return;
+}
+
+
+
+=== T4 90:80 0048cdb0 ===
+
+void __cdecl FUN_0048cdb0(int *param_1)
+
+{
+  uint uVar1;
+  uint uVar2;
+  int *piVar3;
+  int extraout_ECX;
+  void *this;
+  int local_10c;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  piVar3 = FUN_0046f830(&local_10c,uVar2,uVar1);
+  if (piVar3 == (int *)0x1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519234,param_1);
+  }
+  if (piVar3 == (int *)0x2) {
+    FUN_00402010(this,local_108,&DAT_005193cc,(char)uVar2);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  FUN_0044d2c0(param_1,local_10c);
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0048cdb0 ---
+
+void __cdecl FUN_0048cdb0(int *param_1)
+
+{
+  uint uVar1;
+  uint uVar2;
+  int *piVar3;
+  int extraout_ECX;
+  void *this;
+  int local_10c;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  piVar3 = FUN_0046f830(&local_10c,uVar2,uVar1);
+  if (piVar3 == (int *)0x1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519234,param_1);
+  }
+  if (piVar3 == (int *)0x2) {
+    FUN_00402010(this,local_108,&DAT_005193cc,(char)uVar2);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  FUN_0044d2c0(param_1,local_10c);
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046f830 ---
+
+int * __fastcall FUN_0046f830(int *param_1,uint param_2,uint param_3)
+
+{
+  int iVar1;
+  
+  iVar1 = FUN_004486d0(param_1,param_2,param_3);
+  if (iVar1 == 0) {
+    return (int *)0x0;
+  }
+  if (iVar1 == 9) {
+    return (int *)0x1;
+  }
+  if (iVar1 == 10) {
+    return (int *)0x2;
+  }
+  return param_1;
+}
+
+
+
+=== T4 90:81 0048ce50 ===
+
+undefined4 __cdecl FUN_0048ce50(int *param_1)
+
+{
+  bool bVar1;
+  uint uVar2;
+  undefined3 extraout_var;
+  int iVar3;
+  
+  uVar2 = FUN_0044d2a0((int)param_1);
+  bVar1 = FUN_0047a4e0(uVar2);
+  if (CONCAT31(extraout_var,bVar1) != 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051938c,param_1);
+  }
+  iVar3 = FUN_0046ef60(uVar2);
+  if (iVar3 != 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051935c,param_1);
+  }
+  iVar3 = FUN_0046f870(uVar2);
+  if (iVar3 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0048ce50 ---
+
+undefined4 __cdecl FUN_0048ce50(int *param_1)
+
+{
+  bool bVar1;
+  uint uVar2;
+  undefined3 extraout_var;
+  int iVar3;
+  
+  uVar2 = FUN_0044d2a0((int)param_1);
+  bVar1 = FUN_0047a4e0(uVar2);
+  if (CONCAT31(extraout_var,bVar1) != 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051938c,param_1);
+  }
+  iVar3 = FUN_0046ef60(uVar2);
+  if (iVar3 != 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_0051935c,param_1);
+  }
+  iVar3 = FUN_0046f870(uVar2);
+  if (iVar3 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0047a4e0 ---
+
+bool __fastcall FUN_0047a4e0(uint param_1)
+
+{
+  int iVar1;
+  
+  iVar1 = FUN_0044b270(DAT_005485ec,param_1);
+  if (iVar1 == 0) {
+    return false;
+  }
+  iVar1 = FUN_00420910(iVar1);
+  return iVar1 != 0;
+}
+
+
+
+--- 0046ef60 ---
+
+void __fastcall FUN_0046ef60(uint param_1)
+
+{
+  FUN_0044bb20(param_1);
+  return;
+}
+
+
+
+--- 0046f870 ---
+
+void __fastcall FUN_0046f870(uint param_1)
+
+{
+  FUN_00448820(DAT_005485ec,param_1);
+  return;
+}
+
+
+
+=== T4 90:82 0048cf00 ===
+
+void __cdecl FUN_0048cf00(int *param_1)
+
+{
+  undefined4 uVar1;
+  uint uVar2;
+  int extraout_ECX;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar2 = FUN_0046fd90(uVar2,uVar1);
+  if (uVar2 == 1) {
+    FUN_00402010(this,local_108,&DAT_005194e8,(char)uVar1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (uVar2 == 0xffffffff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0048cf00 ---
+
+void __cdecl FUN_0048cf00(int *param_1)
+
+{
+  undefined4 uVar1;
+  uint uVar2;
+  int extraout_ECX;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar2 = FUN_0046fd90(uVar2,uVar1);
+  if (uVar2 == 1) {
+    FUN_00402010(this,local_108,&DAT_005194e8,(char)uVar1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (uVar2 == 0xffffffff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046fd90 ---
+
+uint __fastcall FUN_0046fd90(uint param_1,undefined4 param_2)
+
+{
+  int iVar1;
+  
+  iVar1 = FUN_00448e40(param_1,param_2);
+  if (iVar1 == 0) {
+    return 0;
+  }
+  if (iVar1 == 0x14) {
+    return 1;
+  }
+  if (iVar1 == 0xff) {
+    return 0xffffffff;
+  }
+  return param_1;
+}
+
+
+
+=== T4 90:83 0048ceb0 ===
+
+undefined4 __cdecl FUN_0048ceb0(int *param_1)
+
+{
+  uint uVar1;
+  void *pvVar2;
+  int iVar3;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  pvVar2 = (void *)FUN_0044d2a0(extraout_ECX);
+  FUN_004a8800(pvVar2,param_1);
+  iVar3 = FUN_0046fd50((int)pvVar2,uVar1);
+  if (iVar3 == -1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0048ceb0 ---
+
+undefined4 __cdecl FUN_0048ceb0(int *param_1)
+
+{
+  uint uVar1;
+  void *pvVar2;
+  int iVar3;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  pvVar2 = (void *)FUN_0044d2a0(extraout_ECX);
+  FUN_004a8800(pvVar2,param_1);
+  iVar3 = FUN_0046fd50((int)pvVar2,uVar1);
+  if (iVar3 == -1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 004a8800 ---
+
+void __fastcall FUN_004a8800(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if (((int)param_1 < 0) || (0x3fff < (int)param_1)) {
+    FUN_00402010(param_1,local_108,&DAT_00519108,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_2);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046fd50 ---
+
+int __fastcall FUN_0046fd50(int param_1,uint param_2)
+
+{
+  int iVar1;
+  
+  iVar1 = FUN_00448d60(param_1,param_2);
+  if (iVar1 == 0) {
+    return 0;
+  }
+  if (iVar1 == 2) {
+    return 1;
+  }
+  if (iVar1 == 0xff) {
+    return -1;
+  }
+  return param_1;
+}
+
+
+
+=== T4 90:84 0048cf80 ===
+
+undefined4 __cdecl FUN_0048cf80(int *param_1)
+
+{
+  undefined4 uVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0046fb70(uVar2,uVar1);
+  if (iVar3 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0048cf80 ---
+
+undefined4 __cdecl FUN_0048cf80(int *param_1)
+
+{
+  undefined4 uVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0046fb70(uVar2,uVar1);
+  if (iVar3 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0046fb70 ---
+
+void __fastcall FUN_0046fb70(uint param_1,undefined4 param_2)
+
+{
+  FUN_00448ba0(param_1,param_2);
+  return;
+}
+
+
+
+=== T4 90:85 0048cfc0 ===
+
+undefined4 __cdecl FUN_0048cfc0(int *param_1)
+
+{
+  void *pvVar1;
+  void *pvVar2;
+  void *pvVar3;
+  void *pvVar4;
+  undefined4 uVar5;
+  undefined4 uVar6;
+  uint uVar7;
+  int iVar8;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  int extraout_ECX_03;
+  int extraout_ECX_04;
+  int *extraout_ECX_05;
+  undefined4 extraout_ECX_06;
+  
+  pvVar1 = (void *)FUN_0044d2a0((int)param_1);
+  pvVar2 = (void *)FUN_0044d2a0(extraout_ECX);
+  pvVar3 = (void *)FUN_0044d2a0(extraout_ECX_00);
+  pvVar4 = (void *)FUN_0044d2a0(extraout_ECX_01);
+  uVar5 = FUN_0044d2a0(extraout_ECX_02);
+  uVar6 = FUN_0044d2a0(extraout_ECX_03);
+  uVar7 = FUN_0044d2a0(extraout_ECX_04);
+  FUN_004a8860(pvVar1,extraout_ECX_05);
+  FUN_004a8a70(pvVar2,param_1);
+  FUN_004a8a70(pvVar3,param_1);
+  FUN_004a88f0(pvVar4,param_1);
+  iVar8 = FUN_0046f9f0(uVar7,uVar6,uVar5,pvVar4,pvVar3,extraout_ECX_06,pvVar1);
+  if (iVar8 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0048cfc0 ---
+
+undefined4 __cdecl FUN_0048cfc0(int *param_1)
+
+{
+  void *pvVar1;
+  void *pvVar2;
+  void *pvVar3;
+  void *pvVar4;
+  undefined4 uVar5;
+  undefined4 uVar6;
+  uint uVar7;
+  int iVar8;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  int extraout_ECX_03;
+  int extraout_ECX_04;
+  int *extraout_ECX_05;
+  undefined4 extraout_ECX_06;
+  
+  pvVar1 = (void *)FUN_0044d2a0((int)param_1);
+  pvVar2 = (void *)FUN_0044d2a0(extraout_ECX);
+  pvVar3 = (void *)FUN_0044d2a0(extraout_ECX_00);
+  pvVar4 = (void *)FUN_0044d2a0(extraout_ECX_01);
+  uVar5 = FUN_0044d2a0(extraout_ECX_02);
+  uVar6 = FUN_0044d2a0(extraout_ECX_03);
+  uVar7 = FUN_0044d2a0(extraout_ECX_04);
+  FUN_004a8860(pvVar1,extraout_ECX_05);
+  FUN_004a8a70(pvVar2,param_1);
+  FUN_004a8a70(pvVar3,param_1);
+  FUN_004a88f0(pvVar4,param_1);
+  iVar8 = FUN_0046f9f0(uVar7,uVar6,uVar5,pvVar4,pvVar3,extraout_ECX_06,pvVar1);
+  if (iVar8 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 004a8860 ---
+
+void __fastcall FUN_004a8860(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if ((void *)0xffff < param_1) {
+    FUN_00402010(param_1,local_108,&DAT_00519510,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_2);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 004a8a70 ---
+
+void __fastcall FUN_004a8a70(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if ((void *)0x100 < param_1) {
+    FUN_00402010(param_1,local_108,&DAT_0051bf68,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_2);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 004a88f0 ---
+
+void __fastcall FUN_004a88f0(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if ((void *)0x80 < param_1) {
+    switch(param_1) {
+    case (void *)0xc0:
+    case (void *)0xc1:
+    case (void *)0xf0:
+    case (void *)0xff:
+      goto switchD_004a891c_caseD_0;
+    default:
+switchD_004a891c_caseD_a:
+      FUN_00402010(param_1,local_108,&DAT_0051c0bc,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+      FUN_00471e50(local_108,param_2);
+    }
+  }
+  if (param_1 == (void *)0x80) {
+switchD_004a891c_caseD_0:
+    __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+    return;
+  }
+  switch(param_1) {
+  case (void *)0x0:
+  case (void *)0x1:
+  case (void *)0x2:
+  case (void *)0x3:
+  case (void *)0x4:
+  case (void *)0x5:
+  case (void *)0x6:
+  case (void *)0x7:
+  case (void *)0x8:
+  case (void *)0x9:
+  case (void *)0x20:
+  case (void *)0x21:
+  case (void *)0x22:
+  case (void *)0x23:
+  case (void *)0x24:
+  case (void *)0x25:
+  case (void *)0x26:
+  case (void *)0x27:
+  case (void *)0x40:
+  case (void *)0x41:
+    goto switchD_004a891c_caseD_0;
+  default:
+    goto switchD_004a891c_caseD_a;
+  }
+}
+
+
+
+--- 0046f9f0 ---
+
+void __fastcall
+FUN_0046f9f0(uint param_1,undefined4 param_2,undefined4 param_3,undefined4 param_4,
+            undefined4 param_5,undefined4 param_6,undefined4 param_7)
+
+{
+  FUN_00448940(param_1,param_2,param_3,param_4,param_5,param_1,param_7);
+  return;
+}
+
+
+
+=== T4 90:86 0048d060 ===
+
+void __cdecl FUN_0048d060(int *param_1)
+
+{
+  int iVar1;
+  undefined4 uVar2;
+  undefined4 uVar3;
+  void *this;
+  uint uVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  undefined4 extraout_ECX_02;
+  void *this_00;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  iVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  this = (void *)FUN_0044d2a0(extraout_ECX_01);
+  uVar4 = FUN_0046f880(this,extraout_ECX_02,iVar1);
+  if (uVar4 < 4) {
+    if (uVar4 == 3) {
+      FUN_00402010(this_00,local_108,&DAT_005193fc,(char)uVar2);
+                    /* WARNING: Subroutine does not return */
+      FUN_00471e50(local_108,param_1);
+    }
+    if (uVar4 == 1) {
+                    /* WARNING: Subroutine does not return */
+      FUN_00471e50(&DAT_005194ac,param_1);
+    }
+    if (uVar4 == 2) {
+      FUN_00402010(this_00,local_108,&DAT_00519440,(char)uVar3);
+                    /* WARNING: Subroutine does not return */
+      FUN_00471e50(local_108,param_1);
+    }
+  }
+  else if (uVar4 == 0xffffffff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0048d060 ---
+
+void __cdecl FUN_0048d060(int *param_1)
+
+{
+  int iVar1;
+  undefined4 uVar2;
+  undefined4 uVar3;
+  void *this;
+  uint uVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  undefined4 extraout_ECX_02;
+  void *this_00;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  iVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  this = (void *)FUN_0044d2a0(extraout_ECX_01);
+  uVar4 = FUN_0046f880(this,extraout_ECX_02,iVar1);
+  if (uVar4 < 4) {
+    if (uVar4 == 3) {
+      FUN_00402010(this_00,local_108,&DAT_005193fc,(char)uVar2);
+                    /* WARNING: Subroutine does not return */
+      FUN_00471e50(local_108,param_1);
+    }
+    if (uVar4 == 1) {
+                    /* WARNING: Subroutine does not return */
+      FUN_00471e50(&DAT_005194ac,param_1);
+    }
+    if (uVar4 == 2) {
+      FUN_00402010(this_00,local_108,&DAT_00519440,(char)uVar3);
+                    /* WARNING: Subroutine does not return */
+      FUN_00471e50(local_108,param_1);
+    }
+  }
+  else if (uVar4 == 0xffffffff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046f880 ---
+
+undefined4 __thiscall FUN_0046f880(void *this,undefined4 param_1,int param_2)
+
+{
+  uint uVar1;
+  undefined4 uVar2;
+  undefined4 in_stack_ffffffec;
+  undefined4 in_stack_fffffff0;
+  
+  uVar2 = 0;
+  uVar1 = FUN_00448890((uint)this,in_stack_ffffffec,in_stack_fffffff0,param_2);
+  switch(uVar1) {
+  case 1:
+    return 1;
+  case 2:
+    return 2;
+  case 3:
+    return 3;
+  case 0xff:
+    uVar2 = 0xffffffff;
+  }
+  return uVar2;
+}
+
+
+
+=== T4 90:87 0048d140 ===
+
+undefined4 __cdecl FUN_0048d140(int *param_1)
+
+{
+  undefined4 uVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0046fa10(uVar2,uVar1);
+  if (iVar3 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0048d140 ---
+
+undefined4 __cdecl FUN_0048d140(int *param_1)
+
+{
+  undefined4 uVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0046fa10(uVar2,uVar1);
+  if (iVar3 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0046fa10 ---
+
+void __fastcall FUN_0046fa10(uint param_1,undefined4 param_2)
+
+{
+  FUN_004489b0(param_1,param_2);
+  return;
+}
+
+
+
+=== T4 90:88 0048d180 ===
+
+void __cdecl FUN_0048d180(int *param_1)
+
+{
+  int iVar1;
+  int iVar2;
+  int iVar3;
+  uint uVar4;
+  uint uVar5;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  iVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  uVar4 = FUN_0044d2a0(extraout_ECX_01);
+  uVar5 = FUN_0044d2a0(extraout_ECX_02);
+  iVar1 = FUN_0046fa20(uVar5,uVar4,iVar3,iVar2,iVar1);
+  if (iVar1 == 1) {
+    FUN_00402010(this,local_108,&DAT_005195a0,(char)uVar4);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (iVar1 == -1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0048d180 ---
+
+void __cdecl FUN_0048d180(int *param_1)
+
+{
+  int iVar1;
+  int iVar2;
+  int iVar3;
+  uint uVar4;
+  uint uVar5;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  iVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  uVar4 = FUN_0044d2a0(extraout_ECX_01);
+  uVar5 = FUN_0044d2a0(extraout_ECX_02);
+  iVar1 = FUN_0046fa20(uVar5,uVar4,iVar3,iVar2,iVar1);
+  if (iVar1 == 1) {
+    FUN_00402010(this,local_108,&DAT_005195a0,(char)uVar4);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (iVar1 == -1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046fa20 ---
+
+undefined4 __fastcall FUN_0046fa20(uint param_1,uint param_2,int param_3,int param_4,int param_5)
+
+{
+  int iVar1;
+  
+  iVar1 = FUN_004489e0(param_1,param_2,param_3,param_4,param_5);
+  if (iVar1 == 4) {
+    return 1;
+  }
+  if (iVar1 == 0xff) {
+    return 0xffffffff;
+  }
+  return 0;
+}
+
+
+
+=== T4 90:89 0048d240 ===
+
+undefined4 __cdecl FUN_0048d240(int *param_1)
+
+{
+  uint uVar1;
+  undefined4 *puVar2;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  puVar2 = (undefined4 *)FUN_0049d1f0(extraout_ECX);
+  puVar2 = FUN_0046fa50(puVar2,uVar1);
+  if (puVar2 == (undefined4 *)0xffffffff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  FUN_0044d2c0(param_1,(uint)(puVar2 == (undefined4 *)0x0));
+  return 0;
+}
+
+
+
+--- 0048d240 ---
+
+undefined4 __cdecl FUN_0048d240(int *param_1)
+
+{
+  uint uVar1;
+  undefined4 *puVar2;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  puVar2 = (undefined4 *)FUN_0049d1f0(extraout_ECX);
+  puVar2 = FUN_0046fa50(puVar2,uVar1);
+  if (puVar2 == (undefined4 *)0xffffffff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  FUN_0044d2c0(param_1,(uint)(puVar2 == (undefined4 *)0x0));
+  return 0;
+}
+
+
+
+--- 0046fa50 ---
+
+undefined4 * __fastcall FUN_0046fa50(undefined4 *param_1,uint param_2)
+
+{
+  int iVar1;
+  
+  iVar1 = FUN_00448a20(param_1,param_2);
+  if (iVar1 == 0) {
+    return (undefined4 *)0x0;
+  }
+  if (iVar1 == 0xff) {
+    return (undefined4 *)0xffffffff;
+  }
+  return param_1;
+}
+
+
+
+=== T4 91:88 00492e00 ===
+
+void __cdecl FUN_00492e00(int *param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  int iVar3;
+  int iVar4;
+  int iVar5;
+  int iVar6;
+  uint uVar7;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  int extraout_ECX_03;
+  int extraout_ECX_04;
+  int *extraout_ECX_05;
+  void *this;
+  char *pcVar8;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0044d2a0(extraout_ECX_01);
+  iVar5 = FUN_0044d2a0(extraout_ECX_02);
+  iVar6 = FUN_0044d2a0(extraout_ECX_03);
+  uVar7 = FUN_0044d2a0(extraout_ECX_04);
+  FUN_004a8780(iVar6,extraout_ECX_05);
+  uVar7 = FUN_0046fac0(uVar7,iVar6,iVar5,iVar4,iVar3,uVar2,uVar1);
+  if (uVar7 < 4) {
+    if (uVar7 == 3) {
+      pcVar8 = &DAT_00517b7c;
+    }
+    else if (uVar7 == 1) {
+      pcVar8 = &DAT_005171b0;
+      iVar6 = iVar5;
+    }
+    else {
+      if (uVar7 != 2) goto LAB_00492ebc;
+      pcVar8 = &DAT_005179f0;
+      iVar6 = iVar4;
+    }
+    FUN_00402010(this,local_108,pcVar8,(char)iVar6);
+    pcVar8 = local_108;
+  }
+  else {
+    if (uVar7 != 0xffffffff) {
+LAB_00492ebc:
+      __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+      return;
+    }
+    pcVar8 = &DAT_00519330;
+  }
+                    /* WARNING: Subroutine does not return */
+  FUN_00471e50(pcVar8,param_1);
+}
+
+
+
+--- 00492e00 ---
+
+void __cdecl FUN_00492e00(int *param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  int iVar3;
+  int iVar4;
+  int iVar5;
+  int iVar6;
+  uint uVar7;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  int extraout_ECX_03;
+  int extraout_ECX_04;
+  int *extraout_ECX_05;
+  void *this;
+  char *pcVar8;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0044d2a0(extraout_ECX_01);
+  iVar5 = FUN_0044d2a0(extraout_ECX_02);
+  iVar6 = FUN_0044d2a0(extraout_ECX_03);
+  uVar7 = FUN_0044d2a0(extraout_ECX_04);
+  FUN_004a8780(iVar6,extraout_ECX_05);
+  uVar7 = FUN_0046fac0(uVar7,iVar6,iVar5,iVar4,iVar3,uVar2,uVar1);
+  if (uVar7 < 4) {
+    if (uVar7 == 3) {
+      pcVar8 = &DAT_00517b7c;
+    }
+    else if (uVar7 == 1) {
+      pcVar8 = &DAT_005171b0;
+      iVar6 = iVar5;
+    }
+    else {
+      if (uVar7 != 2) goto LAB_00492ebc;
+      pcVar8 = &DAT_005179f0;
+      iVar6 = iVar4;
+    }
+    FUN_00402010(this,local_108,pcVar8,(char)iVar6);
+    pcVar8 = local_108;
+  }
+  else {
+    if (uVar7 != 0xffffffff) {
+LAB_00492ebc:
+      __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+      return;
+    }
+    pcVar8 = &DAT_00519330;
+  }
+                    /* WARNING: Subroutine does not return */
+  FUN_00471e50(pcVar8,param_1);
+}
+
+
+
+--- 004a8780 ---
+
+void __fastcall FUN_004a8780(int param_1,int *param_2)
+
+{
+  int iVar1;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  iVar1 = FUN_00476460(param_1);
+  if (iVar1 == 0) {
+    FUN_00402010(this,local_108,&DAT_00517b1c,(char)this);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_2);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046fac0 ---
+
+uint __fastcall
+FUN_0046fac0(uint param_1,int param_2,int param_3,int param_4,int param_5,undefined4 param_6,
+            undefined4 param_7)
+
+{
+  char *pcVar1;
+  uint uVar2;
+  
+  pcVar1 = (char *)FUN_00476460(param_2);
+  uVar2 = FUN_00448ad0(param_1,pcVar1,param_3,param_4,param_5,param_6,param_7);
+  if (uVar2 < 7) {
+    if (uVar2 == 6) {
+      return 2;
+    }
+    if (uVar2 == 0) {
+      return 0;
+    }
+    if (uVar2 == 5) {
+      return 1;
+    }
+  }
+  else {
+    if (uVar2 == 7) {
+      return 3;
+    }
+    if (uVar2 == 0xff) {
+      return 0xffffffff;
+    }
+  }
+  return param_1;
+}
+
+
+
+=== T4 91:89 00492f10 ===
+
+void __cdecl FUN_00492f10(int *param_1)
+
+{
+  uint uVar1;
+  uint uVar2;
+  int extraout_ECX;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar2 = FUN_0046fb30(uVar2,uVar1);
+  if (uVar2 == 1) {
+    FUN_00402010(this,local_108,&DAT_0051ab6c,(char)uVar1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (uVar2 == 0xffffffff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 00492f10 ---
+
+void __cdecl FUN_00492f10(int *param_1)
+
+{
+  uint uVar1;
+  uint uVar2;
+  int extraout_ECX;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar2 = FUN_0046fb30(uVar2,uVar1);
+  if (uVar2 == 1) {
+    FUN_00402010(this,local_108,&DAT_0051ab6c,(char)uVar1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (uVar2 == 0xffffffff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046fb30 ---
+
+uint __fastcall FUN_0046fb30(uint param_1,uint param_2)
+
+{
+  int iVar1;
+  
+  iVar1 = FUN_00448b60(param_1,param_2);
+  if (iVar1 == 0) {
+    return 0;
+  }
+  if (iVar1 == 8) {
+    return 1;
+  }
+  if (iVar1 == 0xff) {
+    return 0xffffffff;
+  }
+  return param_1;
+}
+
+
+
+=== T4 91:8A 00492f90 ===
+
+void __cdecl FUN_00492f90(int *param_1)
+
+{
+  uint uVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0046fa80(uVar2,uVar1);
+  if (iVar3 == 1) {
+    FUN_00402010(this,local_108,&DAT_0051ab34,(char)uVar1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (iVar3 == -1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 00492f90 ---
+
+void __cdecl FUN_00492f90(int *param_1)
+
+{
+  uint uVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0046fa80(uVar2,uVar1);
+  if (iVar3 == 1) {
+    FUN_00402010(this,local_108,&DAT_0051ab34,(char)uVar1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (iVar3 == -1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046fa80 ---
+
+undefined4 __fastcall FUN_0046fa80(uint param_1,uint param_2)
+
+{
+  int iVar1;
+  
+  iVar1 = FUN_00448a50(param_1,param_2);
+  if (iVar1 == 0x12) {
+    return 1;
+  }
+  if (iVar1 == 0xff) {
+    return 0xffffffff;
+  }
+  return 0;
+}
+
+
+
+=== T4 91:8B 00493010 ===
+
+void __cdecl FUN_00493010(int *param_1)
+
+{
+  uint uVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0046faa0(uVar2,uVar1);
+  if (iVar3 == 1) {
+    FUN_00402010(this,local_108,&DAT_0051aaf4,(char)uVar1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (iVar3 == -1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 00493010 ---
+
+void __cdecl FUN_00493010(int *param_1)
+
+{
+  uint uVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  void *this;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0046faa0(uVar2,uVar1);
+  if (iVar3 == 1) {
+    FUN_00402010(this,local_108,&DAT_0051aaf4,(char)uVar1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_1);
+  }
+  if (iVar3 == -1) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046faa0 ---
+
+undefined4 __fastcall FUN_0046faa0(uint param_1,uint param_2)
+
+{
+  int iVar1;
+  
+  iVar1 = FUN_00448a90(param_1,param_2);
+  if (iVar1 == 0x13) {
+    return 1;
+  }
+  if (iVar1 == 0xff) {
+    return 0xffffffff;
+  }
+  return 0;
+}
+
+
+
+=== T4 91:8C 00493090 ===
+
+undefined4 __cdecl FUN_00493090(int *param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  uint uVar3;
+  int iVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0046ffd0(uVar3,uVar2,uVar1);
+  if (iVar4 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 00493090 ---
+
+undefined4 __cdecl FUN_00493090(int *param_1)
+
+{
+  undefined4 uVar1;
+  undefined4 uVar2;
+  uint uVar3;
+  int iVar4;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar3 = FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0046ffd0(uVar3,uVar2,uVar1);
+  if (iVar4 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0046ffd0 ---
+
+void __fastcall FUN_0046ffd0(uint param_1,undefined4 param_2,undefined4 param_3)
+
+{
+  FUN_004490b0(param_1,param_2,param_3);
+  return;
+}
+
+
+
+=== T4 91:8D 004930e0 ===
+
+undefined4 __cdecl FUN_004930e0(int *param_1)
+
+{
+  uint uVar1;
+  int iVar2;
+  void *this;
+  void *this_00;
+  undefined4 local_10;
+  undefined4 local_c;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0046ffe0(&local_10,uVar1);
+  if (iVar2 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  FUN_0044d2c0(param_1,iVar2);
+  FUN_0044d2c0(this,local_10);
+  FUN_0044d2c0(this_00,local_c);
+  return 0;
+}
+
+
+
+--- 004930e0 ---
+
+undefined4 __cdecl FUN_004930e0(int *param_1)
+
+{
+  uint uVar1;
+  int iVar2;
+  void *this;
+  void *this_00;
+  undefined4 local_10;
+  undefined4 local_c;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0046ffe0(&local_10,uVar1);
+  if (iVar2 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  FUN_0044d2c0(param_1,iVar2);
+  FUN_0044d2c0(this,local_10);
+  FUN_0044d2c0(this_00,local_c);
+  return 0;
+}
+
+
+
+--- 0046ffe0 ---
+
+void __fastcall FUN_0046ffe0(undefined4 *param_1,uint param_2)
+
+{
+  FUN_004490e0(param_1,param_2);
+  return;
+}
+
+
+
+=== T4 91:8E 00493140 ===
+
+undefined4 __cdecl FUN_00493140(int *param_1)
+
+{
+  uint uVar1;
+  undefined4 *puVar2;
+  undefined4 local_8;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  puVar2 = FUN_0046fff0(&local_8,uVar1);
+  if (puVar2 == (undefined4 *)0xffffffff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  FUN_0044d2c0(param_1,local_8);
+  return 0;
+}
+
+
+
+--- 00493140 ---
+
+undefined4 __cdecl FUN_00493140(int *param_1)
+
+{
+  uint uVar1;
+  undefined4 *puVar2;
+  undefined4 local_8;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  puVar2 = FUN_0046fff0(&local_8,uVar1);
+  if (puVar2 == (undefined4 *)0xffffffff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  FUN_0044d2c0(param_1,local_8);
+  return 0;
+}
+
+
+
+--- 0046fff0 ---
+
+undefined4 * __fastcall FUN_0046fff0(undefined4 *param_1,uint param_2)
+
+{
+  int iVar1;
+  
+  iVar1 = FUN_00449110(param_1,param_2);
+  if (iVar1 == 0) {
+    return (undefined4 *)0x0;
+  }
+  if (iVar1 == 0xff) {
+    return (undefined4 *)0xffffffff;
+  }
+  return param_1;
+}
+
+
+
+=== T4 92:88 00494d60 ===
+
+undefined4 __cdecl FUN_00494d60(int *param_1)
+
+{
+  undefined4 uVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0046fb80(uVar2,uVar1);
+  if (iVar3 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 00494d60 ---
+
+undefined4 __cdecl FUN_00494d60(int *param_1)
+
+{
+  undefined4 uVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0046fb80(uVar2,uVar1);
+  if (iVar3 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0046fb80 ---
+
+void __fastcall FUN_0046fb80(uint param_1,undefined4 param_2)
+
+{
+  FUN_00448c00(param_1,param_2);
+  return;
+}
+
+
+
+=== T4 92:89 00494da0 ===
+
+void __cdecl FUN_00494da0(int *param_1)
+
+{
+  byte *pbVar1;
+  void *pvVar2;
+  void *pvVar3;
+  int iVar4;
+  int iVar5;
+  uint uVar6;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  int extraout_ECX_03;
+  int *extraout_ECX_04;
+  void *this;
+  char *pcVar7;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  pbVar1 = (byte *)FUN_0044d2a0((int)param_1);
+  pvVar2 = (void *)FUN_0044d2a0(extraout_ECX);
+  pvVar3 = (void *)FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0044d2a0(extraout_ECX_01);
+  iVar5 = FUN_0044d2a0(extraout_ECX_02);
+  uVar6 = FUN_0044d2a0(extraout_ECX_03);
+  FUN_004a8800(pvVar3,extraout_ECX_04);
+  FUN_004a88f0(pvVar2,param_1);
+  FUN_004a8a70(pbVar1,param_1);
+  uVar6 = FUN_0046fbc0(uVar6,iVar5,iVar4,(int)pvVar3,(uint)pvVar2,pbVar1);
+  if (uVar6 == 1) {
+    pcVar7 = &DAT_00517180;
+  }
+  else {
+    if (uVar6 != 2) {
+      if (uVar6 == 0xffffffff) {
+                    /* WARNING: Subroutine does not return */
+        FUN_00471e50(&DAT_00519330,param_1);
+      }
+      __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+      return;
+    }
+    pcVar7 = &DAT_0051af80;
+  }
+  FUN_00402010(this,local_108,pcVar7,(char)pvVar3);
+                    /* WARNING: Subroutine does not return */
+  FUN_00471e50(local_108,param_1);
+}
+
+
+
+--- 00494da0 ---
+
+void __cdecl FUN_00494da0(int *param_1)
+
+{
+  byte *pbVar1;
+  void *pvVar2;
+  void *pvVar3;
+  int iVar4;
+  int iVar5;
+  uint uVar6;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  int extraout_ECX_03;
+  int *extraout_ECX_04;
+  void *this;
+  char *pcVar7;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  pbVar1 = (byte *)FUN_0044d2a0((int)param_1);
+  pvVar2 = (void *)FUN_0044d2a0(extraout_ECX);
+  pvVar3 = (void *)FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0044d2a0(extraout_ECX_01);
+  iVar5 = FUN_0044d2a0(extraout_ECX_02);
+  uVar6 = FUN_0044d2a0(extraout_ECX_03);
+  FUN_004a8800(pvVar3,extraout_ECX_04);
+  FUN_004a88f0(pvVar2,param_1);
+  FUN_004a8a70(pbVar1,param_1);
+  uVar6 = FUN_0046fbc0(uVar6,iVar5,iVar4,(int)pvVar3,(uint)pvVar2,pbVar1);
+  if (uVar6 == 1) {
+    pcVar7 = &DAT_00517180;
+  }
+  else {
+    if (uVar6 != 2) {
+      if (uVar6 == 0xffffffff) {
+                    /* WARNING: Subroutine does not return */
+        FUN_00471e50(&DAT_00519330,param_1);
+      }
+      __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+      return;
+    }
+    pcVar7 = &DAT_0051af80;
+  }
+  FUN_00402010(this,local_108,pcVar7,(char)pvVar3);
+                    /* WARNING: Subroutine does not return */
+  FUN_00471e50(local_108,param_1);
+}
+
+
+
+--- 004a8800 ---
+
+void __fastcall FUN_004a8800(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if (((int)param_1 < 0) || (0x3fff < (int)param_1)) {
+    FUN_00402010(param_1,local_108,&DAT_00519108,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_2);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 004a88f0 ---
+
+void __fastcall FUN_004a88f0(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if ((void *)0x80 < param_1) {
+    switch(param_1) {
+    case (void *)0xc0:
+    case (void *)0xc1:
+    case (void *)0xf0:
+    case (void *)0xff:
+      goto switchD_004a891c_caseD_0;
+    default:
+switchD_004a891c_caseD_a:
+      FUN_00402010(param_1,local_108,&DAT_0051c0bc,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+      FUN_00471e50(local_108,param_2);
+    }
+  }
+  if (param_1 == (void *)0x80) {
+switchD_004a891c_caseD_0:
+    __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+    return;
+  }
+  switch(param_1) {
+  case (void *)0x0:
+  case (void *)0x1:
+  case (void *)0x2:
+  case (void *)0x3:
+  case (void *)0x4:
+  case (void *)0x5:
+  case (void *)0x6:
+  case (void *)0x7:
+  case (void *)0x8:
+  case (void *)0x9:
+  case (void *)0x20:
+  case (void *)0x21:
+  case (void *)0x22:
+  case (void *)0x23:
+  case (void *)0x24:
+  case (void *)0x25:
+  case (void *)0x26:
+  case (void *)0x27:
+  case (void *)0x40:
+  case (void *)0x41:
+    goto switchD_004a891c_caseD_0;
+  default:
+    goto switchD_004a891c_caseD_a;
+  }
+}
+
+
+
+--- 004a8a70 ---
+
+void __fastcall FUN_004a8a70(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if ((void *)0x100 < param_1) {
+    FUN_00402010(param_1,local_108,&DAT_0051bf68,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_2);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046fbc0 ---
+
+uint __fastcall
+FUN_0046fbc0(uint param_1,int param_2,int param_3,int param_4,uint param_5,byte *param_6)
+
+{
+  uint uVar1;
+  
+  uVar1 = FUN_00448c70(param_1,param_2,param_3,param_4,param_5,param_6);
+  if (uVar1 < 0xd) {
+    if (uVar1 == 0xc) {
+      return 2;
+    }
+    if (uVar1 == 0) {
+      return 0;
+    }
+    if (uVar1 == 2) {
+      return 1;
+    }
+  }
+  else {
+    switch(uVar1) {
+    case 0xd:
+      return 3;
+    case 0xe:
+      return 4;
+    case 0xf:
+      return 5;
+    case 0xff:
+      return 0xffffffff;
+    }
+  }
+  return param_1;
+}
+
+
+
+=== T4 92:8A 00494eb0 ===
+
+undefined4 __cdecl FUN_00494eb0(int *param_1)
+
+{
+  uint uVar1;
+  uint uVar2;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar1 = FUN_0046fb90(uVar2,uVar1);
+  if (uVar1 == 0xffffffff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 00494eb0 ---
+
+undefined4 __cdecl FUN_00494eb0(int *param_1)
+
+{
+  uint uVar1;
+  uint uVar2;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  uVar1 = FUN_0046fb90(uVar2,uVar1);
+  if (uVar1 == 0xffffffff) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0046fb90 ---
+
+uint __fastcall FUN_0046fb90(uint param_1,uint param_2)
+
+{
+  int iVar1;
+  
+  iVar1 = FUN_00448c40(param_1,param_2);
+  if (iVar1 == 0) {
+    return 0;
+  }
+  if (iVar1 == 0xff) {
+    return 0xffffffff;
+  }
+  return param_1;
+}
+
+
+
+=== T4 92:8B None ===
+
+=== T4 92:8C 00494ef0 ===
+
+undefined4 __cdecl FUN_00494ef0(int *param_1)
+
+{
+  undefined4 uVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0046fdd0(uVar2,uVar1);
+  if (iVar3 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 00494ef0 ---
+
+undefined4 __cdecl FUN_00494ef0(int *param_1)
+
+{
+  undefined4 uVar1;
+  uint uVar2;
+  int iVar3;
+  int extraout_ECX;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  uVar2 = FUN_0044d2a0(extraout_ECX);
+  iVar3 = FUN_0046fdd0(uVar2,uVar1);
+  if (iVar3 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0046fdd0 ---
+
+void __fastcall FUN_0046fdd0(uint param_1,undefined4 param_2)
+
+{
+  FUN_00448ea0(param_1,param_2);
+  return;
+}
+
+
+
+=== T4 92:8D 00494f30 ===
+
+void __cdecl FUN_00494f30(int *param_1)
+
+{
+  byte *pbVar1;
+  void *pvVar2;
+  void *pvVar3;
+  int iVar4;
+  int iVar5;
+  uint uVar6;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  int extraout_ECX_03;
+  int *extraout_ECX_04;
+  void *this;
+  char *pcVar7;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  pbVar1 = (byte *)FUN_0044d2a0((int)param_1);
+  pvVar2 = (void *)FUN_0044d2a0(extraout_ECX);
+  pvVar3 = (void *)FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0044d2a0(extraout_ECX_01);
+  iVar5 = FUN_0044d2a0(extraout_ECX_02);
+  uVar6 = FUN_0044d2a0(extraout_ECX_03);
+  FUN_004a8800(pvVar3,extraout_ECX_04);
+  FUN_004a88f0(pvVar2,param_1);
+  FUN_004a8a70(pbVar1,param_1);
+  uVar6 = FUN_0046fde0(uVar6,iVar5,iVar4,(int)pvVar3,(uint)pvVar2,pbVar1);
+  if (uVar6 == 1) {
+    pcVar7 = &DAT_00517180;
+  }
+  else {
+    if (uVar6 != 2) {
+      if (uVar6 == 0xffffffff) {
+                    /* WARNING: Subroutine does not return */
+        FUN_00471e50(&DAT_00519330,param_1);
+      }
+      __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+      return;
+    }
+    pcVar7 = &DAT_0051af80;
+  }
+  FUN_00402010(this,local_108,pcVar7,(char)pvVar3);
+                    /* WARNING: Subroutine does not return */
+  FUN_00471e50(local_108,param_1);
+}
+
+
+
+--- 00494f30 ---
+
+void __cdecl FUN_00494f30(int *param_1)
+
+{
+  byte *pbVar1;
+  void *pvVar2;
+  void *pvVar3;
+  int iVar4;
+  int iVar5;
+  uint uVar6;
+  int extraout_ECX;
+  int extraout_ECX_00;
+  int extraout_ECX_01;
+  int extraout_ECX_02;
+  int extraout_ECX_03;
+  int *extraout_ECX_04;
+  void *this;
+  char *pcVar7;
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  pbVar1 = (byte *)FUN_0044d2a0((int)param_1);
+  pvVar2 = (void *)FUN_0044d2a0(extraout_ECX);
+  pvVar3 = (void *)FUN_0044d2a0(extraout_ECX_00);
+  iVar4 = FUN_0044d2a0(extraout_ECX_01);
+  iVar5 = FUN_0044d2a0(extraout_ECX_02);
+  uVar6 = FUN_0044d2a0(extraout_ECX_03);
+  FUN_004a8800(pvVar3,extraout_ECX_04);
+  FUN_004a88f0(pvVar2,param_1);
+  FUN_004a8a70(pbVar1,param_1);
+  uVar6 = FUN_0046fde0(uVar6,iVar5,iVar4,(int)pvVar3,(uint)pvVar2,pbVar1);
+  if (uVar6 == 1) {
+    pcVar7 = &DAT_00517180;
+  }
+  else {
+    if (uVar6 != 2) {
+      if (uVar6 == 0xffffffff) {
+                    /* WARNING: Subroutine does not return */
+        FUN_00471e50(&DAT_00519330,param_1);
+      }
+      __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+      return;
+    }
+    pcVar7 = &DAT_0051af80;
+  }
+  FUN_00402010(this,local_108,pcVar7,(char)pvVar3);
+                    /* WARNING: Subroutine does not return */
+  FUN_00471e50(local_108,param_1);
+}
+
+
+
+--- 004a8800 ---
+
+void __fastcall FUN_004a8800(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if (((int)param_1 < 0) || (0x3fff < (int)param_1)) {
+    FUN_00402010(param_1,local_108,&DAT_00519108,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_2);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 004a88f0 ---
+
+void __fastcall FUN_004a88f0(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if ((void *)0x80 < param_1) {
+    switch(param_1) {
+    case (void *)0xc0:
+    case (void *)0xc1:
+    case (void *)0xf0:
+    case (void *)0xff:
+      goto switchD_004a891c_caseD_0;
+    default:
+switchD_004a891c_caseD_a:
+      FUN_00402010(param_1,local_108,&DAT_0051c0bc,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+      FUN_00471e50(local_108,param_2);
+    }
+  }
+  if (param_1 == (void *)0x80) {
+switchD_004a891c_caseD_0:
+    __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+    return;
+  }
+  switch(param_1) {
+  case (void *)0x0:
+  case (void *)0x1:
+  case (void *)0x2:
+  case (void *)0x3:
+  case (void *)0x4:
+  case (void *)0x5:
+  case (void *)0x6:
+  case (void *)0x7:
+  case (void *)0x8:
+  case (void *)0x9:
+  case (void *)0x20:
+  case (void *)0x21:
+  case (void *)0x22:
+  case (void *)0x23:
+  case (void *)0x24:
+  case (void *)0x25:
+  case (void *)0x26:
+  case (void *)0x27:
+  case (void *)0x40:
+  case (void *)0x41:
+    goto switchD_004a891c_caseD_0;
+  default:
+    goto switchD_004a891c_caseD_a;
+  }
+}
+
+
+
+--- 004a8a70 ---
+
+void __fastcall FUN_004a8a70(void *param_1,int *param_2)
+
+{
+  char local_108 [256];
+  undefined4 local_8;
+  
+  local_8 = DAT_0052e2f8 ^ (uint)(local_108 + 0x104);
+  if ((void *)0x100 < param_1) {
+    FUN_00402010(param_1,local_108,&DAT_0051bf68,(char)param_1);
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(local_108,param_2);
+  }
+  __security_check_cookie(local_8 ^ (uint)(local_108 + 0x104));
+  return;
+}
+
+
+
+--- 0046fde0 ---
+
+uint __fastcall
+FUN_0046fde0(uint param_1,int param_2,int param_3,int param_4,uint param_5,byte *param_6)
+
+{
+  uint uVar1;
+  
+  uVar1 = FUN_00448ef0(param_1,param_2,param_3,param_4,param_5,param_6);
+  if (uVar1 < 0xd) {
+    if (uVar1 == 0xc) {
+      return 2;
+    }
+    if (uVar1 == 0) {
+      return 0;
+    }
+    if (uVar1 == 2) {
+      return 1;
+    }
+  }
+  else {
+    switch(uVar1) {
+    case 0xd:
+      return 3;
+    case 0xe:
+      return 4;
+    case 0xf:
+      return 5;
+    case 0xff:
+      return 0xffffffff;
+    }
+  }
+  return param_1;
+}
+
+
+
+=== T4 92:8E 00495040 ===
+
+undefined4 __cdecl FUN_00495040(int *param_1)
+
+{
+  uint uVar1;
+  int iVar2;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0046ffc0(uVar1);
+  if (iVar2 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 00495040 ---
+
+undefined4 __cdecl FUN_00495040(int *param_1)
+
+{
+  uint uVar1;
+  int iVar2;
+  
+  uVar1 = FUN_0044d2a0((int)param_1);
+  iVar2 = FUN_0046ffc0(uVar1);
+  if (iVar2 == 0) {
+                    /* WARNING: Subroutine does not return */
+    FUN_00471e50(&DAT_00519330,param_1);
+  }
+  return 0;
+}
+
+
+
+--- 0046ffc0 ---
+
+void __fastcall FUN_0046ffc0(uint param_1)
+
+{
+  FUN_00449050(param_1);
+  return;
+}
+
+

@@ -15,11 +15,13 @@ const Mixer::Channel* Mixer::find(Bank bank, std::uint32_t ch) const {
 }
 
 Result<void> Mixer::load(Bank bank, std::uint32_t ch, std::shared_ptr<const Pcm> pcm, bool loop, std::uint32_t loop_start) {
+    std::shared_ptr<const Pcm> retired;
     std::lock_guard lock(mutex_);
     Channel* c = find(bank, ch);
     if (!c) return std::unexpected(bad_channel());
     if (!pcm || pcm->frames() == 0) return fail(Errc::Format, "empty sound");
     const bool keep_paused = c->paused;
+    retired = std::move(c->pcm);
     *c = Channel{};
     c->paused = keep_paused;
     c->loop = loop;
@@ -29,9 +31,11 @@ Result<void> Mixer::load(Bank bank, std::uint32_t ch, std::shared_ptr<const Pcm>
 }
 
 Result<void> Mixer::unload(Bank bank, std::uint32_t ch) {
+    std::shared_ptr<const Pcm> retired;
     std::lock_guard lock(mutex_);
     Channel* c = find(bank, ch);
     if (!c) return std::unexpected(bad_channel());
+    retired = std::move(c->pcm);
     *c = Channel{};
     return {};
 }
@@ -144,8 +148,17 @@ std::uint32_t Mixer::loop_count(Bank bank, std::uint32_t ch) const {
 }
 
 void Mixer::mix(std::int16_t* out, std::uint32_t frames) {
+    while (frames) {
+        const auto count = std::min(frames, 512u);
+        mix_block(out, count);
+        out += count * 2;
+        frames -= count;
+    }
+}
+
+void Mixer::mix_block(std::int16_t* out, std::uint32_t frames) {
     std::lock_guard lock(mutex_);
-    std::vector<float> acc(std::size_t{frames} * 2, 0.0f);
+    std::array<float, 1024> acc{};
 
     auto render = [&](Channel& c) {
         if (!c.playing || c.paused || !c.pcm) return;
@@ -194,7 +207,7 @@ void Mixer::mix(std::int16_t* out, std::uint32_t frames) {
     for (Channel& c : streams_) render(c);
     for (Channel& c : points_) render(c);
 
-    for (std::size_t i = 0; i < acc.size(); ++i)
+    for (std::size_t i = 0; i < std::size_t{frames} * 2; ++i)
         out[i] = static_cast<std::int16_t>(std::lrint(std::clamp(acc[i], -1.0f, 1.0f) * 32767.0f));
 }
 

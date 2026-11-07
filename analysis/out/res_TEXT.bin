@@ -1,0 +1,33 @@
+
+DIRECT3DINITIALIZINGFAILED				= Direct3D initializing failed.
+COULDNOTGETTHEDESKTOPRESOLUTION				= Could not get the desktop resolution.
+DIRECT3DINITIALIZINGFAILEDDOYOUWANTTOTRYAGAIN		= Direct3D initializing failed.\n\nDo you want to try again?
+COULDNOTGETTHEINFORMATIONOFDISPLAYADAPTOR		= Could not get the information of display adaptor.
+DISPLAYADAPTORDOESNOTSUPPORTREQUISITEFUNCTION		= Display adaptor does not support requisite function.
+DISPLAYADAPTORDOESNOTSUPPORTREQUISITEPIXELFORMAT	= Display adaptor does not support requisite pixel format.
+DISPLAYADAPTORDOESNOTSUPPORTREQUISITESURFACEFORMAT	= Display adaptor does not support requisite surface format.
+AREYOUSUREYOUWANTTOQUIT					= Are you sure you want to quit?
+PLEASESELECTTHEFOLDER					= Please select the folder.
+FILEREADINGFAILED					= File reading failed.
+FILESAVINGFAILED					= File saving failed.
+UNABLETOCREATEFILE					= Unable to create file.
+INSTALLATIONFILEISCORRUPTED				= "%s" is corrupted.
+
+//----------------------------------------------------------------------------------------
+
+@LanguageID = 0x411
+
+DIRECT3DINITIALIZINGFAILED				= Direct3Dの初期化に失敗しました。
+COULDNOTGETTHEDESKTOPRESOLUTION				= デスクトップ解像度の取得に失敗しました。
+DIRECT3DINITIALIZINGFAILEDDOYOUWANTTOTRYAGAIN		= Direct3Dの初期化に失敗しました。\n\n再試行しますか？
+COULDNOTGETTHEINFORMATIONOFDISPLAYADAPTOR		= ディスプレイアダプタの情報の取得に失敗しました。
+DISPLAYADAPTORDOESNOTSUPPORTREQUISITEFUNCTION		= ディスプレイアダプタが必要不可欠な機能をサポートしていません。
+DISPLAYADAPTORDOESNOTSUPPORTREQUISITEPIXELFORMAT	= ディスプレイアダプタが必要不可欠なピクセルフォーマットをサポートしていません。
+DISPLAYADAPTORDOESNOTSUPPORTREQUISITESURFACEFORMAT	= ディスプレイアダプタが必要不可欠なサーフェイスの形式をサポートしていません。
+AREYOUSUREYOUWANTTOQUIT					= 中止しますか？
+PLEASESELECTTHEFOLDER					= フォルダを選択してください。
+FILEREADINGFAILED					= 読み込みエラーが発生しました。
+FILESAVINGFAILED					= 書き込みエラーが発生しました。
+UNABLETOCREATEFILE					= ファイルの作成に失敗しました。
+INSTALLATIONFILEISCORRUPTED				= インストール対象となっている [ %s ] は破損しています。
+

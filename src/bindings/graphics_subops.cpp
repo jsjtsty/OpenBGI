@@ -25,7 +25,6 @@ void add(vm::SubopRegistry& r, std::uint16_t id, const char* name, int pops, int
 }
 
 constexpr Word kMaxSlot = 0x3fff;
-constexpr Word kScreenSlot = 3794; // 0xED2, read by scrgrp2 before any script creates it
 constexpr Word kErrNoSlot = 0x80000003; // what the engine's slot table reports for an unknown slot
 
 bool slot_ok(Ctx& c, Word id) {
@@ -407,15 +406,6 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         if (!c.ok()) return 0;
         if (std::getenv("OBGI_SLOTS")) std::fprintf(stderr, "90:18 blit %u <- %u at %d,%d mode %u alpha %u (src %s, dst %s)\n", dst, src, dx, dy, mode, alpha, d.slot(src) ? "ok" : "missing", d.slot(dst) ? "ok" : "missing");
         const SlotInfo* s = d.slot(src);
-        if (src == kScreenSlot) { // the screen image slot (read without ever being created): the composed screen, a guess
-            check(c, d.compose());
-            auto px = d.read_screen();
-            if (c.ok() && px) check(c, d.upload_slot(src, d.screen_width(), d.screen_height(), SlotFormat::Bgrx, *px));
-            s = d.slot(src);
-        } else if (!s && src > kScreenSlot - 3 && src < kScreenSlot) { // 3792.. neighbours: blank until a script fills them
-            if (auto made = d.create_slot(src, d.screen_width(), d.screen_height(), SlotFormat::Bgrx); !made) check(c, made);
-            s = d.slot(src);
-        }
         if (!s) {
             c.fail(Errc::Range, "no image slot " + std::to_string(src));
             return 0;
@@ -437,14 +427,17 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         check(c, d.blit(dst, dx, dy, src, sx, sy, w, h, 0x80, 0));
         return 0;
     });
-    // 90:04 (slot): the slot becomes a screen-sized copy of the composed screen
+    // 90:04 / 90:05: snapshot the full scene, or only objects through a priority.
     add(r, 0x9004, "snapshot", 1, 0, [&d](Ctx& c) {
         const Word slot = c.pop();
-        if (!c.ok()) return 0;
-        check(c, d.compose());
-        auto px = d.read_screen();
-        if (!c.ok() || !px) return 0;
-        check(c, d.upload_slot(slot, d.screen_width(), d.screen_height(), SlotFormat::Bgrx, *px));
+        if (c.ok() && slot_ok(c, slot)) check(c, d.snapshot(slot));
+        return 0;
+    });
+    add(r, 0x9005, "snapshot through priority", 2, 0, [&d](Ctx& c) {
+        const Word priority = c.pop(), slot = c.pop();
+        if (!c.ok() || !slot_ok(c, slot)) return 0;
+        if (priority > 0xFFFF) { c.fail(Errc::Range, "snapshot priority out of range"); return 0; }
+        check(c, d.snapshot(slot, priority));
         return 0;
     });
     // 92:17 (out, slot, x, y): copies the pixel at x, y of the slot to the address (a packed pixel in the slot's format) and
@@ -493,15 +486,6 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         auto x = static_cast<std::int32_t>(c.pop());
         Word src = c.pop(), dst = c.pop();
         if (!c.ok() || !slot_ok(c, dst)) return 0;
-        if (src == kScreenSlot) { // the screen image slot is read without ever being created: the composed screen, as in the blit above
-            check(c, d.compose());
-            auto px = d.read_screen();
-            if (c.ok() && px) check(c, d.upload_slot(src, d.screen_width(), d.screen_height(), SlotFormat::Bgrx, *px));
-            if (!c.ok()) return 0;
-        } else if (!d.slot(src) && src >= kScreenSlot - 4 && src < kScreenSlot) { // neighbours of the screen slot: blank until filled
-            check(c, d.create_slot(src, d.screen_width(), d.screen_height(), SlotFormat::Bgrx));
-            if (!c.ok()) return 0;
-        }
         const SlotInfo* s = d.slot(src);
         if (!s || w == 0 || h == 0) {
             c.fail(Errc::Range, "bad crop source or size (dst " + std::to_string(dst) + " src " + std::to_string(src) + " at " + std::to_string(x) + "," + std::to_string(y) + " size " + std::to_string(w) + "x" + std::to_string(h) + ")");
@@ -769,7 +753,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         Sprite* s = object(c, d, id);
         if (!s) return 0;
         if (alpha > 0x100) c.fail(Errc::Range, "alpha out of range");
-        else s->set_level(alpha);
+        else d.set_level(id, alpha);
         return 0;
     });
     // (object, priority): the draw order of the object (1.69/472 on)

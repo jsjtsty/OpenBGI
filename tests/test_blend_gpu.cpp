@@ -12,7 +12,7 @@ using namespace obgi;
 static void check_driver(const char* driver);
 
 // Every backend that exists on this machine must give identical, original-exact results.
-TEST_CASE("gpu blend kernels match the original CPU kernels") {
+TEST_CASE("gpu blend kernels match the original CPU kernels" * doctest::test_suite("gpu")) {
     std::size_t ran = 0;
     for (const char* driver : {"vulkan", "direct3d12", "metal"}) {
         auto probe = GpuBlendRunner::create(driver);
@@ -24,7 +24,7 @@ TEST_CASE("gpu blend kernels match the original CPU kernels") {
         SUBCASE(driver) { check_driver(driver); }
         ++ran;
     }
-    if (!ran) MESSAGE("no usable GPU backend, skipping");
+    REQUIRE_MESSAGE(ran > 0, "no usable GPU backend");
 }
 
 static void check_driver(const char* driver) {

@@ -20,7 +20,7 @@ Rig make_rig(const char* driver) {
     ro.driver = driver;
     auto r = Renderer::create(ro);
     if (!r) {
-        MESSAGE(std::string(driver), ": unavailable (", r.error().message, ")");
+        MESSAGE(std::string(driver ? driver : "default"), ": unavailable (", r.error().message, ")");
         return {};
     }
     auto d = Display::create(**r);
@@ -32,7 +32,25 @@ constexpr const char* kDrivers[] = {"vulkan", "direct3d12", "metal"};
 
 } // namespace
 
-TEST_CASE("slot fill, clipped blit and compose") {
+TEST_CASE("background crossfade layers retain their order when the upper layer was created first" * doctest::test_suite("gpu")) {
+    auto rig = make_rig(nullptr);
+    REQUIRE(rig.display);
+    auto& display = *rig.display;
+    REQUIRE(display.create_slot(1, 2, 2, SlotFormat::Bgrx));
+    REQUIRE(display.fill_slot(1, 0x00FF0000));
+    REQUIRE(display.create_slot(2, 2, 2, SlotFormat::Bgrx));
+    REQUIRE(display.fill_slot(2, 0x000000FF));
+    auto& upper = display.sprite(Display::kBackgroundUpper);
+    upper.background = true; upper.slot = 1; upper.alpha = 128;
+    auto& lower = display.sprite(Display::kBackgroundLower);
+    lower.background = true; lower.slot = 2;
+    REQUIRE(display.compose());
+    auto pixels = display.read_screen(); REQUIRE(pixels);
+    CHECK(((*pixels)[0] >> 16 & 255) > 0);
+    CHECK(((*pixels)[0] & 255) > 0);
+}
+
+TEST_CASE("slot fill, clipped blit and compose" * doctest::test_suite("gpu")) {
     for (const char* driver : kDrivers) {
         Rig rig = make_rig(driver);
         if (!rig.display) continue;
@@ -74,7 +92,7 @@ TEST_CASE("slot fill, clipped blit and compose") {
     }
 }
 
-TEST_CASE("blit reproduces the blend vectors through real image slots") {
+TEST_CASE("blit reproduces the blend vectors through real image slots" * doctest::test_suite("gpu")) {
     auto rows = obgi_test::read_tsv("blend_cases.tsv");
     REQUIRE(!rows.empty());
     for (const char* driver : kDrivers) {
@@ -110,7 +128,7 @@ TEST_CASE("blit reproduces the blend vectors through real image slots") {
     }
 }
 
-TEST_CASE("sprites compose by priority and present to the window image") {
+TEST_CASE("sprites compose by priority and present to the window image" * doctest::test_suite("gpu")) {
     for (const char* driver : kDrivers) {
         Rig rig = make_rig(driver);
         if (!rig.display) continue;
@@ -148,7 +166,7 @@ TEST_CASE("sprites compose by priority and present to the window image") {
     }
 }
 
-TEST_CASE("a wipe sprite is revealed through its gray pattern as progress grows") {
+TEST_CASE("a wipe sprite is revealed through its gray pattern as progress grows" * doctest::test_suite("gpu")) {
     for (const char* driver : kDrivers) {
         Rig rig = make_rig(driver);
         if (!rig.display) continue;

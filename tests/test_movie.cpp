@@ -40,8 +40,8 @@ class OneProgram final : public vm::ProgramProvider {
 
 } // namespace
 
-TEST_CASE("the opening movie decodes through FFmpeg") {
-    if (!have_movies()) return;
+TEST_CASE("the opening movie decodes through FFmpeg" * doctest::test_suite("game")) {
+    REQUIRE(have_movies());
     auto arc = Arc::open(obgi_test::game_dir() / "data02280.arc");
     REQUIRE(arc.has_value());
     const ArcEntry* e = arc->find("ac2_op.mpg");
@@ -75,8 +75,8 @@ TEST_CASE("the opening movie decodes through FFmpeg") {
     CHECK(prev == doctest::Approx(89.0 / 30.0).epsilon(0.05));
 }
 
-TEST_CASE("the movie's sound track decodes with the audio path") {
-    if (!have_movies()) return;
+TEST_CASE("the movie's sound track decodes with the audio path" * doctest::test_suite("game")) {
+    REQUIRE(have_movies());
     auto arc = Arc::open(obgi_test::game_dir() / "data02280.arc");
     REQUIRE(arc.has_value());
     const ArcEntry* e = arc->find("ac2_op.mpg");
@@ -88,8 +88,8 @@ TEST_CASE("the movie's sound track decodes with the audio path") {
     CHECK((*pcm)->frames() > (*pcm)->sample_rate * 10u); // an opening is longer than ten seconds
 }
 
-TEST_CASE("91:F8 plays a movie from the archive") {
-    if (!have_movies()) return;
+TEST_CASE("91:F8 plays a movie from the archive" * doctest::test_suite("game")) {
+    REQUIRE(have_movies());
     ArcResourceFinder finder(obgi_test::game_dir());
     std::size_t played_bytes = 0;
     MovieHost host;

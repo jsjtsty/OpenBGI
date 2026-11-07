@@ -1,0 +1,429 @@
+8000 random seed 1 0
+8001 random 0 1
+8002 random below 1 1
+8004 clock 0 1
+8006 profiler switch 1 0
+8007 profiler figure 2 0
+8008 mouse position 0 2
+800C local time 1 0
+800D memory size 0 2
+800F window active 0 1
+8011 input held 1 1
+8012 input state sum by list 1 1
+8013 input serial 0 1
+8014 set input skip permission 1 0
+8015 skip latch 1 0
+8016 input reset 0 0
+8017 input skip state 0 1
+8018 input priority add 1 0
+8019 input priority remove 1 0
+801A poll input 1 1
+801B input map 2 0
+801C input state sum by mask 1 1
+801F mouse motion 6 0
+8020 allocate 1 1
+8021 free 1 1
+8025 list files 5 1
+8028 create directory 1 1
+802A is directory 1 1
+802B split path 5 1
+8030 load resource 3 1
+8031 load resource range 5 1
+8032 write file 3 1
+8033 delete file 2 1
+8034 resource exists 2 1
+8035 resource size 2 1
+8036 setting 80:36 1 0
+8037 add resource search path 1 0
+8038 archive group 2 1
+8039 alternative directory 1 1
+803A special folder 2 0
+803B file dialog 6 1
+803D base path 2 1
+803F install paths 4 1
+8040 load program 2 1
+8041 unload program 0 1
+8044 create thread 5 1
+8046 current thread id 0 1
+8047 thread exists 1 1
+8048 send message 2 0
+8049 receive message 1 1
+804A send messages 3 0
+804B receive messages 2 1
+804C notify waiting thread 4 1
+8050 setting 80:50 1 0
+8052 setting 80:52 1 0
+8058 set deadline 1 0
+805A wait for deadline 0 1
+805C wait timing 3 1
+805E switch thread 1 0
+805F yield 0 0
+8060 window mode 3 0
+8061 display set-up mode 0 1
+8062 window numbers 2 0
+8064 show window 1 0
+8066 window title 1 0
+8067 setting 80:67 1 0
+8068 window close policy 1 0
+8069 close main window 0 0
+806A yield rest of frame 0 0
+8070 scratch buffer 1 1
+8074 setting 80:74 1 0
+8080 restore global data 0 3
+8081 save global data 0 1
+8082 write global data 3 0
+8083 read global data 3 0
+8084 add global key 1 1
+8085 has global key 1 1
+8088 define bit table 2 1
+8089 set bit 3 1
+808A set bit range 4 1
+808B get bit 3 1
+8098 register item 3 1
+8099 remove item 1 1
+809A item record count 2 1
+809C push item record 2 1
+809D read item record 3 1
+809E drop item records 3 1
+80A0 take message 1 1
+80A1 queue message 2 0
+80A8 set item value 2 1
+80AC send icon control message 3 1
+80AF flag 80:AF 1 1
+80C0 SDC encode 3 1
+80C1 unpack SDC 2 1
+80C4 encode DCFS 4 1
+80C5 expand DCFS 2 1
+80D0 create table 2 1
+80D1 delete table 1 1
+80D2 set symbol 3 1
+80D3 remove symbol 2 1
+80D4 get symbol 4 1
+80D8 drop string lists 0 0
+80D9 string list size 1 1
+80DA set string list 3 1
+80DB get string list 2 1
+80DC add to string list 2 1
+80DD get string list item 3 1
+80E1 run on exit 3 0
+80E3 shell open 1 1
+80E8 game name 1 0
+80FD launcher flag 0 1
+8100 string code page 1 1
+810E display size 1 0
+810F window minimised 0 1
+8118 window helper 1 1
+8119 touch points 1 1
+8121 cp932 to utf8 2 0
+812F directory writable 1 1
+8130 load resource bytes 5 1
+8135 file size 2 1
+8160 pair table 3 1
+8162 flag 81:62 1 1
+8163 setting 81:63 1 1
+8164 client size 2 0
+816F screen mode 1 1
+81D8 load word table 2 1
+81DA translate word 3 1
+81E9 rolling hash 3 0
+81F7 create shortcut 4 1
+9000 display update flag 1 0
+9001 display global 90:01 1 0
+9002 frame rate 1 0
+9003 display object cache size 1 0
+9004 snapshot 1 0
+9005 display priority range 2 0
+9006 display object pair 2 0
+9007 display setting 90:07 1 0
+9008 refresh display objects 1 0
+9009 display setting 90:09 1 0
+900C display setting 90:0C 2 0
+900D display mode 1 0
+9010 load image 3 0
+9011 create image 4 0
+9012 free image 1 1
+9013 fill image 2 0
+9014 image from memory 5 0
+9015 image to memory 4 0
+9016 image info 2 1
+9017 convert image format 2 1
+9018 blit image 6 0
+9019 blit image with mask 7 0
+901E copy rectangle 8 0
+901F crop image 6 0
+9020 fade object (timed) 6 0
+9021 move object (timed) 9 0
+9022 fade object (timed) 7 0
+9023 move object (timed) 10 0
+9024 move object through a point 12 0
+9028 move object over time 12 0
+9029 move object along a path 12 0
+9030 set object visible 2 0
+9031 set object enabled 2 0
+9032 set object alpha 2 0
+9033 move object 3 0
+9034 set object fade 2 0
+9035 object setting 90:35 2 0
+9036 set object offset 2 3 0
+9037 set object offset 3 0
+9038 set object property 4 0
+9039 set object opacity 2 0
+903A set object priority 2 0
+903C object setting 90:3C 2 0
+903D object query 90:3D 1 1
+903F object setting 90:3F 1 0
+9040 background picture 1 0
+9041 object setting 90:41 3 0
+9042 object setting 90:42 6 0
+9043 background two pictures 9 0
+9044 background frames 90:44 2 0
+9045 object setting 90:45 5 0
+9046 object setting 90:46 3 0
+9047 background ripple 5 0
+9048 object setting 90:48 5 0
+9049 object setting 90:49 3 0
+904A background flip 5 0
+904C background show 2 0
+904D background type 0 1
+9050 create sprite object 0 1
+9051 remove sprite object 1 0
+9053 object setting 90:53 5 0
+9054 set sprite visible 2 0
+9055 object setting 90:55 2 0
+9056 set sprite 7 0
+9057 set sprite image 2 0
+9058 effect parameters (not modelled) 9 0
+905A set wipe sprite 10 0
+905C projected plane 17 0
+9060 create filter object 0 1
+9061 delete filter object 1 0
+9064 set filter parameter 2 0
+9065 filter setting 90:65 4 0
+9066 filter bitmap 90:66 7 0
+9080 create window object 2 1
+9081 remove window object 1 0
+9082 window object order 2 0
+9083 window object bitmap 2 0
+9084 window object flag 2 0
+9085 window object placement 7 0
+9086 window frame picture 4 0
+9087 window object mode 2 0
+9088 window object area 5 0
+9089 window object area read 2 1
+9090 message text 6 0
+9094 setting 90:94 1 0
+9095 setting 90:95 2 0
+9096 setting 90:96 2 0
+9097 setting 90:97 2 0
+9098 message bitmap list 2 0
+9099 global switch 90:99 1 0
+909A setting 90:9A 3 0
+909B typesetting setting 90:9B 2 0
+909C setting 90:9C 1 0
+909D density at point 3 0
+909E setting 90:9E 2 0
+909F setting 90:9F 1 0
+90AF display option 90:AF 1 0
+90B6 paint plain panel buttons 2 1
+90B7 paint sprite panel buttons 2 1
+90B8 register plain panel 1 1
+90B9 remove icon control 1 1
+90BA start plain panel 2 1
+90BC icon control info 2 1
+90BD icon control current group 2 1
+90BE icon control selections 2 1
+90BF icon control event 2 1
+90CC register tone curve 2 0
+90CD apply tone curve 8 0
+90D0 knob create 1 1
+90D1 knob destroy 1 0
+90D4 knob visible 2 0
+90D5 knob position 3 0
+90D6 knob set value 3 0
+90D7 knob get value 1 2
+90D8 knob steps 3 0
+90D9 knob track 3 0
+90DA knob wheel step 1 1
+90DB knob right-clicked 0 1
+90DC knob enable 2 0
+90DD swap display flag 1 1
+90DE knob wheel add 1 0
+90DF knob wheel remove 1 0
+90E0 create group 0 1
+90E1 delete group 1 0
+90E4 show group 2 0
+90E5 set group position and level 4 0
+90E8 add object to group 4 0
+90E9 remove object from group 2 0
+90F1 stop movie 0 0
+90F2 movie playing 0 1
+90F3 movie volume 1 0
+90F4 load sequence 4 1
+90F5 free sequence 1 1
+90F6 decode sequence frame 3 1
+90F7 clone sequence 2 1
+9100 setting 91:00 1 0
+9106 91:06 (not modelled) 2 0
+9109 flag 91:09 1 1
+910D setting 91:0D 1 0
+910E define font 5 0
+9110 bitmap effect (not drawn) 5 0
+9111 bitmap effect (not drawn) 2 0
+9112 bitmap effect (not drawn) 6 0
+9113 bitmap effect (not drawn) 5 0
+9114 bitmap effect (not drawn) 5 0
+9115 bitmap effect (not drawn) 5 0
+9116 bitmap effect (not drawn) 7 0
+9117 bitmap effect (not drawn) 6 0
+9118 bitmap effect (not drawn) 11 0
+9119 bitmap effect (not drawn) 11 0
+911A bitmap effect (not drawn) 3 0
+911B bitmap effect (not drawn) 5 0
+911C resample image 5 0
+911D bitmap effect (not drawn) 5 0
+911E bitmap effect (not drawn) 4 0
+911F copy image 2 0
+9131 object setting 91:31 2 0
+9133 object setting 91:33 4 0
+9136 object setting 91:36 4 0
+9137 object setting 91:37 4 0
+9138 object parameter read 91:38 3 0
+913D object query 91:3D 1 1
+913E bind slave object 4 0
+913F unbind slave object 2 0
+9140 object stretch 91:40 9 0
+9141 object setting 91:41 1 0
+9142 object setting 91:42 2 0
+9143 object setting 91:43 3 0
+9144 object setting 91:44 2 0
+9145 object setting 91:45 2 0
+9146 object setting 91:46 4 0
+9147 object setting 91:47 5 0
+9148 object layer 91:48 3 0
+9149 object layer 91:49 3 0
+914A object layer 91:4A 4 0
+9155 object query 91:55 2 1
+9160 create effector 0 1
+9161 delete effector 1 0
+9164 show effector 2 0
+9165 set effector (not drawn) 6 0
+9166 set effector (not drawn) 4 0
+9167 set effector (not drawn) 6 0
+9168 set effector (not drawn) 9 0
+9188 window object font 7 0
+9189 window object line gap 2 0
+918B window object text sway 2 0
+918C window text cursor 3 0
+918D window text cursor query 1 3
+918E window object query 91:8E 1 1
+9190 message text (rich) 10 0
+9194 ruby set 2 0
+9195 ruby parse 2 1
+9196 ruby add list 1 1
+9198 text spacing 6 0
+9199 type scale 1 1
+919A typesetting option 2 0
+919B measure text 7 1
+919F effect parameters (not modelled) 2 0
+91B8 register icon control 1 1
+91BA icon control description 2 1
+91DB dragged knob 0 1
+91F0 open video texture 4 1
+91F1 video texture (not modelled) 2 1
+91F2 video texture (not modelled) 1 1
+91F3 video texture (not modelled) 2 1
+91F4 video texture (not modelled) 5 1
+91F5 video texture (not modelled) 1 1
+91F6 video texture (not modelled) 1 1
+91F7 video texture frame 2 1
+91F8 play movie 3 1
+9212 set image base size 3 1
+9214 92:14 wait object (not modelled) 2 0
+9215 flush 92:15 0 0
+9216 image base size 2 1
+9217 read pixel 4 1
+9218 bitmap to gray 2 0
+9219 invert gray bitmap 1 1
+921E draw text with font id 9 1
+9288 window object setting 92:88 2 0
+9289 window object background bitmap 6 0
+928C window object setting 92:8C 2 0
+928E window clear text 1 0
+9290 message text (styled) 15 0
+9297 text ruby layout 7 0
+9299 measure characters 7 1
+929C draw text 21 1
+92F0 movie window (not modelled) 6 1
+A008 set stream config volume 2 0
+A009 set point config volume 2 0
+A011 load stream 5 0
+A012 load stream (loop control) 7 0
+A014 pause or play stream 2 0
+A016 fade stream 3 0
+A017 set stream pan 2 0
+A018 fade stream in 2 0
+A019 fade stream out 2 0
+A020 load point sound 3 0
+A021 load point sound (timed) 5 0
+A022 free point sound 1 0
+A024 play point sound 3 1
+A025 stop point sound 1 0
+A026 fade point sound out 2 0
+B002 reset window position 0 1
+B003 move window 2 1
+B005 toggle transition 1 0
+B006 cursor shown 0 1
+B010 create child window 5 1
+B011 destroy child window 1 0
+B014 show child window 2 0
+B015 child window title 2 0
+B016 move child window 3 0
+B017 child window position 1 2
+B018 fill child window 2 0
+B019 draw bitmap in child window 6 0
+B01A draw text in child window 10 1
+B01C child window copy text 2 0
+B080 message box 1 0
+B0C1 register font name 2 1
+B0C5 list installed fonts 2 1
+B0C6 look up font 2 1
+B0C7 set font alias 2 0
+C000 create particle screen 2 1
+C001 delete particle screen 1 0
+C004 show particle screen 2 0
+C005 place particle screen 6 0
+C008 redraw particle screen 1 0
+C009 auto redraw particle screen 2 0
+C00A particle rectangle limit 2 0
+C00B particle camera 10 0
+C00C particle tick length 2 0
+C00D particle pre-run 2 0
+C00F clear particles 1 0
+C010 particle wind 12 0
+C018 particle animation 7 0
+C01A particle alternate animation 8 0
+C01B particle alternate level 3 0
+C01F particle animation mode 1 0
+C020 particle group A 4 0
+C024 bind particle bitmap 2 0
+C025 particle pattern A 11 0
+C028 particle group B 4 0
+C029 particle pattern B extra 16 0
+C02C bind particle bitmap 2 0
+C02D particle pattern B 18 0
+C040 create rain screen 2 1
+C041 delete rain screen 1 0
+C042 start rain 2 0
+C043 rain mask 2 0
+C044 show rain screen 2 0
+C045 place rain screen 6 0
+C046 rain area 7 0
+C047 rain value 2 0
+C048 rain value 2 0
+C049 rain colour 2 0
+C04A rain drops per stage 2 0
+C04B rain value 2 0
+C04C rain camera 4 0
+C04D rain angles 4 0
+C04E rain value 2 0
+C04F effect frame rate 2 0

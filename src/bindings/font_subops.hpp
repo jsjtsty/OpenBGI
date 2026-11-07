@@ -8,6 +8,7 @@
 #include "vm/vm.hpp"
 
 namespace obgi {
+class ArcResourceFinder;
 
 // The engine's font tables, filled by the scripts at start-up (analysis/子opcode语义表.md, B0:C1..C7, 91:0E).
 struct FontTable {
@@ -33,6 +34,6 @@ struct FontHost {
 
 // B0:C1 register a font name, B0:C5 list installed fonts, B0:C6 look a font up, B0:C7 set an alias, 91:0E define
 // a font's scale. "Installed" means the engine can load a file for that exact name (see FontLibrary::has_exact).
-void register_font_subops(vm::SubopRegistry& registry, FontHost& host);
+void register_font_subops(vm::SubopRegistry& registry, FontHost& host, ArcResourceFinder* resources = nullptr);
 
 } // namespace obgi

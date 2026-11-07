@@ -7,6 +7,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <stdexcept>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
@@ -73,10 +74,39 @@ struct Module {
     std::string arc, name;
 };
 
+struct WaitContext {
+    std::int64_t now_ms;
+    std::uint64_t frame;
+    bool notified;
+};
+
+struct WaitUpdate {
+    enum class Status { Pending, Complete, SuppressFrame } status = Status::Pending;
+    std::vector<Word> values;
+    static WaitUpdate pending() { return {}; }
+    static WaitUpdate complete(std::vector<Word> values = {}) { return {Status::Complete, std::move(values)}; }
+};
+
+// The VM owns result delivery. A service only reports completion, never a Thread* or an expression-stack write.
 struct WaitObject {
-    enum class Kind { None, Time, Frame, Poll } kind = Kind::None; // Poll: the thread resumes once `poll` returns true
+    enum class Kind { None, Time, Frame, Poll, InputTime } kind = Kind::None;
     std::int64_t until = 0;
-    std::function<bool()> poll;
+    std::function<Result<WaitUpdate>(const WaitContext&)> poll;
+    std::function<void()> cleanup; // release a service operation on completion, cancellation or shutdown
+    std::vector<Word> values; // results of a plain Time/Frame wait
+    std::uint8_t result_count = 0;
+    std::uint16_t opcode = 0;
+    Word resume_depth = 0;
+    Word input_priority = 0;
+    bool interrupt_input = false, notified = false;
+};
+
+class WaitInput {
+  public:
+    virtual ~WaitInput() = default;
+    virtual void begin(Word priority) = 0;
+    virtual bool triggered(Word priority) = 0;
+    virtual void end(Word priority) = 0;
 };
 
 struct ThreadConfig {
@@ -123,6 +153,7 @@ class Ctx {
     void write_bytes(Word addr, const std::uint8_t* data, std::size_t n);
     std::string cstring(Word addr, std::size_t max = 4096);
     void write_cstring(Word addr, std::string_view s);
+    void suspend(WaitObject wait, std::uint8_t results);
 
     bool ok() const { return !error.has_value(); }
     void fail(Errc code, std::string message) {
@@ -141,20 +172,31 @@ struct SubopDef {
     std::string name;
     std::uint8_t pops = 0, pushes = 0; // checked against the real stack movement after every call
     SubopFn fn;
+    std::uint8_t completion_pushes = 0; // maximum of `pushes` delivered by the installed wait instead of immediately
 };
 
 class SubopRegistry {
   public:
-    void add(SubopDef def) { defs_[def.id] = std::move(def); }
+    void add(SubopDef def) {
+        if (defs_.contains(def.id)) throw std::logic_error("duplicate sub-opcode: " + def.name);
+        const auto id = def.id;
+        auto [it, inserted] = defs_.emplace(id, std::move(def));
+        (void)inserted;
+        auto& page = index_[id >> 8];
+        if (!page) page = std::make_unique<IndexPage>();
+        (*page)[id & 255] = &it->second;
+    }
     const SubopDef* find(std::uint16_t id) const {
-        auto it = defs_.find(id);
-        return it == defs_.end() ? nullptr : &it->second;
+        const auto& page = index_[id >> 8];
+        return page ? (*page)[id & 255] : nullptr;
     }
     std::size_t size() const { return defs_.size(); }
     const std::map<std::uint16_t, SubopDef>& all() const { return defs_; }
 
   private:
     std::map<std::uint16_t, SubopDef> defs_;
+    using IndexPage = std::array<const SubopDef*, 256>;
+    std::array<std::unique_ptr<IndexPage>, 256> index_{};
 };
 
 // Thread, program and scheduling sub-opcodes (80:40.. 80:6A); everything else lives in bindings.
@@ -167,6 +209,7 @@ std::string subop_name(std::uint16_t id);
 class Vm {
   public:
     Vm(ProgramProvider& provider, const SubopRegistry& registry) : provider(provider), registry(registry) {}
+    ~Vm();
 
     // Creates a thread and loads arc/name as its first program block.
     Result<Thread*> spawn(const ThreadConfig& cfg, std::string_view arc, std::string_view name);
@@ -182,6 +225,9 @@ class Vm {
 
     // Executes one instruction of `t`; returns a scheduler code or an error.
     Result<int> step(Thread& t);
+    void cancel_wait(Thread& t);
+    // Safe point after a successful scheduler pass; releases dead threads and their service operations.
+    void collect_dead();
 
     PagedSegment global, heap;
     HeapAllocator allocator;
@@ -192,6 +238,9 @@ class Vm {
     std::function<void(const Thread&, std::uint8_t)> trace_op;
     // Called at the start of every scheduler frame with the virtual time (display object motions advance here).
     std::function<void(std::int64_t)> frame_hook;
+    std::function<void(const Thread&, std::uint16_t, const std::vector<Word>&)> trace_completion;
+    WaitInput* wait_input = nullptr; // must outlive the VM
+    Word exclusive_thread = 0;
     std::int64_t now_ms = 0;
     std::uint64_t frame = 0;
     Word switch_target = 0;
@@ -203,10 +252,10 @@ class Vm {
     const SubopRegistry& registry;
 
     static constexpr std::size_t kSliceLimit = 0x100000;
-    static constexpr unsigned kSpinLimit = 100000;
 
   private:
     Result<int> run_slice(Thread& t);
+    Result<WaitUpdate> update_wait(Thread& t);
     Word next_id_ = 1; // the real game's root thread takes id 0, scripts start at 1
     std::vector<std::unique_ptr<Thread>> threads_;
 };

@@ -6,10 +6,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+option(OPENBGI_BUILD_RUNTIME "Build SDL/GPU/audio runtime and tools" ON)
 option(OPENBGI_BUILD_TESTS "Build unit tests" ON)
 option(OPENBGI_SANITIZE "Enable ASan/UBSan (GCC/Clang)" OFF)
 set(OPENBGI_PROXY "" CACHE STRING "HTTP proxy used when downloading dependencies, e.g. http://127.0.0.1:7897")
-set(OPENBGI_GAME_DIR "E:/Games/Amairo Chocolate 2" CACHE PATH "Game directory used by data-driven tests")
+set(OPENBGI_GAME_DIR "" CACHE PATH "Game directory used by data-driven tests")
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 include(Proxy)
