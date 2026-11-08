@@ -1,6 +1,8 @@
 #include "bindings/movie_subops.hpp"
 
 #include <cstdio>
+#include <cstdlib>
+#include <chrono>
 
 namespace obgi {
 
@@ -17,6 +19,34 @@ constexpr Word kStatusNotFound = static_cast<Word>(-3);
 
 void register_movie_subops(vm::SubopRegistry& r, MovieHost& host) {
     MovieHost* h = &host;
+    r.add({0x92F0, "play archive movie", 6, 1, [h](Ctx& c) {
+        const auto begin = std::chrono::steady_clock::now();
+        const auto height = static_cast<std::int32_t>(c.pop());
+        const auto width = static_cast<std::int32_t>(c.pop());
+        const auto y = static_cast<std::int32_t>(c.pop());
+        const auto x = static_cast<std::int32_t>(c.pop());
+        const std::string name = c.cstring(c.pop());
+        const std::string prefix = c.cstring(c.pop());
+        if (!c.ok()) return 0;
+        if (std::getenv("OBGI_PERF")) std::fprintf(stderr, "movie request %s/%s rect=%d,%d %dx%d\n", prefix.c_str(), name.c_str(), x, y, width, height);
+        if (width <= 0 || height <= 0) { c.fail(Errc::Range, "invalid movie size"); return 0; }
+        if (!h->player || !h->resources || name.empty()) { c.push(0); return 0; }
+        auto file = h->resources->read(prefix, name);
+        if (!file) { c.push(0); return 0; }
+        const auto read_ms = h->realtime ? std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - begin).count() : 0;
+        auto started = h->player->start(std::move(*file), name, c.vm.now_ms + read_ms, MovieRect{x, y, width, height}, h->realtime);
+        if (!started) {
+            std::fprintf(stderr, "movie %s/%s: %s\n", prefix.c_str(), name.c_str(), started.error().message.c_str());
+            c.push(0); return 0;
+        }
+        const auto duration = h->player->duration_ms();
+        c.push(duration > 0 && duration <= 0xffffffffLL ? static_cast<Word>(duration) : 1u);
+        return 0;
+    }});
+    r.add({0x90F1, "stop movie", 0, 0, [h](Ctx&) {
+        if (h->player && h->player->active()) h->player->stop();
+        return 0;
+    }});
     r.add({0x90F2, "movie playing", 0, 1, [h](Ctx& c) {
         c.push(h->player && h->player->active() ? 1 : 0);
         return 0;
@@ -30,6 +60,7 @@ void register_movie_subops(vm::SubopRegistry& r, MovieHost& host) {
         return 0;
     }});
     r.add({0x91F8, "play movie", 3, 1, [h](Ctx& c) {
+               const auto begin = std::chrono::steady_clock::now();
                c.pop(); // flag
                std::string name = c.cstring(c.pop());
                std::string prefix = c.cstring(c.pop());
@@ -40,7 +71,8 @@ void register_movie_subops(vm::SubopRegistry& r, MovieHost& host) {
                    return 0;
                }
                if (h->player) {
-                   auto started = h->player->start(std::move(*file), name, c.vm.now_ms);
+                   const auto read_ms = h->realtime ? std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - begin).count() : 0;
+                   auto started = h->player->start(std::move(*file), name, c.vm.now_ms + read_ms, std::nullopt, h->realtime);
                    if (!started) { c.push(kStatusError); return 0; }
                    vm::WaitObject wait;
                    wait.kind = vm::WaitObject::Kind::Poll;

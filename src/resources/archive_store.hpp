@@ -27,6 +27,7 @@ class ArcResourceFinder {
     bool exists(std::string_view prefix, std::string_view name);
     // Loose resources always override archive entries and may change at runtime.
     bool has_loose_file(std::string_view name) const;
+    std::optional<std::filesystem::path> find_loose_file(std::string_view name) const;
     // Check only archive members when the caller has already checked all loose-file locations.
     bool exists_in_archives(std::string_view prefix, std::string_view name);
 

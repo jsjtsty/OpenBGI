@@ -37,6 +37,7 @@ struct MovieDecoder::Impl {
     std::vector<std::uint8_t> bgra;
     AVRational time_base{};
     double fps = 0;
+    std::int64_t duration_ms = 0;
     std::uint64_t produced = 0;
     bool flushed = false;
 };
@@ -64,6 +65,10 @@ Result<std::unique_ptr<MovieDecoder>> MovieDecoder::open(ByteView file, const st
     if (s.dec->width <= 0 || s.dec->height <= 0) return fail(Errc::Format, "video stream without a size");
 
     s.time_base = st->time_base;
+    if (fmt->duration != AV_NOPTS_VALUE && fmt->duration > 0)
+        s.duration_ms = av_rescale_q(fmt->duration, AV_TIME_BASE_Q, AVRational{1, 1000});
+    else if (st->duration != AV_NOPTS_VALUE && st->duration > 0)
+        s.duration_ms = av_rescale_q(st->duration, st->time_base, AVRational{1, 1000});
     const AVRational rate = st->avg_frame_rate.num ? st->avg_frame_rate : st->r_frame_rate;
     s.fps = rate.den ? av_q2d(rate) : 0;
     s.bgra.resize(std::size_t(s.dec->width) * std::size_t(s.dec->height) * 4);
@@ -73,6 +78,7 @@ Result<std::unique_ptr<MovieDecoder>> MovieDecoder::open(ByteView file, const st
 std::uint32_t MovieDecoder::width() const { return static_cast<std::uint32_t>(impl_->dec->width); }
 std::uint32_t MovieDecoder::height() const { return static_cast<std::uint32_t>(impl_->dec->height); }
 double MovieDecoder::fps() const { return impl_->fps; }
+std::int64_t MovieDecoder::duration_ms() const { return impl_->duration_ms; }
 
 Result<bool> MovieDecoder::next(Frame& out) {
     Impl& s = *impl_;

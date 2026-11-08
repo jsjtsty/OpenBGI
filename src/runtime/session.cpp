@@ -129,6 +129,7 @@ Result<std::unique_ptr<EngineSession>> EngineSession::create(SessionOptions opti
     m.font.fonts = m.fonts.get();
     m.sound = {&m.mixer, &m.resources};
     m.movie.resources = &m.resources;
+    m.movie.realtime = m.options.window;
     m.sequences = std::make_unique<SequenceService>(*m.display, m.options.deterministic);
     m.player = std::make_unique<MoviePlayer>(*m.renderer, m.mixer);
     m.movie.player = m.player.get();

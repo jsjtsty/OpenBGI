@@ -929,9 +929,6 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
         return 0;
     });
     add(r, 0x800F, "window active", 0, 1, [](Ctx& c) { c.push(1); return 0; });
-    // 92:F0 (6 values, two of them addresses): makes a video window of the movie cluster (analysis/视频.md) and pushes a result;
-    // there is none yet, so it answers 0. 90:F3 (volume 0..0x80) and 90:01 (a value kept in a display global) only take their argument.
-    add(r, 0x92F0, "movie window (not modelled)", 6, 1, [](Ctx& c) { for (int i = 0; i < 6; ++i) c.pop(); c.push(0); return 0; });
     // 90:F0 (file, x, y, w, h) -> length: the reference starts playing a loose movie file in the window and answers its length in ms, 0 when
     // playback could not start. There is no overlay player here (91:F8 plays a whole movie at once), so playback never starts: it answers 0.
     add(r, 0x90F0, "play loose movie (not modelled)", 5, 1, [](Ctx& c) {
@@ -1036,7 +1033,6 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     add(r, 0x80E3, "shell open", 1, 1, [](Ctx& c) { c.pop(); c.push(0); return 0; });
     add(r, 0x8119, "touch points", 1, 1, [](Ctx& c) { c.pop(); c.push(0); return 0; });
     add(r, 0x81F7, "create shortcut", 4, 1, [](Ctx& c) { for (int i = 0; i < 4; ++i) c.pop(); c.push(0); return 0; });
-    add(r, 0x90F1, "stop movie", 0, 0, [](Ctx&) { return 0; }); // movies are not played
     add(r, 0x8015, "skip latch", 1, 0, [s](Ctx& c) {
         const Word v = c.pop();
         if (c.ok()) s->skip_latch = v != 0, s->values[0x8015] = v;
@@ -1160,17 +1156,25 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     });
     // 81:35 (path, 0: pushed first by every script call): the size in bytes of a file, 0 when there is none (checked against the
     // original: AmairoChocolate2089.sud gives 0x12600B, its length). Loose files are looked up like 80:30 does.
-    add(r, 0x8135, "file size", 2, 1, [s](Ctx& c) {
+    add(r, 0x8135, "file size", 2, 1, [s, res](Ctx& c) {
         const Word path_addr = c.pop();
         c.pop();
         if (!c.ok()) return 0;
         const std::string name = path_addr ? c.cstring(path_addr) : std::string();
         std::error_code ec;
         Word size = 0;
+        bool found = false;
         for (const std::filesystem::path& p : {host_path(*s, name), s->game_dir / std::filesystem::path(std::u8string(name.begin(), name.end()))}) {
             if (std::filesystem::is_regular_file(p, ec)) {
-                size = static_cast<Word>(std::filesystem::file_size(p, ec));
+                const auto n = std::filesystem::file_size(p, ec);
+                if (!ec && n <= 0xffffffffu) size = static_cast<Word>(n), found = true;
                 break;
+            }
+        }
+        if (!found) {
+            if (auto path = res->find_loose_file(name)) {
+                const auto n = std::filesystem::file_size(*path, ec);
+                if (!ec && n <= 0xffffffffu) size = static_cast<Word>(n);
             }
         }
         c.push(size);

@@ -132,3 +132,35 @@ TEST_CASE("91:F8 plays a movie from the archive" * doctest::test_suite("game")) 
     host.play = [](ByteView, const std::string&) -> Result<MovieEnd> { return fail(Errc::Format, "broken"); };
     CHECK(status_of(0x120) == 0xFFFFFFFFu);
 }
+
+TEST_CASE("archive movie starts, reports duration, and stops" * doctest::test_suite("game")) {
+    REQUIRE(have_movies());
+    RendererOptions options; options.headless = true;
+    auto renderer = Renderer::create(options); REQUIRE(renderer);
+    Mixer mixer;
+    MoviePlayer player(**renderer, mixer);
+    ArcResourceFinder finder(obgi_test::game_dir());
+    MovieHost host; host.resources = &finder; host.player = &player;
+    vm::SubopRegistry registry;
+    vm::register_core_subops(registry);
+    register_movie_subops(registry, host);
+    OneProgram provider;
+    vm::Vm machine(provider, registry);
+    auto put = [&](vm::Word addr, const char* text) {
+        REQUIRE(machine.global.write(addr, std::strlen(text) + 1, reinterpret_cast<const std::uint8_t*>(text)));
+    };
+    put(0x100, "data02280.arc"); put(0x120, "ac2_op.mpg");
+    Asm program;
+    program.i32(0x400).i32(0x100).i32(0x120).i32(0).i32(0).i32(1280).i32(720).sub(0x92, 0xF0).raw({0x09, 0x02});
+    program.i32(0x404).sub(0x90, 0xF2).raw({0x09, 0x02});
+    program.sub(0x90, 0xF1);
+    program.i32(0x408).sub(0x90, 0xF2).raw({0x09, 0x02}).ret();
+    provider.set(program);
+    vm::ThreadConfig cfg; cfg.stack_size = 0x1000; cfg.program_capacity = 0x10000;
+    REQUIRE(machine.spawn(cfg, "x.arc", "main"));
+    REQUIRE(machine.run_frame(0));
+    std::uint8_t out[12]; REQUIRE(machine.global.read(0x400, sizeof out, out));
+    CHECK(load_u32le(out) > 10000);
+    CHECK(load_u32le(out + 4) == 1);
+    CHECK(load_u32le(out + 8) == 0);
+}

@@ -79,6 +79,10 @@ std::optional<std::filesystem::path> ArcResourceFinder::loose_file(std::string_v
     return std::nullopt;
 }
 
+std::optional<std::filesystem::path> ArcResourceFinder::find_loose_file(std::string_view name) const {
+    return loose_file(name);
+}
+
 bool ArcResourceFinder::has_loose_file(std::string_view name) const {
     return loose_file(name).has_value();
 }

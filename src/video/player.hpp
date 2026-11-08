@@ -13,18 +13,20 @@ namespace obgi {
 constexpr std::uint32_t kMovieChannel = kPointChannels - 1;
 
 enum class MovieEnd { Finished, Skipped, WindowClosed };
+struct MovieRect { std::int32_t x, y, width, height; };
 
 // Incremental player: it never polls host events, sleeps or runs a second VM loop.
 class MoviePlayer {
   public:
     MoviePlayer(Renderer& renderer, Mixer& mixer);
     ~MoviePlayer();
-    Result<void> start(std::vector<std::uint8_t> bytes, const std::string& name, std::int64_t now_ms);
+    Result<void> start(std::vector<std::uint8_t> bytes, const std::string& name, std::int64_t now_ms, std::optional<MovieRect> rect = std::nullopt, bool realtime = false);
     Result<void> update(std::int64_t now_ms);
     Result<void> present();
     void stop(MovieEnd end = MovieEnd::Skipped);
     Result<void> set_volume(std::uint32_t volume);
     bool active() const;
+    std::int64_t duration_ms() const;
     std::optional<MovieEnd> result() const;
   private:
     struct Impl;

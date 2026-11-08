@@ -1,6 +1,7 @@
 #include "video/player.hpp"
 #include "video/movie.hpp"
 #include <algorithm>
+#include <chrono>
 
 namespace obgi {
 
@@ -13,6 +14,7 @@ struct MoviePlayer::Impl {
     MovieDecoder::Frame pending;
     bool have_pending = false, eof = false, playing = false, audio = false;
     std::int64_t start_ms = 0;
+    std::optional<MovieRect> rect;
     double last_pts = 0, frame_time = 1.0 / 30;
     std::optional<MovieEnd> end;
     std::uint32_t volume = kMaxVolume;
@@ -28,6 +30,7 @@ struct MoviePlayer::Impl {
 MoviePlayer::MoviePlayer(Renderer& renderer, Mixer& mixer) : impl_(std::make_unique<Impl>(renderer, mixer)) {}
 MoviePlayer::~MoviePlayer() { stop(); }
 bool MoviePlayer::active() const { return impl_->playing; }
+std::int64_t MoviePlayer::duration_ms() const { return impl_->decoder ? impl_->decoder->duration_ms() : 0; }
 std::optional<MovieEnd> MoviePlayer::result() const { return impl_->end; }
 
 void MoviePlayer::stop(MovieEnd end) {
@@ -47,7 +50,8 @@ Result<void> MoviePlayer::set_volume(std::uint32_t volume) {
     return impl_->audio ? impl_->mixer.set_volume(Bank::Point, kMovieChannel, volume) : Result<void>{};
 }
 
-Result<void> MoviePlayer::start(std::vector<std::uint8_t> bytes, const std::string& name, std::int64_t now) {
+Result<void> MoviePlayer::start(std::vector<std::uint8_t> bytes, const std::string& name, std::int64_t now, std::optional<MovieRect> rect, bool realtime) {
+    const auto started = std::chrono::steady_clock::now();
     auto& m = *impl_;
     if (m.playing) return fail(Errc::Range, "a movie is already playing");
     stop();
@@ -56,6 +60,7 @@ Result<void> MoviePlayer::start(std::vector<std::uint8_t> bytes, const std::stri
     if (!decoder) return std::unexpected(decoder.error());
     m.decoder = std::move(*decoder);
     m.start_ms = now;
+    m.rect = rect;
     m.last_pts = 0;
     m.frame_time = m.decoder->fps() > 0 ? 1.0 / m.decoder->fps() : 1.0 / 30;
     m.end.reset();
@@ -66,6 +71,7 @@ Result<void> MoviePlayer::start(std::vector<std::uint8_t> bytes, const std::stri
     }
     auto fetched = m.fetch();
     if (!fetched) { stop(); return fetched; }
+    if (realtime) m.start_ms += std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started).count();
     m.playing = true;
     return {};
 }
@@ -96,11 +102,13 @@ Result<void> MoviePlayer::present() {
     const float black[] = {0, 0, 0, 1};
     if (auto frame = m.renderer.begin_frame(black); !frame) return frame;
     if (m.texture) {
-        const float width = static_cast<float>(m.renderer.logical_width()), height = static_cast<float>(m.renderer.logical_height());
+        const float width = m.rect ? float(m.rect->width) : float(m.renderer.logical_width());
+        const float height = m.rect ? float(m.rect->height) : float(m.renderer.logical_height());
         const float scale = std::min(width / m.texture->width(), height / m.texture->height());
         DrawParams p;
         p.w = m.texture->width() * scale; p.h = m.texture->height() * scale;
-        p.x = (width - p.w) / 2; p.y = (height - p.h) / 2;
+        p.x = (m.rect ? float(m.rect->x) : 0.f) + (width - p.w) / 2;
+        p.y = (m.rect ? float(m.rect->y) : 0.f) + (height - p.h) / 2;
         m.renderer.draw(*m.texture, p);
     }
     return m.renderer.end_frame();

@@ -121,6 +121,25 @@ TEST_CASE("resource existence sees game and redirected data files change immedia
     check(0x310, false);
 }
 
+TEST_CASE("file size resolves original Windows-style paths and redirected overrides") {
+    Rig rig(false);
+    rig.state.game_dir = rig.data / "游戏";
+    std::filesystem::create_directories(rig.state.game_dir / "UserData");
+    std::filesystem::create_directories(rig.data / "UserData");
+    rig.put(0x100, rig.state.game_dir.string() + "\\UserData\\slot.sud");
+    { std::ofstream f(rig.state.game_dir / "UserData/slot.sud", std::ios::binary); f << "original"; }
+    auto size_at = [&](vm::Word dst) {
+        REQUIRE(rig.run(Asm().i32(dst).i32(0).i32(0x100).sub(0x81, 0x35).store32().ret()).has_value());
+        auto bytes = rig.mem(dst, 4);
+        return load_u32le(bytes.data());
+    };
+    CHECK(size_at(0x300) == 8);
+    { std::ofstream f(rig.data / "UserData/slot.sud", std::ios::binary); f << "new"; }
+    CHECK(size_at(0x304) == 3);
+    { std::ofstream f(rig.data / "UserData/slot.sud", std::ios::binary | std::ios::trunc); }
+    CHECK(size_at(0x308) == 0); // an empty override must not fall back to the original
+}
+
 TEST_CASE("engine file changes invalidate negative directory entries within a frame") {
     Rig rig(false);
     rig.state.game_dir = rig.data / "game";

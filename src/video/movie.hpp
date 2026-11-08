@@ -24,6 +24,7 @@ class MovieDecoder {
     std::uint32_t height() const;
     // Average frame rate announced by the stream (0 when unknown).
     double fps() const;
+    std::int64_t duration_ms() const;
 
     struct Frame {
         double pts = 0;   // presentation time in seconds

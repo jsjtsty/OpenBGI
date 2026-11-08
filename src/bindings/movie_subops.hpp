@@ -10,15 +10,17 @@ namespace obgi {
 struct MovieHost {
     ArcResourceFinder* resources = nullptr;
     MoviePlayer* player = nullptr;
+    bool realtime = false;
     // Plays a movie file to its end; the application decides how (window, sound device). Null = movies are skipped.
     std::function<Result<MovieEnd>(ByteView file, const std::string& name)> play;
     bool quit_requested = false; // set when the window was closed during a movie
 };
 
 // Movie sub-opcodes (analysis/视频.md):
-//   91:F8 play movie (flag, name, archive) -> status. The original starts DCProcPlayMovieByMF and suspends the
-//   thread until it ends; here the whole playback happens inside the call. Status: 0 played (or skipped),
-//   -3 file not found, -1 playback failed. The meaning of `flag` is not known and it is ignored.
+//   92:F0 starts an archive movie in a rectangle and returns its duration in ms (0 on failure).
+//   90:F1 stops playback; 90:F2 reports whether the player is active; 90:F3 sets the volume.
+//   91:F8 starts a movie and suspends the thread until playback ends or is skipped. Its completion status is
+//   0 for played/skipped, -3 for missing input, and -1 for a playback error. The flag remains unverified.
 // The .bm effect-movie ops (92:F1, 90:F5..F7 ...) belong to the display objects and are not registered here.
 void register_movie_subops(vm::SubopRegistry& registry, MovieHost& host);
 
