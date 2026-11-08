@@ -75,6 +75,27 @@ struct Rig {
 
 } // namespace
 
+TEST_CASE("text markup removal writes clean output including empty strings") {
+    Rig rig(false);
+    rig.put(0x100, "<b>hello</b> <3 <broken");
+    rig.put(0x200, "stale file name");
+    REQUIRE(rig.run(Asm().i32(0x200).i32(0x100).sub(0x91, 0x9F).ret()));
+    const auto result = rig.mem(0x200, 18);
+    CHECK(std::string(reinterpret_cast<const char*>(result.data())) == "hello <3 <broken");
+    rig.put(0x100, "");
+    REQUIRE(rig.run(Asm().i32(0x200).i32(0x100).sub(0x91, 0x9F).ret()));
+    CHECK(rig.mem(0x200, 1)[0] == 0);
+}
+
+TEST_CASE("ruby parsing preserves the output when no words match") {
+    Rig rig(false);
+    rig.put(0x100, "ordinary text");
+    rig.put(0x200, "preserved dialogue");
+    REQUIRE(rig.run(Asm().i32(0x100).i32(0x200).sub(0x91, 0x95).ret()));
+    const auto result = rig.mem(0x200, 19);
+    CHECK(std::string(reinterpret_cast<const char*>(result.data())) == "preserved dialogue");
+}
+
 TEST_CASE("screen size entries retain width and height order") {
     Rig rig(false);
     REQUIRE(rig.run(Asm().i32(0).i32(1920).i32(1080).sub(0x81, 0x60).ret()).has_value());

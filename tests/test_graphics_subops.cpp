@@ -50,11 +50,13 @@ TEST_CASE("copied images retain their positioning metadata" * doctest::test_suit
     auto display = Display::create(**renderer, 32, 32); REQUIRE(display);
     auto& d = **display;
     REQUIRE(d.create_slot(1, 2, 2, SlotFormat::Bgra));
+    REQUIRE(d.fill_slot(1, 0xFF123456));
     REQUIRE(d.create_slot(4, 2, 2, SlotFormat::Bgra));
     GraphicsHost host{&d, nullptr};
     SubopRegistry registry; register_core_subops(registry); register_graphics_subops(registry, host);
     Asm a;
     a.i32(1).i32(370).i32(236).sub(0x92, 0x12);
+    a.i32(1).i32(1).sub(0x91, 0x1F);
     a.i32(2).i32(1).sub(0x91, 0x1F);
     a.i32(3).i32(2).sub(0x91, 0x1F);
     a.i32(0x100).i32(3).sub(0x92, 0x16);
@@ -65,6 +67,8 @@ TEST_CASE("copied images retain their positioning metadata" * doctest::test_suit
     auto thread = vm.spawn(config, "test", "image anchors"); REQUIRE(thread);
     REQUIRE(vm.run_frame(0));
     Ctx c(vm, **thread);
+    auto pixels = d.read_slot(1); REQUIRE(pixels);
+    CHECK(((*pixels)[0] & 0x00FFFFFFu) == 0x00123456u);
     CHECK(c.read(0x100, 4, false) == 370);
     CHECK(c.read(0x104, 4, false) == 236);
     CHECK(c.read(0x108, 4, false) == 0xffffffffu);

@@ -557,10 +557,11 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         Word src = c.pop(), dst = c.pop();
         if (!c.ok() || !slot_ok(c, dst)) return 0;
         const SlotInfo* s = d.slot(src);
-        if (!s || src == dst) {
-            c.fail(Errc::Range, "bad copy source or destination");
+        if (!s) {
+            c.fail(Errc::Range, "bad copy source or destination (dst " + std::to_string(dst) + " src " + std::to_string(src) + ")");
             return 0;
         }
+        if (src == dst) return 0; // A bitmap duplicated onto itself already has the requested contents.
         const SlotInfo info = *s;
         auto created = d.create_slot(dst, info.width, info.height, info.format);
         check(c, created);

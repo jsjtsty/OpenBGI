@@ -177,12 +177,24 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
         c.push(panel_paint(*s, c, object, desc, false));
         return 0;
     });
-    // not modelled yet (display object / effect parameters); pop counts measured in the original: 90:3A 2, 90:53 5, 90:58 9,
-    // 91:38 3, 91:9F 2, 92:90 15, 90:90 6 (none pushes anything). 80:1A (mouse region priority) pushes the logical input mask: 0 here
-    for (const auto& [id, pops] : {std::pair{0x919Fu, 2}})
-        add(r, static_cast<std::uint16_t>(id), "effect parameters (not modelled)", pops, 0, [pops](Ctx& c) { for (int i = 0; i < pops; ++i) c.pop(); return 0; });
+    // 91:9F strips markup tags, including writing a terminator for empty input.
+    add(r, 0x919F, "strip text markup", 2, 0, [](Ctx& c) {
+        const Word src = c.pop(), dst = c.pop();
+        const std::string input = c.cstring(src);
+        if (!c.ok()) return 0;
+        std::string output;
+        for (std::size_t i = 0; i < input.size();) {
+            const char next = i + 1 < input.size() ? input[i + 1] : 0;
+            if (input[i] == '<' && ((next >= 'A' && next <= 'Z') || (next >= 'a' && next <= 'z') || next == '/')) {
+                const auto end = input.find('>', i + 2);
+                if (end == std::string::npos) { output.append(input, i); break; }
+                i = end + 1;
+            } else output += input[i++];
+        }
+        c.write_cstring(dst, output);
+        return 0;
+    });
     add(r, 0x9214, "92:14 wait object (not modelled)", 2, 0, [](Ctx& c) { c.pop(), c.pop(); return 0; });
-    // 91:94 / 91:95 (two strings): a text (font name list) registry the original keeps; not modelled. 91:95 pushed 0 in the original.
     // 80:99 (number): removes an 80:98 item; pushes 0, or 1 when there is none
     add(r, 0x8099, "remove item", 1, 1, [s](Ctx& c) {
         const Word id = c.pop();
@@ -1301,7 +1313,8 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
             i += len;
         }
         if (out.size() >= 0x400) out.resize(0x3FF);
-        c.write_cstring(tags, out);
+        // The original leaves the destination untouched when there are no matches.
+        if (!out.empty()) c.write_cstring(tags, out);
         c.push(count);
         return 0;
     });
