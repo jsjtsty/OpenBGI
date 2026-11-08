@@ -13,6 +13,11 @@ struct TextStyle {
     int line_gap = 0;               // extra pixels between lines
     bool wrap = true;               // break lines at max_width
     int first_indent = 0;           // pixels the first line starts in (text continuing after earlier text on the line)
+    int continuation_indent = 0;
+    int fixed_advance = 0;          // full-width character advance, or 0 to use font metrics
+    int row_height = 0;             // explicit line height, or 0 to use font metrics
+    int baseline = -1;              // explicit baseline from line top, or -1 to use font metrics
+    int right_margin = 0;
     // A shadow under every glyph: the glyph again, (shadow_dx, shadow_dy) pixels to the lower right, drawn first. Colour 0 is
     // the dimmed silhouette of the glyph (black); the level is its opacity, 0x100 = opaque. (0, 0) = no shadow.
     int shadow_dx = 0, shadow_dy = 0;

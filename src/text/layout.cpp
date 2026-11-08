@@ -9,7 +9,7 @@ TextLayout layout_text(Font& font, const std::u32string& text, const TextStyle& 
     int pen = style.first_indent, line = 0, widest = 0;
     auto end_line = [&] {
         widest = std::max(widest, pen);
-        pen = 0;
+        pen = style.continuation_indent;
         ++line;
     };
     for (char32_t cp : text) {
@@ -21,19 +21,21 @@ TextLayout layout_text(Font& font, const std::u32string& text, const TextStyle& 
         const Glyph* g = font.glyph(cp);
         if (!g) g = font.glyph(U'?'); // missing glyph: the original shows a placeholder as well
         if (!g) continue;
-        if (style.wrap && max_width && pen > 0 && pen + g->advance > static_cast<int>(max_width)) end_line();
+        const bool half = cp < 0x80 || (cp >= 0xFF61 && cp <= 0xFF9F);
+        const int advance = style.fixed_advance > 0 ? (half ? style.fixed_advance / 2 : style.fixed_advance) : g->advance;
+        if (style.wrap && max_width && pen > style.continuation_indent && pen + advance > static_cast<int>(max_width) - style.right_margin) end_line();
         out.glyphs.push_back({*g, pen, line});
-        pen += g->advance;
+        pen += advance;
     }
     widest = std::max(widest, pen);
     out.lines = line + (pen > 0 || out.glyphs.empty() ? 1 : 0);
     out.last_width = pen;
-    out.row_height = font.line_height() + style.line_gap;
-    out.ascent = font.ascent();
+    out.row_height = style.row_height > 0 ? style.row_height : font.line_height() + style.line_gap;
+    out.ascent = style.baseline >= 0 ? style.baseline : font.ascent();
     // glyph ink can reach past the advance box (italic overhang) or above the line: size to the box, clip the rest; a shadow adds
     // its offset on the right and at the bottom
     out.width = static_cast<std::uint32_t>(std::max(widest + std::max(style.shadow_dx, 0), 1));
-    out.height = static_cast<std::uint32_t>(std::max(out.lines * out.row_height - style.line_gap + std::max(style.shadow_dy, 0), 1));
+    out.height = static_cast<std::uint32_t>(std::max((out.lines - 1) * out.row_height + font.line_height() + std::max(style.shadow_dy, 0), 1));
     return out;
 }
 

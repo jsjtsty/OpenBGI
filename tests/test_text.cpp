@@ -109,6 +109,27 @@ TEST_CASE("text layout with a system font" * doctest::test_suite("host")) {
     CHECK(wrapped->width <= 50);
 }
 
+TEST_CASE("dialogue layout uses script spacing and continuation indentation" * doctest::test_suite("host")) {
+    auto lib = FontLibrary::create(); REQUIRE(lib);
+    auto font = open_font(**lib, 28); REQUIRE(font);
+    TextStyle style;
+    style.fixed_advance = 28;
+    style.row_height = 43;
+    style.line_gap = 15;
+    style.first_indent = 16;
+    style.continuation_indent = 44;
+    style.right_margin = 28;
+    auto layout = layout_text(*font, U"「你好世界」", style, 130);
+    REQUIRE(layout.glyphs.size() == 6);
+    CHECK(layout.row_height == 43);
+    CHECK(layout.glyphs[0].x == 16);
+    CHECK(layout.glyphs[1].x == 44);
+    CHECK(layout.glyphs[3].line == 1);
+    CHECK(layout.glyphs[3].x == 44);
+    for (const auto& glyph : layout.glyphs)
+        CHECK(glyph.line * layout.row_height + layout.ascent - glyph.glyph.top + glyph.glyph.height <= static_cast<int>(layout.height));
+}
+
 namespace {
 
 struct Asm {

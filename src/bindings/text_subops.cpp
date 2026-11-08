@@ -89,6 +89,8 @@ void register_text_subops(vm::SubopRegistry& r, TextHost& host) {
                TextStyle style;
                style.color = color;
                style.line_gap = line_gap;
+               // The original positions the ink within a font-sized cell, rather than at FreeType's taller face baseline.
+               style.baseline = static_cast<int>(size * 7 / 8);
                const std::int64_t room = std::int64_t{info->width} - x;
                auto img = render_text(**font, host.code_page && *host.code_page == 65001 ? utf8_to_utf32(text) : cp932_to_utf32(text), style, room > 0 ? static_cast<std::uint32_t>(room) : 1);
                if (!img) {

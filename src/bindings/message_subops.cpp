@@ -83,6 +83,7 @@ int character_ms(const SystemState& s) {
 // How a message is drawn beyond its colour: the shadow (90:9C/9D globally, or 92:90's own) and the rich pacing (91:98).
 struct TextOpts {
     bool rich = false;
+    bool ruby = false, kinsoku = false;
     int shadow_on = 0, shadow_dx_pct = 0, shadow_dy_pct = 0, shadow_level = 0x100;
     std::uint32_t shadow_colour = 0;
 };
@@ -377,6 +378,8 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         TextStyle style;
         style.color = colour & 0xFFFFFF;
         style.line_gap = gap;
+        style.fixed_advance = size * (font.size() > 2 ? static_cast<int>(font[2]) : 100) / 100;
+        style.row_height = size + gap;
         if (opts.shadow_on) { // offsets are percentages of the font size, at least one pixel; colour 0 = the glyph dimmed to black
             style.shadow_dx = std::max(size * opts.shadow_dx_pct / 100, 1);
             style.shadow_dy = std::max(size * opts.shadow_dy_pct / 100, 1);
@@ -388,6 +391,21 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         const std::int64_t room = std::int64_t{p->area[2]} - p->area[0] + 1;
         const std::uint32_t max_w = room > 0 ? static_cast<std::uint32_t>(room) : 1;
         const std::u32string text = s->code_page == 65001 ? utf8_to_utf32(str) : cp932_to_utf32(str);
+        int ruby_x = 0, ruby_y = 0;
+        if (opts.ruby) {
+            const auto it = s->records.find(0x9198);
+            if (it != s->records.end() && it->second.size() >= 5) {
+                ruby_x = static_cast<int>(it->second[4]);
+                ruby_y = size * static_cast<int>(it->second[3]) / 100;
+            }
+        }
+        style.first_indent += ruby_x;
+        style.continuation_indent = ruby_x;
+        if (opts.kinsoku) {
+            style.right_margin = size * 2;
+            if (!text.empty() && (text[0] == U'「' || text[0] == U'『' || text[0] == U'（' || text[0] == U'　' || text[0] == U'"'))
+                style.continuation_indent += style.fixed_advance;
+        }
         auto layout = std::make_shared<TextLayout>(layout_text(*face, text, style, max_w));
         if (layout->glyphs.empty()) return true;
         const auto [char_delay, fade_steps] = rich_pacing(*s);
@@ -402,7 +420,7 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
             if (cleared) snapshot->assign(std::size_t{tw} * th_, 0); // the old page is gone before this text starts
             else if (auto px = s->display->read_slot(text_slot)) *snapshot = std::move(*px);
         }
-        const std::int32_t x0 = p->area[0], y0 = cur.y;
+        const std::int32_t x0 = p->area[0], y0 = cur.y + ruby_y;
         const int line_h = layout->row_height;
         const std::size_t glyphs = layout->glyphs.size();
         rv.rich = opts.rich && char_delay > 0;
@@ -474,7 +492,8 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
     }, 1);
     // 91:90 (window, string, colour, instant, wait at end, allow skip, allow keys, ruby on, hang, unused)
     add(r, 0x9190, "message text (rich)", 10, 1, [write_text, finish, s](Ctx& c) {
-        c.pop(), c.pop(), c.pop(); // unused, hang, ruby on
+        c.pop(); // unused
+        const bool hang = c.pop() != 0, ruby = c.pop() != 0;
         c.pop();                   // allow keys
         const Word skip = c.pop();
         const Word wait_end = c.pop();
@@ -483,7 +502,8 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         const std::string str = c.cstring(c.pop());
         const Word handle = c.pop();
         Reveal rv;
-        if (!c.ok() || !write_text(c, handle, str, colour, global_text_opts(*s, true), rv)) return 0;
+        auto opts = global_text_opts(*s, true); opts.ruby = ruby; opts.kinsoku = hang;
+        if (!c.ok() || !write_text(c, handle, str, colour, opts, rv)) return 0;
         return finish(c, rv, instant != 0, skip != 0, wait_end != 0, s);
     }, 1);
     // 92:90 (window, string, colour, ruby on, ruby colour, hang, shadow on, dx, dy, shadow colour, shadow level, instant,
@@ -500,7 +520,9 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         opts.shadow_dy_pct = static_cast<int>(c.pop());
         opts.shadow_dx_pct = static_cast<int>(c.pop());
         opts.shadow_on = static_cast<int>(c.pop());
-        c.pop(), c.pop(), c.pop();   // hang, ruby colour, ruby on
+        opts.kinsoku = c.pop() != 0;
+        c.pop(); // ruby colour
+        opts.ruby = c.pop() != 0;
         const Word colour = c.pop();
         const std::string str = c.cstring(c.pop());
         const Word handle = c.pop();
