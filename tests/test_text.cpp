@@ -71,6 +71,28 @@ TEST_CASE("embedded fonts and their glyphs outlive the registering library" * do
     CHECK((*font)->glyph(U'A')->advance > 0);
 }
 
+TEST_CASE("mapped and lazy fallback fonts survive their library" * doctest::test_suite("host")) {
+#ifdef _WIN32
+    const std::filesystem::path latin = "C:/Windows/Fonts/arial.ttf";
+    const std::filesystem::path chinese = "C:/Windows/Fonts/msyh.ttc";
+    if (!std::filesystem::exists(latin) || !std::filesystem::exists(chinese)) return;
+    auto library = FontLibrary::create(); REQUIRE(library);
+    auto mapped = (*library)->open("MS Gothic", 24); REQUIRE(mapped);
+    std::ifstream file(latin, std::ios::binary);
+    REQUIRE(file.good());
+    std::vector<std::uint8_t> bytes(std::istreambuf_iterator<char>(file), {});
+    REQUIRE((*library)->register_file("latin-test", std::move(bytes)));
+    auto font = (*library)->open("latin-test", 24); REQUIRE(font);
+    REQUIRE((*font)->glyph(U'A'));
+    library->reset();
+    REQUIRE((*mapped)->glyph(U'中'));
+    const Glyph* fallback = (*font)->glyph(U'中');
+    REQUIRE(fallback);
+    CHECK(fallback->width > 0);
+    CHECK((*font)->glyph(U'中') == fallback);
+#endif
+}
+
 TEST_CASE("text layout with a system font" * doctest::test_suite("host")) {
     auto lib = FontLibrary::create();
     REQUIRE(lib.has_value());

@@ -63,10 +63,10 @@ class FontLibrary {
   private:
     Result<std::filesystem::path> resolve_uncached(const std::string& name, bool fallback, int charset) const;
     Result<std::filesystem::path> resolve_impl(const std::string& cp932_name, bool fallback, int charset = -1) const;
-    Result<std::shared_ptr<Font>> open_path(const std::filesystem::path& path, int pixel_size, bool cache = true);
-    FontLibrary() = default;
     struct Impl;
-    std::unique_ptr<Impl> impl_;
+    static Result<std::shared_ptr<Font>> open_path(Impl& impl, const std::filesystem::path& path, int pixel_size, bool cache = true);
+    FontLibrary() = default;
+    std::shared_ptr<Impl> impl_;
 };
 
 } // namespace obgi
