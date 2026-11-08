@@ -551,9 +551,8 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         return 0;
     });
 
-    // (source, destination): a new slot of the source's size and format with a copy of its image. The original also
-    // copies two metadata words (not modelled).
-    add(r, 0x911F, "copy image", 2, 0, [&d](Ctx& c) {
+    // Copy the image and its base point, which scripts use to position composed character sprites.
+    add(r, 0x911F, "copy image", 2, 0, [&d, base_sizes](Ctx& c) {
         Word src = c.pop(), dst = c.pop();
         if (!c.ok() || !slot_ok(c, dst)) return 0;
         const SlotInfo* s = d.slot(src);
@@ -566,6 +565,10 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         check(c, created);
         if (!created) return 0;
         check(c, d.blit(dst, 0, 0, src, 0, 0, info.width, info.height, 0, 0x100));
+        if (c.ok()) {
+            const auto it = base_sizes->find(src);
+            (*base_sizes)[dst] = it != base_sizes->end() ? it->second : std::pair<std::int32_t, std::int32_t>{0, 0};
+        }
         return 0;
     });
 
