@@ -133,9 +133,9 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     ArcResourceFinder* res = &resources;
     auto directory_index = std::make_shared<DirectoryIndex>();
 
-    // the engine clock in milliseconds (low 32 bits): the scheduler's time
-    add(r, 0x8004, "clock", 0, 1, [](Ctx& c) {
-        c.push(static_cast<Word>(c.vm.now_ms));
+    // Include time spent executing the current interactive frame; offline replays use virtual time only.
+    add(r, 0x8004, "clock", 0, 1, [s](Ctx& c) {
+        c.push(static_cast<Word>(c.vm.now_ms + (s->frame_elapsed_ms ? s->frame_elapsed_ms() : 0)));
         return 0;
     });
     add(r, 0x80FD, "launcher flag", 0, 1, [s](Ctx& c) {
@@ -543,7 +543,7 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
         c.push(0);
         return 0;
     });
-    add(r, 0x8130, "load resource bytes", 5, 1, [load_resource](Ctx& c) {
+    add(r, 0x8130, "load resource bytes", 5, 1, [s, load_resource](Ctx& c) {
         const Word size = c.pop(), offset = c.pop();
         std::string name = c.cstring(c.pop());
         const Word archive_addr = c.pop();
@@ -553,6 +553,26 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
         if (std::getenv("OBGI_DBG34")) std::fprintf(stderr, "81:30 dst=%X [%s] [%s] off=%u size=%u\n", dst, archive.c_str(), name.c_str(), offset, size);
         if (size > 0x4000000u) {
             c.fail(Errc::Range, "resource read of " + std::to_string(size) + " bytes is too large");
+            return 0;
+        }
+        // Save headers and thumbnails are small ranges in large loose files.
+        // Read just the requested bytes; archive members still use the decoded-resource path.
+        for (const std::filesystem::path& p : {host_path(*s, name), s->game_dir / std::filesystem::path(std::u8string(name.begin(), name.end()))}) {
+            std::ifstream input(p, std::ios::binary | std::ios::ate);
+            if (!input) continue;
+            const auto end = input.tellg();
+            if (end <= 0) continue;
+            if (dst && size && static_cast<std::uint64_t>(offset) < static_cast<std::uint64_t>(end)) {
+                const auto count = std::min<std::uint64_t>(size, static_cast<std::uint64_t>(end) - offset);
+                std::vector<std::uint8_t> part(static_cast<std::size_t>(count));
+                input.seekg(offset);
+                if (!input.read(reinterpret_cast<char*>(part.data()), static_cast<std::streamsize>(count))) {
+                    c.fail(Errc::Io, "cannot read resource " + p.string());
+                    return 0;
+                }
+                c.write_bytes(dst, part.data(), part.size());
+            }
+            c.push(0);
             return 0;
         }
         std::vector<std::uint8_t> bytes;

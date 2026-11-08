@@ -1,6 +1,7 @@
 #include "runtime/session.hpp"
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
@@ -214,6 +215,12 @@ Result<vm::FrameStatus> EngineSession::tick(std::int64_t now) {
     auto& m = *impl_;
     if (now < 0 || now < m.last_ms) return fail(Errc::Range, "session clock moved backwards");
     m.last_ms = now;
+    if (!m.options.deterministic) {
+        const auto frame_start = std::chrono::steady_clock::now();
+        m.system.frame_elapsed_ms = [frame_start] {
+            return std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - frame_start).count();
+        };
+    }
     if (!m.device) m.audio_time.advance(now);
     if (auto movie = m.player->update(now); !movie) return std::unexpected(movie.error());
     auto status = m.vm->run_frame(now);

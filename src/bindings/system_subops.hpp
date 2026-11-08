@@ -22,6 +22,7 @@ namespace obgi {
 // "set a global" ops). Most of them only record a value for other subsystems to read later.
 struct SystemState : InputState {
     std::function<std::array<std::uint16_t, 8>()> calendar_time;
+    std::function<std::int64_t()> frame_elapsed_ms; // real time spent in the current interactive scheduler frame
     bool launcher = false;                 // 80:FD: started with "Execute as a launcher."
     std::string game_name = "AmairoChocolate2ML"; // 80:E8
     std::uint32_t frame_ms = 4;            // 90:02: present interval in ms; the original scheduler starts at 250 fps
@@ -176,7 +177,7 @@ struct SystemState : InputState {
     std::optional<std::uint32_t> shutdown_message_thread;
     std::array<bool, 8> filter_used{}; // 90:60: the eight filter object slots
     // 90:D0..DF: knob controls (sliders), handle 0xF0000000 + index, at most 32. A knob drives a display object (the thumb)
-    // along a track: the object sits at the knob's base position plus the value (pixels, or 16.16 cells when steps > 0).
+    // along a track: the object sits at the knob's base position plus the value (pixels, or a discrete step index).
     struct Knob {
         std::uint32_t handle = 0;                 // the knob is a display object itself (at the track's origin); the thumb follows it (91:3E)
         std::uint32_t target = 0;                 // the thumb object

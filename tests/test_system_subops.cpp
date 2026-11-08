@@ -96,6 +96,26 @@ TEST_CASE("ruby parsing preserves the output when no words match") {
     CHECK(std::string(reinterpret_cast<const char*>(result.data())) == "preserved dialogue");
 }
 
+TEST_CASE("partial resource reads use current loose file contents") {
+    Rig rig(false);
+    std::filesystem::create_directories(rig.data);
+    const auto path = rig.data / "sample.sud";
+    { std::ofstream f(path, std::ios::binary); f << "0123456789"; }
+    rig.put(0x100, path.string());
+    REQUIRE(rig.run(Asm().i32(0x200).i32(0).i32(0x100).i32(3).i32(4).sub(0x81, 0x30).ret()));
+    CHECK(rig.mem(0x200, 4) == std::vector<std::uint8_t>{'3', '4', '5', '6'});
+    { std::ofstream f(path, std::ios::binary | std::ios::trunc); f << "abcdefghij"; }
+    REQUIRE(rig.run(Asm().i32(0x200).i32(0).i32(0x100).i32(8).i32(4).sub(0x81, 0x30).ret()));
+    CHECK(rig.mem(0x200, 4) == std::vector<std::uint8_t>{'i', 'j', '5', '6'});
+}
+
+TEST_CASE("script clock includes elapsed interactive frame time") {
+    Rig rig(false);
+    rig.state.frame_elapsed_ms = [] { return 37; };
+    REQUIRE(rig.run(Asm().i32(0x100).sub(0x80, 0x04).store32().ret()));
+    CHECK(rig.mem(0x100, 4) == std::vector<std::uint8_t>{37, 0, 0, 0});
+}
+
 TEST_CASE("screen size entries retain width and height order") {
     Rig rig(false);
     REQUIRE(rig.run(Asm().i32(0).i32(1920).i32(1080).sub(0x81, 0x60).ret()).has_value());

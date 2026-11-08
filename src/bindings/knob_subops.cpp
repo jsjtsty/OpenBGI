@@ -40,16 +40,22 @@ std::pair<std::int32_t, std::int32_t> thumb_size(const SystemState& s, const Kno
 // The thumb's travel on an axis: (track - 1) - (thumb - 1) pixels.
 std::int32_t travel(std::int32_t track, std::int32_t thumb) { return std::max(track - thumb, 0); }
 
-// Largest value on an axis: the travel in pixels, or with steps > 0 a fraction of it as 16.16 (0x10000 = the far end;
-// a single step pins the thumb at 0).
+// Discrete values are step indices. The original computes a 16.16 pixel distance per step.
+std::int32_t step_size(std::int32_t track, std::int32_t thumb, std::int32_t steps) {
+    std::int64_t size = std::int64_t{travel(track, thumb)} << 16;
+    if (steps > 2) size /= steps - 1;
+    return static_cast<std::int32_t>(std::max<std::int64_t>(size, 1));
+}
+
 std::int32_t max_value(std::int32_t track, std::int32_t thumb, std::int32_t steps) {
-    const std::int32_t room = travel(track, thumb);
+    const auto room = travel(track, thumb);
     if (steps < 1) return room;
-    return steps < 2 || room == 0 ? 0 : 0x10000;
+    if (steps == 1) return 0;
+    return static_cast<std::int32_t>((std::int64_t{room} << 16) / step_size(track, thumb, steps));
 }
 
 std::int32_t to_pixels(std::int32_t value, std::int32_t track, std::int32_t thumb, std::int32_t steps) {
-    return steps > 0 ? static_cast<std::int32_t>(((std::int64_t{travel(track, thumb)} + 1) * value) >> 16) : value;
+    return steps > 0 ? static_cast<std::int32_t>((std::int64_t{step_size(track, thumb, steps) + 1} * value) >> 16) : value;
 }
 
 // The knob's own position: its display object (the scripts move it with the 90:3x object ops too).
@@ -87,7 +93,7 @@ std::int32_t dragged(std::int32_t pointer, std::int32_t grab, std::int32_t base,
     const std::int32_t px = std::clamp(pointer - grab - base, 0, room);
     if (steps < 1) return px;
     const std::int32_t half = steps < 2 ? 0 : room / (steps * 2 - 2);
-    return room == 0 ? 0 : static_cast<std::int32_t>(std::min<std::int64_t>(((std::int64_t{half} + px) << 16) / room, 0x10000));
+    return static_cast<std::int32_t>(((std::int64_t{half} + px) << 16) / step_size(track, thumb, steps));
 }
 
 bool hit(const SystemState& s, const Knob& k) {
@@ -269,7 +275,7 @@ void register_knob_subops(vm::SubopRegistry& r, SystemState& state) {
         c.push(static_cast<Word>(k->value_y));
         return 0;
     });
-    // 90:D8 (knob, x steps, y steps): 0 = pixel values, n = values in 16.16 thumb widths; negative counts are errors
+    // 90:D8 (knob, x steps, y steps): 0 = pixel values, n = n discrete positions; negative counts are errors
     add(r, 0x90D8, "knob steps", 3, 0, [s](Ctx& c) {
         const auto sy = static_cast<std::int32_t>(c.pop()), sx = static_cast<std::int32_t>(c.pop());
         const Word h = c.pop();

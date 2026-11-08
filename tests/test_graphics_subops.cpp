@@ -75,6 +75,32 @@ TEST_CASE("copied images retain their positioning metadata" * doctest::test_suit
     CHECK(c.read(0x10c, 4, false) == 0xffffffffu);
 }
 
+TEST_CASE("discrete slider values map to positions and dragging returns step indices" * doctest::test_suite("gpu")) {
+    RendererOptions options; options.headless = true;
+    auto renderer = Renderer::create(options); REQUIRE(renderer);
+    auto display = Display::create(**renderer, 320, 80); REQUIRE(display);
+    auto& d = **display;
+    REQUIRE(d.create_slot(1, 43, 43, SlotFormat::Bgra));
+    constexpr Word thumb = 0x80000005, knob = 0xF0000000;
+    d.sprite(thumb).slot = 1; d.sprite(thumb).visible = true;
+    SystemState state; state.display = &d;
+    SubopRegistry registry; register_core_subops(registry); register_knob_subops(registry, state);
+    Asm a;
+    a.i32(thumb).sub(0x90, 0xD0);
+    a.i32(knob).i32(216).i32(43).sub(0x90, 0xD9);
+    a.i32(knob).i32(174).i32(0).sub(0x90, 0xD8);
+    a.i32(knob).i32(173).i32(0).sub(0x90, 0xD6).ret();
+    MemProvider provider; provider.set(a);
+    Vm vm(provider, registry); ThreadConfig config; config.stack_size = 1024;
+    REQUIRE(vm.spawn(config, "test", "slider")); REQUIRE(vm.run_frame(0));
+    CHECK(d.find_sprite(thumb)->x == 173);
+    CHECK(state.knobs.at(knob).value_x == 173);
+    state.knob_focus = knob; state.left_down = true; state.mouse_x = 90; state.mouse_y = 0;
+    knob_input(state);
+    CHECK(state.knobs.at(knob).value_x == 90);
+    CHECK(d.find_sprite(thumb)->x == 90);
+}
+
 TEST_CASE("window snapshots include painted panel buttons" * doctest::test_suite("gpu")) {
     RendererOptions options; options.headless = true;
     auto renderer = Renderer::create(options); REQUIRE(renderer);
