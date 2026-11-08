@@ -1,9 +1,17 @@
 #include <algorithm>
 #include <cstdio>
+#include <cstdlib>
 
 #include "vm/vm.hpp"
 
 namespace obgi::vm {
+
+namespace {
+bool trace_panel_enabled() {
+    static const bool enabled = std::getenv("OBGI_TRACEPANEL") != nullptr;
+    return enabled;
+}
+} // namespace
 
 void Ctx::suspend(WaitObject wait, std::uint8_t results) {
     if (!ok()) return;
@@ -127,7 +135,7 @@ std::int64_t Ctx::read(Word addr, unsigned width, bool sign_extend) {
 
 void Ctx::write(Word addr, Word value, unsigned width) {
     const Word off = addr & kOffsetMask;
-    if (std::getenv("OBGI_TRACEPANEL") && (addr >> kTagShift) == static_cast<Word>(Tag::Global) &&
+    if (trace_panel_enabled() && (addr >> kTagShift) == static_cast<Word>(Tag::Global) &&
         (off == 0x65C || off == 0xD30 || off == 0xD34 || off == 0xD94)) {
         const Word before = static_cast<Word>(read(addr, width, false));
         std::fprintf(stderr, "PANEL-GLOBAL-WRITE t%u ip=%X", t.id, t.ip);
