@@ -234,6 +234,22 @@ TEST_CASE("80:21 rejects an address that is not the start of a block") {
     CHECK_FALSE(rig.run(Asm().i32(0x414).i32(blk).sub(0x80, 0x21).raw({0x09, 0x02}).ret()).has_value()); // freed twice
 }
 
+TEST_CASE("zero-size script allocations retain distinct live addresses") {
+    vm::PagedSegment heap;
+    vm::HeapAllocator allocator;
+    auto a = allocator.allocate(heap, 0);
+    auto b = allocator.allocate(heap, 0);
+    auto c = allocator.allocate(heap, 32);
+    REQUIRE(a.has_value());
+    REQUIRE(b.has_value());
+    REQUIRE(c.has_value());
+    CHECK(*a != *b);
+    CHECK(*b != *c);
+    CHECK(allocator.release(heap, *a));
+    CHECK(allocator.release(heap, *b));
+    CHECK(allocator.release(heap, *c));
+}
+
 TEST_CASE("80:21 rejects an address inside a block") {
     Rig rig(false);
     REQUIRE(rig.run(Asm().i32(0x400).i32(100).sub(0x80, 0x20).raw({0x09, 0x02}).ret()).has_value());
@@ -281,6 +297,10 @@ TEST_CASE("symbol tables, string lists and the message queue") {
     REQUIRE(rig.run(Asm().i32(5).i32(6).sub(0x80, 0xA1).i32(0x600).sub(0x80, 0xA0).i32(0x610).sub(0x80, 0xA0).ret()).has_value());
     CHECK(word_at(0x604) == 5); // second pushed value = the second word
     CHECK(word_at(0x608) == 6);
+    CHECK_FALSE(rig.state.shutdown_message_thread.has_value());
+    REQUIRE(rig.run(Asm().i32(0x7fff).i32(0).sub(0x80, 0xA1).i32(0x620).sub(0x80, 0xA0).ret()).has_value());
+    CHECK(word_at(0x624) == 0x7fff);
+    CHECK(rig.state.shutdown_message_thread.has_value());
 }
 
 TEST_CASE("named bit tables are most-significant-bit first (verified in the original)") {

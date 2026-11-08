@@ -443,6 +443,8 @@ void register_window_subops(vm::SubopRegistry& r, SystemState& state, Display* d
         }
         const auto m = s->event_queue.front();
         s->event_queue.pop_front();
+        // The game's 0x7fff system message asks the message thread to save and terminate.
+        if (m[0] == 0 && m[1] == 0x7fff && m[2] == 0) s->shutdown_message_thread = c.t.id;
         if (dst != 0)
             for (int i = 0; i < 3; ++i) c.write(dst + 4u * i, m[std::size_t(i)], 4);
         c.push(1);

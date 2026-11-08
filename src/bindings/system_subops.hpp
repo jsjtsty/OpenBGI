@@ -167,6 +167,7 @@ struct SystemState : InputState {
     std::vector<Item> items;
     std::uint32_t last_item_id = 0;
     std::deque<std::array<std::uint32_t, 3>> event_queue; // 80:A1 / 80:A0: global FIFO of three-word messages
+    std::optional<std::uint32_t> shutdown_message_thread;
     std::array<bool, 8> filter_used{}; // 90:60: the eight filter object slots
     // 90:D0..DF: knob controls (sliders), handle 0xF0000000 + index, at most 32. A knob drives a display object (the thumb)
     // along a track: the object sits at the knob's base position plus the value (pixels, or 16.16 cells when steps > 0).

@@ -69,7 +69,7 @@ Result<Word> HeapAllocator::allocate(PagedSegment&, Word size) {
     std::uint64_t at = 0x10; // keep offset 0 unused so no block looks like a null address
     for (const auto& [start, len] : blocks_) {
         if (start >= at + need) break;
-        at = std::max<std::uint64_t>(at, std::uint64_t(start) + ((len + 15) & ~Word(15)));
+        at = std::max<std::uint64_t>(at, std::uint64_t(start) + ((std::uint64_t(len ? len : 1) + 15) & ~std::uint64_t(15)));
     }
     if (at + need > kOffsetMask) return fail(Errc::Range, "script heap exhausted");
     blocks_[static_cast<Word>(at)] = size;

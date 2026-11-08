@@ -149,6 +149,7 @@ Result<std::unique_ptr<EngineSession>> EngineSession::create(SessionOptions opti
         if (device) m.device = std::move(*device);
         else std::fprintf(stderr, "audio output unavailable; using silent playback: %s\n", device.error().message.c_str());
     }
+    if (m.options.window) m.renderer->raise_window();
     return session;
 }
 
@@ -193,6 +194,8 @@ Result<vm::FrameStatus> EngineSession::tick(std::int64_t now) {
     if (!m.device) m.audio_time.advance(now);
     if (auto movie = m.player->update(now); !movie) return std::unexpected(movie.error());
     auto status = m.vm->run_frame(now);
+    if (m.system.shutdown_message_thread && !m.vm->find(*m.system.shutdown_message_thread))
+        m.system.quit_requested = true;
     m.display->resolve_masters();
     // Scripts may change window visibility after the frame hook ran.
     panel_sync(m.system);

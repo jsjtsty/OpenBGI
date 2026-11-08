@@ -368,7 +368,7 @@ int main(int argc, char** argv) {
             return 2;
         }
         if (system.quit_requested) {
-            std::printf("the script asked to quit (80:69) at frame %ld\n", f + 1);
+            std::printf("the script asked to quit at frame %ld\n", f + 1);
             report_hits();
             return 0;
         }

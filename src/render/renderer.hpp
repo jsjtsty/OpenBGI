@@ -65,6 +65,8 @@ class Renderer {
     const char* driver_name() const;
     std::uint32_t logical_width() const;
     std::uint32_t logical_height() const;
+    // Request activation once the interactive session is ready.
+    void raise_window();
 
     // For compute-side users (render/display): the device and the packed shaders of this renderer.
     SDL_GPUDevice* native_device() const;

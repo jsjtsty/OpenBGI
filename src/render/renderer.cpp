@@ -80,6 +80,7 @@ const ShaderPack& Renderer::shaders() const { return impl_->library->pack(); }
 const char* Renderer::driver_name() const { return SDL_GetGPUDeviceDriver(impl_->device); }
 std::uint32_t Renderer::logical_width() const { return impl_->opt.logical_width; }
 std::uint32_t Renderer::logical_height() const { return impl_->opt.logical_height; }
+void Renderer::raise_window() { if (impl_->window) SDL_RaiseWindow(impl_->window); }
 
 Result<void> Renderer::update_texture(Texture& texture, ByteView pixels) {
     auto& m = *impl_;
