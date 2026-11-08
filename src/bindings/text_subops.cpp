@@ -1,4 +1,5 @@
 #include "bindings/text_subops.hpp"
+#include "bindings/system_subops.hpp"
 
 #include <cstdio>
 #include <cstdlib>
@@ -64,7 +65,7 @@ void register_text_subops(vm::SubopRegistry& r, TextHost& host) {
                std::string font_name = c.cstring(c.pop());
                c.pop();
                c.pop();
-               c.pop(); // ruby: parameter, dictionary address, enable flag
+               const Word ruby_enabled = c.pop(); // ruby: parameter, dictionary address, enable flag
                Word color = c.pop();
                std::string text = c.cstring(c.pop());
                auto y = static_cast<std::int32_t>(c.pop());
@@ -78,7 +79,7 @@ void register_text_subops(vm::SubopRegistry& r, TextHost& host) {
                    return 0;
                }
                if (std::getenv("OBGI_DBGTEXT"))
-                   std::fprintf(stderr, "92:9C slot %u at %d,%d size %u prop %u str=%s\n", slot, x, y, size, prop, text.c_str());
+                   std::fprintf(stderr, "92:9C slot %u at %d,%d size %u prop %u ruby %u str=%s\n", slot, x, y, size, prop, ruby_enabled, text.c_str());
                (void)eff_mode; // outline/shadow effects are not rendered yet
 
                auto font = host.fonts->open(font_name, static_cast<int>(size));
@@ -89,9 +90,28 @@ void register_text_subops(vm::SubopRegistry& r, TextHost& host) {
                TextStyle style;
                style.color = color;
                style.line_gap = line_gap;
-               // The original positions the ink within a font-sized cell, rather than at FreeType's taller face baseline.
-               style.baseline = static_cast<int>(size * 7 / 8);
-               const std::int64_t room = std::int64_t{info->width} - x;
+               // Font ascent is the baseline in the font's own metrics, as in
+               // the original's GDI glyph placement; a fixed 7/8 em can sit too high.
+               style.baseline = (*font)->ascent();
+               auto draw_x = x;
+               if (ruby_enabled) {
+                   int indent = 0, ruby_percent = 40; // engine defaults before 91:98
+                   if (host.system) {
+                       auto it = host.system->records.find(0x9198);
+                       if (it != host.system->records.end() && it->second.size() >= 5) {
+                           ruby_percent = static_cast<int>(it->second[3]);
+                           indent = static_cast<int>(it->second[4]);
+                       }
+                   }
+                   // Ruby indent is relative to the destination slot, including
+                   // after wraps. Render from x=0 so later lines can begin left
+                   // of a nonzero initial cursor without clipping the temporary.
+                   style.first_indent = x == 0 ? indent : x;
+                   style.continuation_indent = indent;
+                   draw_x = 0;
+                   y += static_cast<std::int32_t>(std::int64_t{size} * ruby_percent / 100);
+               }
+               const std::int64_t room = std::int64_t{info->width} - draw_x;
                auto img = render_text(**font, host.code_page && *host.code_page == 65001 ? utf8_to_utf32(text) : cp932_to_utf32(text), style, room > 0 ? static_cast<std::uint32_t>(room) : 1);
                if (!img) {
                    c.fail(img.error().code, img.error().message);
@@ -101,7 +121,7 @@ void register_text_subops(vm::SubopRegistry& r, TextHost& host) {
                    c.fail(up.error().code, up.error().message);
                    return 0;
                }
-               auto blit = host.display->blit(slot, x, y, kTextSlot, 0, 0, img->width, img->height, 0, 0x100);
+               auto blit = host.display->blit(slot, draw_x, y, kTextSlot, 0, 0, img->width, img->height, 0, 0x100);
                host.display->free_slot(kTextSlot);
                if (!blit) c.fail(blit.error().code, blit.error().message);
                else c.push(static_cast<Word>(img->lines));

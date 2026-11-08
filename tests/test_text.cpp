@@ -1,5 +1,6 @@
 #include <doctest/doctest.h>
 
+#include <algorithm>
 #include <cstring>
 #include <cstdlib>
 #include <filesystem>
@@ -7,6 +8,7 @@
 
 #include "bindings/graphics_subops.hpp"
 #include "bindings/text_subops.hpp"
+#include "bindings/system_subops.hpp"
 #include "support.hpp"
 #include "text/encoding.hpp"
 #include "text/layout.hpp"
@@ -186,6 +188,49 @@ class OneProgram final : public vm::ProgramProvider {
 };
 
 } // namespace
+
+TEST_CASE("92:9C reserves the ruby margin and uses the font baseline" * doctest::test_suite("gpu")) {
+    auto fonts = FontLibrary::create(); REQUIRE(fonts);
+    auto font = open_font(**fonts, 24); if (!font) return;
+    RendererOptions options; options.headless = true;
+    auto renderer = Renderer::create(options); REQUIRE(renderer);
+    auto display = Display::create(**renderer); REQUIRE(display);
+    SystemState state; state.records[0x9198] = {0, 0, 0, 40, 100, 1};
+    TextHost host{display->get(), fonts->get()}; host.system = &state;
+    vm::SubopRegistry registry; vm::register_core_subops(registry); register_text_subops(registry, host);
+    ArcResourceFinder finder(obgi_test::game_dir()); ArcImageSource images(finder);
+    GraphicsHost graphics{display->get(), &images}; register_graphics_subops(registry, graphics);
+    OneProgram provider; vm::Vm machine(provider, registry);
+    const char font_name[] = "MS Gothic", text[] = "A";
+    REQUIRE(machine.global.write(0x100, sizeof font_name, reinterpret_cast<const std::uint8_t*>(font_name)));
+    REQUIRE(machine.global.write(0x200, sizeof text, reinterpret_cast<const std::uint8_t*>(text)));
+    Asm a;
+    for (unsigned slot : {5u, 6u}) {
+        a.i32(slot).i32(240).i32(100).i32(2).sub(0x90, 0x11);
+        a.i32(slot).i32(0).i32(0).i32(0x200).i32(0xffffff).i32(slot == 6).i32(0).i32(0).i32(0x100).i32(24).i32(100).i32(0);
+        a.i32(0).i32(0).i32(0).i32(0).i32(0).i32(0).i32(0).i32(0).i32(0).sub(0x92, 0x9c);
+    }
+    a.ret();
+    provider.program = {8, 0, 0, 0};
+    for (int i = 0; i < 4; ++i) provider.program.push_back(static_cast<std::uint8_t>(a.b.size() >> (8 * i)));
+    provider.program.insert(provider.program.end(), a.b.begin(), a.b.end());
+    vm::ThreadConfig cfg; cfg.stack_size = 0x1000; cfg.program_capacity = 0x10000;
+    REQUIRE(machine.spawn(cfg, "x.arc", "main")); REQUIRE(machine.run_frame(0));
+    auto plain = (*display)->read_slot(5), ruby = (*display)->read_slot(6);
+    REQUIRE(plain); REQUIRE(ruby);
+    bool ink = false, matches = true;
+    for (unsigned y = 0; y < 90; ++y) for (unsigned x = 0; x < 140; ++x) {
+        const auto pixel = (*plain)[y * 240 + x];
+        if (pixel >> 24) ink = true;
+        if (pixel != (*ruby)[(y + 9) * 240 + (x + 100)]) matches = false;
+    }
+    CHECK(ink);
+    CHECK(matches);
+    const Glyph* glyph = font->glyph(U'A'); REQUIRE(glyph);
+    int top = 0;
+    while (top < 100 && std::none_of(plain->begin() + top * 240, plain->begin() + (top + 1) * 240, [](auto p) { return p >> 24; })) ++top;
+    CHECK(top == font->ascent() - glyph->top);
+}
 
 TEST_CASE("92:9C draws text into an image slot" * doctest::test_suite("gpu")) {
     auto fonts = FontLibrary::create();

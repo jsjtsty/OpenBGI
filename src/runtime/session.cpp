@@ -124,7 +124,7 @@ Result<std::unique_ptr<EngineSession>> EngineSession::create(SessionOptions opti
         return default_yes;
     };
     m.graphics = {m.display.get(), &m.images};
-    m.text.display = m.display.get(); m.text.fonts = m.fonts.get();
+    m.text.display = m.display.get(); m.text.fonts = m.fonts.get(); m.text.system = &m.system;
     m.text.code_page = &m.system.code_page; m.text.font_ids = &m.font.table.ids;
     m.font.fonts = m.fonts.get();
     m.sound = {&m.mixer, &m.resources};
