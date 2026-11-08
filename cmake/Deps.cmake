@@ -13,7 +13,7 @@ function(obgi_fetch_sdl3)
   set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
   FetchContent_Declare(SDL3
     GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-    GIT_TAG release-3.4.18
+    GIT_TAG release-3.4.20
     GIT_SHALLOW TRUE)
   FetchContent_MakeAvailable(SDL3)
 endfunction()
@@ -147,7 +147,7 @@ function(obgi_shader_pack out_pack)
         DEPENDS "${spv}" obgi_spvmsl
         COMMENT "SPIR-V -> MSL -> AIR: ${src}" VERBATIM)
       list(APPEND airs "${air}")
-      list(APPEND entries "${base}:metallib:main0:${dir}/${ARG_NAME}.metallib")
+      list(APPEND entries "${base}:metallib:${base}:${dir}/${ARG_NAME}.metallib")
     endif()
   endforeach()
 

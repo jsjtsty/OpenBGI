@@ -60,6 +60,9 @@ target_link_libraries(obgi_render PUBLIC obgi_scene)
 
 add_library(obgi_text STATIC text/encoding.cpp text/font.cpp text/layout.cpp)
 target_link_libraries(obgi_text PUBLIC obgi_core PRIVATE freetype obgi_vfs)
+if(APPLE)
+  target_link_libraries(obgi_text PRIVATE "-framework CoreText" "-framework CoreFoundation")
+endif()
 obgi_target_defaults(obgi_text)
 
 add_library(obgi_audio STATIC audio/av_input.cpp audio/pcm.cpp audio/mixer.cpp audio/device.cpp)

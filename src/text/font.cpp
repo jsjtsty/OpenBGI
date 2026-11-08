@@ -2,6 +2,10 @@
 
 #include <ft2build.h>
 #include FT_FREETYPE_H
+#ifdef __APPLE__
+#include <CoreText/CoreText.h>
+#include <CoreFoundation/CoreFoundation.h>
+#endif
 
 #include <algorithm>
 #include <chrono>
@@ -9,6 +13,8 @@
 #include <cstdlib>
 #include <functional>
 #include <limits>
+#include <optional>
+#include <string_view>
 #include <tuple>
 
 #include "text/encoding.hpp"
@@ -48,6 +54,35 @@ std::string lower(std::string s) {
     return s;
 }
 
+#ifdef __APPLE__
+// CoreText knows where the OS installed this font, including MobileAsset locations.
+std::optional<std::pair<fs::path, FT_Long>> pingfang_sc(FT_Library ft) {
+    CTFontRef font = CTFontCreateWithName(CFSTR("PingFangSC-Regular"), 24, nullptr);
+    if (!font) return std::nullopt;
+    CFStringRef name = CTFontCopyPostScriptName(font);
+    CFURLRef url = static_cast<CFURLRef>(CTFontCopyAttribute(font, kCTFontURLAttribute));
+    const bool matched = name && CFEqual(name, CFSTR("PingFangSC-Regular"));
+    char path[4096];
+    const bool found = matched && url && CFURLGetFileSystemRepresentation(url, true, reinterpret_cast<UInt8*>(path), sizeof path);
+    if (name) CFRelease(name);
+    if (url) CFRelease(url);
+    CFRelease(font);
+    if (!found) return std::nullopt;
+    FT_Face face = nullptr;
+    if (FT_New_Face(ft, path, 0, &face) != 0) return std::nullopt;
+    const FT_Long count = face->num_faces;
+    FT_Done_Face(face);
+    for (FT_Long index = 0; index < count; ++index) {
+        if (FT_New_Face(ft, path, index, &face) != 0) continue;
+        const char* postscript = FT_Get_Postscript_Name(face);
+        const bool match = postscript && std::string_view(postscript) == "PingFangSC-Regular";
+        FT_Done_Face(face);
+        if (match) return std::pair{fs::path(path), index};
+    }
+    return std::nullopt;
+}
+#endif
+
 // Windows font names used by the scripts -> candidate file names (lower case), best first.
 std::vector<std::string> candidates_for(const std::string& name_utf8) {
     std::string n = lower(name_utf8);
@@ -83,7 +118,11 @@ const char* const kFallbacks[] = {"msgothic.ttc", "yugothr.ttc", "yugothm.ttc", 
                                   "DroidSansFallback.ttf", "simsun.ttc"};
 
 // File names tried per glyph, after the named font, when it lacks a code point.
-const char* const kGlyphFallbacks[] = {"msyh.ttc", "simsun.ttc", "msjh.ttc", "yugothr.ttc", "meiryo.ttc",
+const char* const kGlyphFallbacks[] = {"msyh.ttc", "simsun.ttc",
+#ifdef __APPLE__
+                                       "Hiragino Sans GB.ttc", "STHeiti Medium.ttc",
+#endif
+                                       "msjh.ttc", "yugothr.ttc", "meiryo.ttc",
                                        "NotoSansCJK-Regular.ttc", "NotoSansSC-Regular.otf", "DroidSansFallbackFull.ttf"};
 
 } // namespace
@@ -249,12 +288,24 @@ Result<fs::path> FontLibrary::resolve_uncached(const std::string& cp932_name, bo
             if (fs::path direct(over); fs::is_regular_file(direct, ec)) return direct;
             if (fs::path p = find(over); !p.empty()) return p;
         }
+#ifdef __APPLE__
+    if (fallback && charset != 0x88) {
+        if (auto pingfang = pingfang_sc(impl_->ft)) {
+            impl_->face_indices[pingfang->first] = pingfang->second;
+            return pingfang->first;
+        }
+    }
+#endif
     const std::string utf8 = to_utf8(cp932_to_utf32(cp932_name));
     // Shared Han characters exist in Japanese faces too, so per-glyph fallback
     // cannot select simplified Chinese forms. Prefer an SC face for ordinary
     // script fonts, even when the script did not register a Chinese charset.
     if (fallback && charset != 0x88) {
-        for (const char* file : {"msyh.ttc", "simsun.ttc", "simhei.ttf", "NotoSansSC-VF.ttf", "NotoSansSC-Regular.otf", "NotoSerifSC-VF.ttf"})
+        for (const char* file : {"msyh.ttc", "simsun.ttc", "simhei.ttf", "NotoSansSC-VF.ttf", "NotoSansSC-Regular.otf", "NotoSerifSC-VF.ttf"
+#ifdef __APPLE__
+                                , "Hiragino Sans GB.ttc", "STHeiti Medium.ttc"
+#endif
+                                })
             if (fs::path p = find(file); !p.empty()) return p;
     }
     if (fallback && charset == 0x88) {

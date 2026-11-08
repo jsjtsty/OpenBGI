@@ -67,8 +67,8 @@ TEST_CASE("copied images retain their positioning metadata" * doctest::test_suit
     Ctx c(vm, **thread);
     CHECK(c.read(0x100, 4, false) == 370);
     CHECK(c.read(0x104, 4, false) == 236);
-    CHECK(c.read(0x108, 4, false) == 0);
-    CHECK(c.read(0x10c, 4, false) == 0);
+    CHECK(c.read(0x108, 4, false) == 0xffffffffu);
+    CHECK(c.read(0x10c, 4, false) == 0xffffffffu);
 }
 
 TEST_CASE("window snapshots include painted panel buttons" * doctest::test_suite("gpu")) {

@@ -42,7 +42,7 @@ class Mixer {
     Result<void> stop(Bank bank, std::uint32_t ch);
 
     Result<void> set_volume(Bank bank, std::uint32_t ch, std::uint32_t volume);
-    // Per-channel "configured" volume of the options menu; multiplies with the script volume.
+    // Per-channel options volume, combined with the script volume as attenuation.
     Result<void> set_config_volume(Bank bank, std::uint32_t ch, std::uint32_t volume);
     Result<void> set_pan(Bank bank, std::uint32_t ch, std::uint32_t pan);
     // Linear volume ramp to `target` over `ms`; with stop_after the channel stops when it gets there.

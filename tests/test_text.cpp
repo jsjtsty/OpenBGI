@@ -49,9 +49,23 @@ TEST_CASE("simplified Chinese font is preferred over script Japanese font" * doc
     auto library = FontLibrary::create(); REQUIRE(library);
     (*library)->add_search_dir(dir);
     auto resolved = (*library)->resolve("MS Gothic"); REQUIRE(resolved);
+#ifdef __APPLE__
+    CHECK((resolved->filename() == "PingFang.ttc" || resolved->filename() == "msyh.ttc"));
+#else
     CHECK(resolved->filename() == "msyh.ttc");
+#endif
     CHECK((*library)->has_exact("MS Gothic"));
     std::filesystem::remove_all(dir);
+}
+
+TEST_CASE("macOS system Chinese fonts cover simplified text" * doctest::test_suite("host")) {
+#ifdef __APPLE__
+    if (std::getenv("OBGI_FONT")) return;
+    auto library = FontLibrary::create(); REQUIRE(library);
+    auto font = (*library)->open("MS Gothic", 24); REQUIRE(font);
+    for (char32_t ch : std::u32string_view(U"简体中文游戏更改语言选择あア"))
+        CHECK((*font)->glyph(ch) != nullptr);
+#endif
 }
 
 TEST_CASE("embedded fonts and their glyphs outlive the registering library" * doctest::test_suite("host")) {

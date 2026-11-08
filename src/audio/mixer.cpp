@@ -6,6 +6,22 @@
 
 namespace obgi {
 
+namespace {
+float volume_gain(float volume, std::uint32_t config) {
+    const auto level = static_cast<std::uint32_t>(std::clamp(volume, 0.0f, 128.0f));
+    if (level == 0 || config == 0) return 0.0f;
+    // FUN_004c7fb0 combines four 0..128 controls as attenuation units;
+    // the two controls not yet exposed by this mixer are at their neutral 128.
+    const auto attenuation = static_cast<unsigned>((256 - level - config) / 2.66666666);
+    static const auto gains = [] {
+        std::array<float, 97> values{};
+        for (std::size_t i = 0; i < values.size(); ++i) values[i] = std::pow(10.0f, -float(i) / 20.0f);
+        return values;
+    }();
+    return gains[std::min<std::size_t>(attenuation, gains.size() - 1)];
+}
+}
+
 Mixer::Channel* Mixer::find(Bank bank, std::uint32_t ch) {
     if (ch >= channel_count(bank)) return nullptr;
     return bank == Bank::Stream ? &streams_[ch] : &points_[ch];
@@ -21,8 +37,10 @@ Result<void> Mixer::load(Bank bank, std::uint32_t ch, std::shared_ptr<const Pcm>
     if (!c) return std::unexpected(bad_channel());
     if (!pcm || pcm->frames() == 0) return fail(Errc::Format, "empty sound");
     const bool keep_paused = c->paused;
+    const auto keep_config = c->config;
     retired = std::move(c->pcm);
     *c = Channel{};
+    c->config = keep_config;
     c->paused = keep_paused;
     c->loop = loop;
     c->loop_start = std::min(loop_start, pcm->frames() - 1);
@@ -36,7 +54,9 @@ Result<void> Mixer::unload(Bank bank, std::uint32_t ch) {
     Channel* c = find(bank, ch);
     if (!c) return std::unexpected(bad_channel());
     retired = std::move(c->pcm);
+    const auto keep_config = c->config;
     *c = Channel{};
+    c->config = keep_config;
     return {};
 }
 
@@ -167,7 +187,7 @@ void Mixer::mix_block(std::int16_t* out, std::uint32_t frames) {
         const double ratio = double(p.sample_rate) / rate_;
         const float pan = (float(c.pan) - float(kCenterPan)) / float(kCenterPan); // -1 .. 1
         const float gl = std::min(1.0f, 1.0f - pan), gr = std::min(1.0f, 1.0f + pan);
-        const float cfg = float(c.config) / float(kMaxVolume);
+        float gain = volume_gain(c.volume, c.config);
         for (std::uint32_t i = 0; i < frames; ++i) {
             if (c.step != 0) {
                 c.volume += c.step;
@@ -176,6 +196,7 @@ void Mixer::mix_block(std::int16_t* out, std::uint32_t frames) {
                     c.step = 0;
                     if (c.stop_after) c.playing = false;
                 }
+                gain = volume_gain(c.volume, c.config);
             }
             if (!c.playing) return;
             if (c.pos >= total) {
@@ -198,9 +219,8 @@ void Mixer::mix_block(std::int16_t* out, std::uint32_t frames) {
                 l = (p.samples[2 * i0] + (p.samples[2 * i1] - p.samples[2 * i0]) * frac) / 32768.0f;
                 r = (p.samples[2 * i0 + 1] + (p.samples[2 * i1 + 1] - p.samples[2 * i0 + 1]) * frac) / 32768.0f;
             }
-            const float g = c.volume / float(kMaxVolume) * cfg;
-            acc[2 * i] += l * g * gl;
-            acc[2 * i + 1] += r * g * gr;
+            acc[2 * i] += l * gain * gl;
+            acc[2 * i + 1] += r * gain * gr;
             c.pos += ratio;
         }
     };

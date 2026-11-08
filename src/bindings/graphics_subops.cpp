@@ -57,7 +57,7 @@ Sprite* object(Ctx& c, Display& d, Word id) {
 void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
     Display& d = *host.display;
 
-    // The base size of every slot (bmpmgr.c): 0 x 0 until something sets it, -1 x -1 once its bitmap was freed, and the base size
+    // The base size of every slot (bmpmgr.c): -1 x -1 until set or after freeing, and the base size
     // in the header of a loaded picture (90:10); 92:12 sets it, 92:16 reads it. Scripts place pictures by it (90:5C's origin).
     auto base_sizes = std::make_shared<std::map<Word, std::pair<std::int32_t, std::int32_t>>>();
     // ---- image slots ----
@@ -73,6 +73,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
             c.fail(img.error().code, "\"" + prefix + "/" + name + "\": " + img.error().message);
             return 0;
         }
+        if (d.slot(slot)) (*base_sizes)[slot] = {-1, -1}; // replacing a live bitmap frees its old metadata
         check(c, d.upload_slot(slot, img->width, img->height, img->format, img->pixels));
         if (img->has_base) (*base_sizes)[slot] = {static_cast<std::int32_t>(img->base_width), static_cast<std::int32_t>(img->base_height)};
         return 0; // the original may go asynchronous (rc 2); loading here is always synchronous
@@ -278,7 +279,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         return 0;
     });
     // 92:12 (slot, w, h): sets the base size of a slot (the design size of its image); 1 for a valid slot number.
-    // 92:16 (out, slot): reads it into two words at out (0, 0 until something sets it, -1, -1 after the bitmap was freed).
+    // 92:16 (out, slot): reads it into two words at out (-1, -1 until set or after the bitmap was freed).
     add(r, 0x9212, "set image base size", 3, 1, [base_sizes](Ctx& c) {
         const auto h = static_cast<std::int32_t>(c.pop()), w = static_cast<std::int32_t>(c.pop());
         const Word slot = c.pop();
@@ -291,7 +292,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         const Word slot = c.pop(), out = c.pop();
         if (!c.ok()) return 0;
         if (slot > kMaxSlot) { c.push(0); return 0; }
-        std::int32_t w = 0, h = 0;
+        std::int32_t w = -1, h = -1;
         if (auto it = base_sizes->find(slot); it != base_sizes->end()) w = it->second.first, h = it->second.second;
         c.write(out, static_cast<Word>(w), 4);
         c.write(out + 4, static_cast<Word>(h), 4);
@@ -567,7 +568,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         check(c, d.blit(dst, 0, 0, src, 0, 0, info.width, info.height, 0, 0x100));
         if (c.ok()) {
             const auto it = base_sizes->find(src);
-            (*base_sizes)[dst] = it != base_sizes->end() ? it->second : std::pair<std::int32_t, std::int32_t>{0, 0};
+            (*base_sizes)[dst] = it != base_sizes->end() ? it->second : std::pair<std::int32_t, std::int32_t>{-1, -1};
         }
         return 0;
     });

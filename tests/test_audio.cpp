@@ -59,10 +59,10 @@ TEST_CASE("mixer plays, loops, pans and fades on the audio clock") {
 
     // looping with a loop start keeps playing and never goes silent
     REQUIRE(m.load(Bank::Point, 5, tone(8, 8000, 1), true, 4).has_value());
-    REQUIRE(m.play(Bank::Point, 5, 0x40, 0x40).has_value()); // half volume
+    REQUIRE(m.play(Bank::Point, 5, 0x40, 0x40).has_value());
     out = render(m, 100);
     CHECK(m.state(Bank::Point, 5) == ChannelState::Playing);
-    CHECK(std::abs(out[2 * 99] - 4000) <= 1);
+    CHECK(std::abs(out[2 * 99] - 505) <= 1); // native attenuation 24 dB
     CHECK(m.position(Bank::Point, 5) <= 8); // wraps lazily on the next sample
 
     // hard pan left: the right channel is silent
@@ -77,8 +77,7 @@ TEST_CASE("mixer plays, loops, pans and fades on the audio clock") {
     REQUIRE(m.play(Bank::Stream, 1, 0x80, 0x40).has_value());
     REQUIRE(m.fade_to(Bank::Stream, 1, 0, 50, true).has_value());
     out = render(m, 25);
-    CHECK(std::abs(out[2 * 24]) < 20000 * 0.55);
-    CHECK(std::abs(out[2 * 24]) > 20000 * 0.40);
+    CHECK(std::abs(out[2 * 24] - 1262) < 150); // halfway is approximately -24 dB
     render(m, 40);
     CHECK(m.state(Bank::Stream, 1) == ChannelState::Stopped);
 
@@ -103,6 +102,22 @@ TEST_CASE("mixer resamples to the output rate") {
     CHECK(m.state(Bank::Stream, 0) == ChannelState::Playing);
     render(m, 1000); // 0.1 s = 4410 output frames in total
     CHECK(m.state(Bank::Stream, 0) == ChannelState::Stopped);
+}
+
+TEST_CASE("volume controls follow native decibel attenuation and survive reloads") {
+    Mixer m(1000);
+    REQUIRE(m.set_config_volume(Bank::Point, 0, 64));
+    REQUIRE(m.load(Bank::Point, 0, tone(20, 16000), true, 0));
+    REQUIRE(m.play(Bank::Point, 0, 128, 64));
+    CHECK(std::abs(render(m, 1)[0] - 1010) <= 2); // 24 dB
+    REQUIRE(m.play(Bank::Point, 0, 64, 64));
+    CHECK(std::abs(render(m, 1)[0] - 64) <= 2); // 48 dB
+    REQUIRE(m.unload(Bank::Point, 0));
+    REQUIRE(m.load(Bank::Point, 0, tone(20, 16000), true, 0));
+    REQUIRE(m.play(Bank::Point, 0, 128, 64));
+    CHECK(std::abs(render(m, 1)[0] - 1010) <= 2);
+    REQUIRE(m.set_config_volume(Bank::Point, 0, 0));
+    CHECK(render(m, 1)[0] == 0);
 }
 
 TEST_CASE("real bw sound files decode to the length in their header" * doctest::test_suite("game")) {

@@ -27,19 +27,28 @@ int main(int argc, char** argv) {
 
     try {
         spirv_cross::CompilerMSL msl(std::move(words));
+        const std::string output_name = argv[2];
+        const auto slash = output_name.find_last_of("/\\");
+        const auto dot = output_name.find_last_of('.');
+        const std::string entry = output_name.substr(slash == std::string::npos ? 0 : slash + 1,
+                                                     (dot == std::string::npos ? output_name.size() : dot) -
+                                                         (slash == std::string::npos ? 0 : slash + 1));
+        msl.rename_entry_point("main", entry, msl.get_execution_model());
         auto opts = msl.get_msl_options();
         opts.set_msl_version(2, 3);
         opts.platform = spirv_cross::CompilerMSL::Options::macOS;
         msl.set_msl_options(opts);
 
         auto res = msl.get_shader_resources();
-        if (msl.get_execution_model() != spv::ExecutionModelGLCompute) {
-            std::fprintf(stderr, "only compute shaders are supported so far (add the stage's slot rules here)\n");
+        const auto stage = msl.get_execution_model();
+        if (stage != spv::ExecutionModelGLCompute && stage != spv::ExecutionModelVertex &&
+            stage != spv::ExecutionModelFragment) {
+            std::fprintf(stderr, "unsupported shader stage\n");
             return 1;
         }
-        if (!res.sampled_images.empty() || !res.storage_images.empty() || !res.separate_images.empty() ||
-            !res.separate_samplers.empty()) {
-            std::fprintf(stderr, "textures/samplers in compute shaders are not mapped yet\n");
+        if (stage != spv::ExecutionModelGLCompute &&
+            (!res.storage_images.empty() || !res.separate_images.empty() || !res.separate_samplers.empty())) {
+            std::fprintf(stderr, "unsupported graphics shader resources\n");
             return 1;
         }
 
@@ -50,7 +59,7 @@ int main(int argc, char** argv) {
 
         auto bind = [&](const spirv_cross::Resource& r, uint32_t msl_buffer) {
             spirv_cross::MSLResourceBinding rb{};
-            rb.stage = spv::ExecutionModelGLCompute;
+            rb.stage = stage;
             rb.desc_set = msl.get_decoration(r.id, spv::DecorationDescriptorSet);
             rb.binding = msl.get_decoration(r.id, spv::DecorationBinding);
             rb.msl_buffer = msl_buffer;
@@ -60,6 +69,15 @@ int main(int argc, char** argv) {
         for (auto& b : res.storage_buffers) {
             uint32_t slot = msl.get_decoration(b.id, spv::DecorationBinding);
             bind(b, msl.get_decoration(b.id, spv::DecorationNonWritable) ? uniforms + slot : uniforms + readonly + slot);
+        }
+        for (auto& image : res.sampled_images) {
+            spirv_cross::MSLResourceBinding rb{};
+            rb.stage = stage;
+            rb.desc_set = msl.get_decoration(image.id, spv::DecorationDescriptorSet);
+            rb.binding = msl.get_decoration(image.id, spv::DecorationBinding);
+            rb.msl_texture = rb.binding;
+            rb.msl_sampler = rb.binding;
+            msl.add_msl_resource_binding(rb);
         }
 
         std::string source = msl.compile();
