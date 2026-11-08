@@ -47,6 +47,7 @@ Result<std::shared_ptr<Pcm>> decode_audio(ByteView file, const std::string& name
     if (!dec) return fail(Errc::Io, "out of memory");
     if (err = avcodec_parameters_to_context(dec.get(), fmt->streams[stream]->codecpar); err < 0)
         return std::unexpected(av_error("codec parameters", err));
+    dec->pkt_timebase = fmt->streams[stream]->time_base;
     if (err = avcodec_open2(dec.get(), codec, nullptr); err < 0) return std::unexpected(av_error("opening the decoder", err));
 
     const int in_channels = dec->ch_layout.nb_channels;

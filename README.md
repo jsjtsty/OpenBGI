@@ -22,6 +22,8 @@ build/windows/src/Debug/obgi_run.exe "E:/Games/Amairo Chocolate 2" --frames 3000
 
 交互模式使用单调真实时间和音频设备；离线模式使用虚拟毫秒时间、同步执行的解码任务和离线音频推进。默认持久数据写入用户数据目录中按游戏路径隔离的 OpenBGI 子目录。测试可用 `--data-dir` 单独隔离。
 
+使用 `obgi_run --help` 查看选项。长时间无头调试可用 `--mouse 0:735:645,1000:640:400` 在指定帧移动鼠标，`--click-every 300 30` 从第 300 帧起每 30 帧点击一次，`--progress-every 1000` 定期报告进度，`--threads` 在到达帧数上限时打印存活线程，`--trace` 输出执行的子指令。帧编号从 0 开始；自动点击不能处理所有游戏分支。`--window --frames N` 也可限制窗口模式运行帧数。
+
 代理是本机配置，需要时传入 `-DOPENBGI_PROXY=...`，公共 preset 不指定代理。
 
 ## 仅构建核心

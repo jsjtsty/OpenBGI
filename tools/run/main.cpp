@@ -15,6 +15,7 @@
 #include <sstream>
 #include <vector>
 #include <filesystem>
+#include <charconv>
 #include <string>
 
 #include "bindings/arc_program_provider.hpp"
@@ -84,26 +85,66 @@ int main(int argc, char** argv) {
     if (std::getenv("OBGI_UNBUF")) std::setvbuf(stdout, nullptr, _IONBF, 0); // keep the log of a crashing run
     std::string game, driver_s, entry_arc = "autoload.arc", entry_name = "ipl._bp";
     long frames = 20000;
-    std::string effects_path, shot_path;
+    std::string effects_path, shot_path, mouse_script;
     long shot_frame = -1;
-    bool window = false; // --window: play in a window with keyboard and mouse input instead of running headless
+    bool window = false, frames_set = false, show_threads = false, live_cli = false;
+    long progress_every = 0, click_first = 0, click_period = 0;
+    auto number = [](const char* text, long& value) {
+        const char* end = text + std::strlen(text);
+        auto result = std::from_chars(text, end, value);
+        return result.ec == std::errc{} && result.ptr == end && value >= 0;
+    };
     std::string survey, data_dir, dump_arc, dump_name, dump_out;
     for (int i = 1; i < argc; ++i) {
         std::string a = argv[i];
-        if (a == "--frames" && i + 1 < argc) frames = std::atol(argv[++i]);
+        if (a == "--help" || a == "-h") {
+            std::printf("Usage: obgi_run <game dir> [options]\n"
+                        "  --frames N             stop after N frames (default 20000)\n"
+                        "  --window               use a window and real time\n"
+                        "  --data-dir DIR         isolate saved data\n"
+                        "  --driver NAME          select GPU driver\n"
+                        "  --entry ARC MEMBER     select startup script\n"
+                        "  --shot FRAME FILE      save a screenshot\n"
+                        "  --click-every FIRST PERIOD  click periodically (zero-based frames)\n"
+                        "  --mouse SCRIPT         pointer moves: frame:x:y,...\n"
+                        "  --progress-every N     report every N frames\n"
+                        "  --trace                print sub-opcodes as they execute\n"
+                        "  --threads              report live threads at frame limit\n"
+                        "  --effects FILE         write registered stack effects\n"
+                        "  --survey FILE          enable diagnostic sub-opcode stubs\n"
+                        "  --dump ARC MEMBER FILE extract a program block\n");
+            return 0;
+        }
+        if (a == "--frames" && i + 1 < argc) {
+            if (!number(argv[++i], frames)) return die("--frames requires a non-negative integer");
+            frames_set = true;
+        }
+        else if (a == "--progress-every" && i + 1 < argc) {
+            if (!number(argv[++i], progress_every) || !progress_every) return die("--progress-every requires a positive integer");
+        }
+        else if (a == "--click-every" && i + 2 < argc) {
+            if (!number(argv[++i], click_first) || !number(argv[++i], click_period) || !click_period)
+                return die("--click-every requires a non-negative first frame and positive period");
+        }
+        else if (a == "--trace") live_cli = true;
+        else if (a == "--threads") show_threads = true;
+        else if (a == "--mouse" && i + 1 < argc) mouse_script = argv[++i];
         else if (a == "--data-dir" && i + 1 < argc) data_dir = argv[++i];
         else if (a == "--dump" && i + 3 < argc) { // --dump <arc> <member> <out file>: a program block, DSC removed
             dump_arc = argv[i + 1], dump_name = argv[i + 2], dump_out = argv[i + 3];
             i += 3;
         }
         else if (a == "--shot" && i + 2 < argc) shot_frame = std::atol(argv[i + 1]), shot_path = argv[i + 2], i += 2;
-        else if (a == "--window") window = true, frames = 0x7FFFFFFF;
+        else if (a == "--window") window = true;
         else if (a == "--effects" && i + 1 < argc) effects_path = argv[++i];
         else if (a == "--survey" && i + 1 < argc) survey = argv[++i];
         else if (a == "--driver" && i + 1 < argc) driver_s = argv[++i];
         else if (a == "--entry" && i + 2 < argc) entry_arc = argv[++i], entry_name = argv[++i];
-        else game = a;
+        else if (!a.empty() && a[0] == '-') return die("unknown or incomplete option: " + a);
+        else if (game.empty()) game = a;
+        else return die("unexpected argument: " + a);
     }
+    if (window && !frames_set) frames = 0x7FFFFFFF;
     if (game.empty()) return die("usage: obgi_run <game dir> [--frames N] [--driver d] [--entry arc member]");
 
     if (!dump_out.empty()) {
@@ -175,7 +216,7 @@ int main(int argc, char** argv) {
 
     // the last sub-opcodes run, printed when something stops the scripts
     std::deque<std::string> recent;
-    const bool live = std::getenv("OBGI_LIVE") != nullptr; // print every sub-opcode as it runs (stderr)
+    const bool live = live_cli || std::getenv("OBGI_LIVE") != nullptr; // print every sub-opcode as it runs (stderr)
     vm.trace = [&recent, &vm, live](const vm::Thread& t, std::uint16_t id, const std::vector<vm::Word>& out) {
         static long event_no = 0;
         if (const char* da = std::getenv("OBGI_DUMPMEM_AT")) { // "event,offset,length,path": global memory before that sub-opcode ends
@@ -230,11 +271,15 @@ int main(int argc, char** argv) {
     const bool progress = std::getenv("OBGI_PROGRESS") != nullptr; // one line per frame on stderr, for finding a stuck frame
     const auto started = std::chrono::steady_clock::now();
     for (long f = 0; f < frames; ++f) {
-        if (progress) {
+        if (progress || (progress_every && f % progress_every == 0)) {
             std::fprintf(stderr, "frame %ld\n", f);
             std::fflush(stderr);
         }
-        if (!session->pump_events()) break;
+        if (!session->pump_events()) {
+            std::printf("window closed after %ld frames\n", f);
+            report_hits();
+            return 0;
+        }
         if (const char* wh = std::getenv("OBGI_WHEEL")) // "frame:notches,...": scripted wheel turns (negative = towards the user)
             for (std::stringstream ss(wh); ss.good();) {
                 std::string tok;
@@ -264,11 +309,12 @@ int main(int argc, char** argv) {
                 unsigned vk = 0;
                 if (std::sscanf(tok.c_str(), "%ld:%x", &at, &vk) == 2 && at == f) system.press_input(vk);
             }
+        if (click_period && f >= click_first && (f - click_first) % click_period == 0) system.press_input(1);
         if (const char* ce = std::getenv("OBGI_CLICK_EVERY")) { // "first:period": a left click every `period` frames from `first` on
             long first = 0, period = 0;
             if (std::sscanf(ce, "%ld:%ld", &first, &period) == 2 && period > 0 && f >= first && (f - first) % period == 0) system.press_input(1);
         }
-        if (const char* pm = std::getenv("OBGI_MOUSE")) // "frame:x:y,...": scripted pointer moves for headless runs
+        if (const char* pm = mouse_script.empty() ? std::getenv("OBGI_MOUSE") : mouse_script.c_str()) // "frame:x:y,...": scripted pointer moves for headless runs
             for (std::stringstream ss(pm); ss.good();) {
                 std::string tok;
                 std::getline(ss, tok, ',');
@@ -339,11 +385,10 @@ int main(int argc, char** argv) {
         if (const char* comma = std::strchr(dp, ','))
             if (const vm::Thread* th = vm.find(static_cast<vm::Word>(std::strtoul(dp, nullptr, 10))))
                 std::ofstream(comma + 1, std::ios::binary).write(reinterpret_cast<const char*>(th->program.data()), std::streamsize(th->program.size()));
-    if (std::getenv("OBGI_THREADS")) // where every live thread is parked at the end
+    if (show_threads || std::getenv("OBGI_THREADS")) // where every live thread is parked at the end
         for (const auto& th_ : vm.threads())
             if (!th_->dead)
                 std::printf("  thread %u ip=0x%X wait=%d until=%lld now=%lld queue=%zu modules=%zu\n", th_->id, th_->ip, int(th_->wait.kind),
                             static_cast<long long>(th_->wait.until), static_cast<long long>(vm.now_ms), th_->queue.size(), th_->modules.size());
-    report_hits();
     return 0;
 }
