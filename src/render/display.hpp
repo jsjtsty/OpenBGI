@@ -117,6 +117,7 @@ class Display {
     // compose() and draw the result as one frame of the renderer.
     Result<void> present();
     Result<std::vector<std::uint32_t>> read_screen();
+    Result<void> resize_screen(std::uint32_t width, std::uint32_t height);
     std::uint32_t screen_width() const;
     std::uint32_t screen_height() const;
 

@@ -56,7 +56,13 @@ struct SystemState : InputState {
     std::uint32_t rand_seed = 0;           // 80:00
     std::size_t scratch_size = 0;     // 80:70: zeroed buffer of 0x1000 << v bytes; saved in BGI.gdb (first 0x400)
     GdbData gdb;                           // global data (80:80 loads BGI.gdb, 80:81 saves it, 80:82-85 use it)
-    std::array<std::array<std::uint32_t, 2>, 16> pair_table{}; // 81:60: two numbers per index
+    // Default resolution table from the engine; 81:60 can replace entries.
+    std::array<std::array<std::uint32_t, 2>, 16> pair_table{{
+        {320, 240}, {640, 480}, {800, 600}, {1024, 768},
+        {1024, 576}, {1280, 960}, {1280, 720}, {1920, 1440},
+        {1920, 1080}, {2560, 1920}, {2560, 1440}, {3840, 2880},
+        {3840, 2160}, {1600, 900}, {1366, 768}, {960, 540}
+    }};
     std::vector<std::string> search_paths; // 80:37: extra resource search paths, newest first
     // 80:3D hands scripts these paths (CP932 bytes, with a trailing separator). The game directory is read-only for
     // the engine, so 80:28 / 80:2A map anything under it into `data_dir`, where scripts may create folders.

@@ -269,6 +269,7 @@ int main(int argc, char** argv) {
         };
     }
     const bool progress = std::getenv("OBGI_PROGRESS") != nullptr; // one line per frame on stderr, for finding a stuck frame
+    const bool perf = std::getenv("OBGI_PERF") != nullptr;
     const auto started = std::chrono::steady_clock::now();
     for (long f = 0; f < frames; ++f) {
         if (progress || (progress_every && f % progress_every == 0)) {
@@ -325,8 +326,16 @@ int main(int argc, char** argv) {
         const auto now_ms = window
             ? std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started).count()
             : f * std::int64_t{16};
+        const auto perf_tick = std::chrono::steady_clock::now();
         auto st = session->tick(now_ms);
+        const auto perf_present = std::chrono::steady_clock::now();
         if (st) if (auto shown = session->present(); !shown) return die(shown.error().message);
+        if (perf) {
+            const auto done = std::chrono::steady_clock::now();
+            const auto tick_ms = std::chrono::duration_cast<std::chrono::milliseconds>(perf_present - perf_tick).count();
+            const auto present_ms = std::chrono::duration_cast<std::chrono::milliseconds>(done - perf_present).count();
+            if (tick_ms + present_ms >= 30) std::fprintf(stderr, "PERF frame=%ld time=%lld tick=%lld present=%lld ms\n", f, static_cast<long long>(now_ms), static_cast<long long>(tick_ms), static_cast<long long>(present_ms));
+        }
         if (const char* dm = std::getenv("OBGI_DUMPMEM")) { // "offset,length,frame,path": script global memory after that frame
             unsigned long off = 0, len = 0, fr = 0;
             char path[512] = {};

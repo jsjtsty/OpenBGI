@@ -32,6 +32,28 @@ constexpr const char* kDrivers[] = {"vulkan", "direct3d12", "metal"};
 
 } // namespace
 
+TEST_CASE("resizing the screen preserves the full logical canvas" * doctest::test_suite("gpu")) {
+    auto rig = make_rig(nullptr);
+    REQUIRE(rig.display);
+    REQUIRE(rig.display->resize_screen(96, 64));
+    CHECK(rig.display->screen_width() == 96);
+    CHECK(rig.display->screen_height() == 64);
+    CHECK(rig.renderer->logical_width() == 96);
+    CHECK(rig.renderer->logical_height() == 64);
+    REQUIRE(rig.display->create_slot(1, 1, 1, SlotFormat::Bgrx));
+    REQUIRE(rig.display->fill_slot(1, 0x00ff0000));
+    auto& sprite = rig.display->sprite(1);
+    sprite.slot = 1; sprite.x = 95; sprite.y = 63;
+    REQUIRE(rig.display->present());
+    auto screen = rig.display->read_screen();
+    REQUIRE(screen);
+    CHECK(screen->size() == 96 * 64);
+    CHECK((screen->back() & 0xffffff) == 0xff0000);
+    auto frame = rig.renderer->read_back();
+    REQUIRE(frame);
+    CHECK(frame->size() == 96 * 64 * 4);
+}
+
 TEST_CASE("background crossfade layers retain their order when the upper layer was created first" * doctest::test_suite("gpu")) {
     auto rig = make_rig(nullptr);
     REQUIRE(rig.display);

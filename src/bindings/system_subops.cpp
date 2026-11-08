@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <cstring>
+#include <cmath>
 #include <cstdio>
 #include <cstdlib>
 #include <cctype>
@@ -55,7 +56,11 @@ void add_flag(vm::SubopRegistry& r, SystemState& s, std::uint16_t id, const char
 
 // A script path (CP932, Windows separators) as a host path, redirected from the game directory into the data directory.
 std::filesystem::path host_path(const SystemState& s, const std::string& script_path) {
-    std::u32string wide = cp932_to_utf32(script_path);
+    // The host game path is inserted into script strings as UTF-8. Decode only
+    // the script-provided suffix; decoding the host prefix as CP932 corrupts it.
+    const std::string prefix = s.game_dir.string() + "\\";
+    const bool in_game = script_path.starts_with(prefix);
+    std::u32string wide = cp932_to_utf32(in_game ? script_path.substr(prefix.size()) : script_path);
     std::string utf8;
     for (char32_t ch : wide) {
         if (ch == U'\\') ch = U'/';
@@ -65,6 +70,7 @@ std::filesystem::path host_path(const SystemState& s, const std::string& script_
         else utf8 += {char(0xF0 | (ch >> 18)), char(0x80 | ((ch >> 12) & 0x3F)), char(0x80 | ((ch >> 6) & 0x3F)), char(0x80 | (ch & 0x3F))};
     }
     std::filesystem::path p(std::u8string(utf8.begin(), utf8.end()));
+    if (in_game) p = s.game_dir / p;
     std::error_code ec;
     auto rel = std::filesystem::relative(p, s.game_dir, ec);
     if (!ec && !rel.empty() && *rel.begin() != "..") return s.data_dir / rel;
@@ -831,9 +837,22 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
         if (idx >= 16) c.push(1);
         else if (a == 0 || b == 0) c.push(2);
         else {
-            s->pair_table[idx] = {a, b};
+            s->pair_table[idx] = {b, a};
             c.push(0);
         }
+        return 0;
+    });
+    add_setter(r, state, 0x8166, "resizable window"); // stored; native window style is not updated yet
+    // 81:6C accepts sizes matching the desktop aspect ratio; the renderer currently keeps its own size.
+    add(r, 0x816C, "render size", 2, 1, [s](Ctx& c) {
+        auto h = static_cast<std::int32_t>(c.pop());
+        auto w = static_cast<std::int32_t>(c.pop());
+        if (!c.ok()) return 0;
+        if (w <= 0 || h <= 0) w = static_cast<std::int32_t>(s->display_width), h = static_cast<std::int32_t>(s->display_height);
+        const bool valid = h > 0 && s->display_height > 0 &&
+            std::fabs(float(s->display_width) / float(s->display_height) - float(w) / float(h)) <= 0.001f;
+        if (valid) s->records[0x816C] = {static_cast<Word>(w), static_cast<Word>(h)};
+        c.push(valid ? 1 : 0);
         return 0;
     });
     add(r, 0x8100, "string code page", 1, 1, [s](Ctx& c) {

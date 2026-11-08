@@ -73,6 +73,39 @@ struct Rig {
 
 } // namespace
 
+TEST_CASE("screen size entries retain width and height order") {
+    Rig rig(false);
+    REQUIRE(rig.run(Asm().i32(0).i32(1920).i32(1080).sub(0x81, 0x60).ret()).has_value());
+    CHECK(rig.state.pair_table[0][0] == 1920);
+    CHECK(rig.state.pair_table[0][1] == 1080);
+}
+
+TEST_CASE("client size reflects the requested window dimensions") {
+    Rig rig(false);
+    register_window_subops(rig.registry, rig.state, nullptr);
+    REQUIRE(rig.run(Asm().i32(1280).i32(720).sub(0x81, 0x64).i32(0x100).sub(0x81, 0x67).ret()).has_value());
+    CHECK(rig.mem(0x100, 8) == std::vector<std::uint8_t>{0x00, 0x05, 0x00, 0x00, 0xd0, 0x02, 0x00, 0x00});
+}
+
+TEST_CASE("render size checks the desktop aspect ratio") {
+    Rig rig(false);
+    REQUIRE(rig.run(Asm().i32(0x100).i32(1280).i32(720).sub(0x81, 0x6c).store32().ret()).has_value());
+    CHECK(rig.mem(0x100, 4) == std::vector<std::uint8_t>{1, 0, 0, 0});
+    CHECK(rig.state.records[0x816c] == std::vector<std::uint32_t>{1280, 720});
+    REQUIRE(rig.run(Asm().i32(0x104).i32(800).i32(600).sub(0x81, 0x6c).store32().ret()).has_value());
+    CHECK(rig.mem(0x104, 4) == std::vector<std::uint8_t>{0, 0, 0, 0});
+    CHECK(rig.state.records[0x816c] == std::vector<std::uint32_t>{1280, 720});
+}
+
+TEST_CASE("system directory paths preserve a UTF-8 game directory") {
+    Rig rig(false);
+    rig.state.game_dir = rig.data / "游戏";
+    std::filesystem::create_directories(rig.state.game_dir);
+    rig.put(0x100, rig.state.game_dir.string() + "\\UserData");
+    REQUIRE(rig.run(Asm().i32(0x100).sub(0x80, 0x28).ret()).has_value());
+    CHECK(std::filesystem::is_directory(rig.data / "UserData"));
+}
+
 TEST_CASE("rolling hash 81:E9 matches the reference computation") {
     Rig rig(false);
     const std::string text = "AmairoChocolate2ML";

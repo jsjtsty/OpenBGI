@@ -67,6 +67,7 @@ class Renderer {
     std::uint32_t logical_height() const;
     // Request activation once the interactive session is ready.
     void raise_window();
+    Result<void> resize_canvas(std::uint32_t width, std::uint32_t height);
 
     // For compute-side users (render/display): the device and the packed shaders of this renderer.
     SDL_GPUDevice* native_device() const;

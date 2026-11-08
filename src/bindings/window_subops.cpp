@@ -163,12 +163,21 @@ void register_window_subops(vm::SubopRegistry& r, SystemState& state, Display* d
         return 0;
     });
     // (a, b, c): window / display mode; b is 0 or 1 and c below 16
-    add(r, 0x8060, "window mode", 3, 0, [s](Ctx& c) {
+    add(r, 0x8060, "window mode", 3, 0, [s, display](Ctx& c) {
         const Word a = c.pop(), b = c.pop(), cc = c.pop();
         if (!c.ok()) return 0;
         if (b > 1 || cc > 0xF) {
             c.fail(Errc::Range, "window mode arguments out of range");
             return 0;
+        }
+        if (display) {
+            const auto [width, height] = s->pair_table[cc];
+            if (width && height) {
+                if (auto result = display->resize_screen(width, height); !result) {
+                    c.fail(result.error().code, result.error().message);
+                    return 0;
+                }
+            }
         }
         s->records[0x8060] = {cc, b, a};
         return 0;
@@ -279,6 +288,18 @@ void register_window_subops(vm::SubopRegistry& r, SystemState& state, Display* d
         return static_cast<int>(vm::StayThread);
     });
     add_record(r, state, 0x8164, "client size", 2);
+    add(r, 0x8167, "get client size", 1, 0, [s, display](Ctx& c) {
+        const Word dst = c.pop();
+        auto w = display ? display->screen_width() : s->display_width;
+        auto h = display ? display->screen_height() : s->display_height;
+        const auto it = s->records.find(0x8164);
+        if (it != s->records.end() && it->second.size() == 2 &&
+            static_cast<std::int32_t>(it->second[0]) > 0 && static_cast<std::int32_t>(it->second[1]) > 0) {
+            w = it->second[0]; h = it->second[1];
+        }
+        c.write(dst, w, 4); c.write(dst + 4, h, 4);
+        return 0;
+    });
     add_record(r, state, 0x8064, "show window", 1);
     // the window moves back to its default place; 1 = done
     add(r, 0xB002, "reset window position", 0, 1, [](Ctx& c) {

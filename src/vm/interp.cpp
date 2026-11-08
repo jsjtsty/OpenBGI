@@ -1,4 +1,5 @@
 #include <cmath>
+#include <chrono>
 #include <algorithm>
 #include <cstdio>
 #include <cstdlib>
@@ -160,7 +161,13 @@ Result<int> Vm::step(Thread& t) {
         const SubopDef* def = registry.find(id);
         if (!def) return fail(Errc::Unsupported, "sub-opcode " + subop_name(id) + " is not implemented");
         const Word depth_before = t.depth;
-        rc = def->fn(c);
+        static const bool perf = std::getenv("OBGI_PERF") != nullptr;
+        if (perf) {
+            const auto started = std::chrono::steady_clock::now();
+            rc = def->fn(c);
+            const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started).count();
+            if (elapsed >= 20) std::fprintf(stderr, "PERF subop %s thread=%u ip=%X ms=%lld\n", subop_name(id).c_str(), t.id, pc, static_cast<long long>(elapsed));
+        } else rc = def->fn(c);
         if (!c.ok()) return fail(c.error->code, def->name + " (" + subop_name(id) + "): " + c.error->message);
         const std::int64_t ring = static_cast<std::int64_t>(t.expr.size());
         const std::int64_t moved = ((static_cast<std::int64_t>(t.depth) - static_cast<std::int64_t>(depth_before)) % ring + ring) % ring;
@@ -188,6 +195,23 @@ Result<int> Vm::step(Thread& t) {
     case 0x00: { auto v = static_cast<std::int8_t>(r.u8()); t.ip = r.p; c.push(static_cast<Word>(v)); break; }
     case 0x01: { auto v = s16(r.u16()); t.ip = r.p; c.push(static_cast<Word>(static_cast<std::int32_t>(v))); break; }
     case 0x02: { Word v = r.u32(); t.ip = r.p; c.push(v); break; }
+    case 0x03: {
+        const unsigned mode = r.u8();
+        if (mode < 0x80) {
+            for (unsigned i = 0; i <= mode && c.ok(); ++i) c.push(static_cast<Word>(r.sleb()));
+        } else if (mode <= 0x83) {
+            Word value = 0;
+            switch (mode & 3u) {
+            case 0: value = static_cast<Word>(static_cast<std::int8_t>(r.u8())); break;
+            case 1: value = static_cast<Word>(static_cast<std::int32_t>(s16(r.u16()))); break;
+            case 2: value = r.u32(); break;
+            case 3: value = r.u32(); (void)r.u32(); break; // 64-bit operand, low 32 bits pushed
+            }
+            c.push(value);
+        }
+        t.ip = r.p;
+        break;
+    }
     case 0x04: { unsigned v = r.u16(); t.ip = r.p; c.push(make_addr(Tag::Stack, t.sp - v)); break; }
     case 0x05: { unsigned v = r.u16(); t.ip = r.p; c.push((pc + static_cast<Word>(s16(v))) | make_addr(Tag::Program, 0)); break; }
     case 0x06: { unsigned v = r.u16(); t.ip = r.p; c.push(pc + static_cast<Word>(static_cast<std::int32_t>(s16(v)))); break; }
@@ -220,6 +244,20 @@ Result<int> Vm::step(Thread& t) {
         for (unsigned i = 0; i < n; ++i) c.write(addr + i * w, values[n - 1 - i], w);
         break;
     }
+    case 0x0d: { // packed signed immediate: low two bits select the store width
+        const auto packed = r.sleb(); t.ip = r.p;
+        const unsigned width = width_of(static_cast<unsigned>(packed) & 3u);
+        const Word value = static_cast<Word>(packed >> 2);
+        c.write(c.pop(), value, width);
+        break;
+    }
+    case 0x0e: { // full 16-bit stack displacement followed by a packed signed immediate
+        const unsigned offset = r.u16();
+        const auto packed = r.sleb(); t.ip = r.p;
+        const unsigned width = width_of(static_cast<unsigned>(packed) & 3u);
+        c.write(make_addr(Tag::Stack, t.sp - offset), static_cast<Word>(packed >> 2), width);
+        break;
+    }
     case 0x0f: {
         unsigned v = r.u16(); t.ip = r.p;
         c.write(stack_addr(v), c.pop(), width_of(v >> 14));
@@ -239,6 +277,11 @@ Result<int> Vm::step(Thread& t) {
         break;
     }
     case 0x12: { auto v = r.sleb(); t.ip = r.p; t.sp = static_cast<Word>(t.sp + v); break; }
+    case 0x13: { // signed branch displacement is relative to the opcode address
+        const auto delta = s16(r.u16());
+        t.ip = pc + static_cast<Word>(static_cast<std::int32_t>(delta));
+        break;
+    }
     case 0x14: { t.ip = r.p; t.ip = code_target(c, c.pop()); break; }
     case 0x15: {
         unsigned mode = r.u8();
@@ -661,6 +704,54 @@ Result<int> Vm::step(Thread& t) {
         Word dst = c.pop();
         std::string text = format_script(c, fmt);
         c.write_cstring(dst, text);
+        break;
+    }
+    case 0xe3: { // push one or more stack-relative values
+        const unsigned count = unsigned(r.u8()) + 1;
+        for (unsigned i = 0; i < count && c.ok(); ++i) {
+            const unsigned local = r.u16();
+            const unsigned width = width_of(local >> 14);
+            c.push(static_cast<Word>(c.read(stack_addr(local), width, width < 4)));
+        }
+        t.ip = r.p;
+        break;
+    }
+    case 0xe4: { // read through the address in a local plus a packed displacement
+        const unsigned local = r.u16();
+        const auto packed = r.sleb(); t.ip = r.p;
+        const unsigned local_width = width_of(local >> 14);
+        const Word base = static_cast<Word>(c.read(stack_addr(local), local_width, local_width < 4));
+        const unsigned width = width_of(static_cast<unsigned>(packed) & 3u);
+        c.push(static_cast<Word>(c.read(base + static_cast<Word>(packed >> 2), width, width < 4)));
+        break;
+    }
+    case 0xe5: { // read from the popped base plus a scaled local value
+        const unsigned local = r.u16();
+        const auto packed = r.sleb(); t.ip = r.p;
+        const Word base = c.pop();
+        const unsigned local_width = width_of(local >> 14);
+        const Word index = static_cast<Word>(c.read(stack_addr(local), local_width, local_width < 4));
+        const unsigned width = width_of(static_cast<unsigned>(packed) & 3u);
+        const Word addr = base + index * static_cast<Word>(packed >> 2);
+        c.push(static_cast<Word>(c.read(addr, width, width < 4)));
+        break;
+    }
+    case 0xe6: { // store a stack-relative signed value plus an immediate through a popped pointer
+        const unsigned local = r.u16();
+        const auto packed = r.sleb(); t.ip = r.p;
+        const Word dst = c.pop();
+        const unsigned source_width = width_of(local >> 14);
+        const Word value = static_cast<Word>(c.read(stack_addr(local), source_width, source_width < 4));
+        c.write(dst, value + static_cast<Word>(packed >> 2), width_of(static_cast<unsigned>(packed) & 3u));
+        break;
+    }
+    case 0xe7: { // store base plus a scaled local value through a popped pointer
+        const unsigned local = r.u16();
+        const auto packed = r.sleb(); t.ip = r.p;
+        const Word base = c.pop(), dst = c.pop();
+        const unsigned local_width = width_of(local >> 14);
+        const Word index = static_cast<Word>(c.read(stack_addr(local), local_width, local_width < 4));
+        c.write(dst, base + index * static_cast<Word>(packed >> 2), width_of(static_cast<unsigned>(packed) & 3u));
         break;
     }
     case 0xff: {

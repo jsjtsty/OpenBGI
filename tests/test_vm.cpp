@@ -84,6 +84,172 @@ TEST_CASE("vm arithmetic and store") {
     CHECK(g32(f.vm, 0x100) == 42);
 }
 
+TEST_CASE("vm multi and fixed immediate pushes") {
+    Fixture f;
+    Thread t;
+    t.expr.resize(16);
+    t.program = {0x03, 0x02, 0x00, 0x7e, 0x80, 0x01, // three SLEB values: 0, -2, 128
+                 0x03, 0x80, 0x80,                   // signed 8-bit -128
+                 0x03, 0x81, 0x00, 0x80,             // signed 16-bit -32768
+                 0x03, 0x82, 0x78, 0x56, 0x34, 0x12,
+                 0x03, 0x83, 0xef, 0xcd, 0xab, 0x89, 0x11, 0x22, 0x33, 0x44,
+                 0x03, 0x84}; // reserved mode consumes only the mode byte
+    for (int i = 0; i < 6; ++i) REQUIRE(f.vm.step(t).has_value());
+    CHECK(t.ip == t.program.size());
+    REQUIRE(t.depth == 7);
+    CHECK(t.expr[0] == 0);
+    CHECK(t.expr[1] == 0xfffffffeu);
+    CHECK(t.expr[2] == 128);
+    CHECK(t.expr[3] == 0xffffff80u);
+    CHECK(t.expr[4] == 0xffff8000u);
+    CHECK(t.expr[5] == 0x12345678u);
+    CHECK(t.expr[6] == 0x89abcdefu);
+}
+
+TEST_CASE("vm packed immediate store") {
+    Fixture f;
+    Asm a;
+    a.i32(0x100).raw({0x0d, 0x06}); // 32-bit 1
+    a.i32(0x104).raw({0x0d, 0x79}); // 16-bit -2
+    a.i32(0x106).raw({0x0d, 0x80, 0x04}); // 8-bit 128, multi-byte encoding
+    a.i32(0x107).raw({0x0d, 0x07}); // width code 3 falls back to 8-bit
+    a.ret();
+    f.provider.put("main", a);
+    REQUIRE(f.vm.spawn(small(), "x.arc", "main"));
+    REQUIRE(f.vm.run_frame(0).has_value());
+    CHECK(g32(f.vm, 0x100) == 1);
+    CHECK(g32(f.vm, 0x104) == 0x0180fffeu);
+}
+
+TEST_CASE("vm stack-relative packed immediate store") {
+    Fixture f;
+    Thread t;
+    t.stack.resize(0x6000, 0xcc);
+    t.expr.resize(8);
+    t.expr[0] = 0x12345678;
+    t.depth = 1;
+    t.sp = 0x5000;
+    t.program = {0x0e, 0x10, 0x40, 0x79,       // [sp-0x4010] = -2, 16-bit
+                 0x0e, 0x08, 0x00, 0x80, 0x04, // [sp-8] = 128, 8-bit
+                 0x0e, 0x04, 0x00, 0x06,       // [sp-4] = 1, 32-bit
+                 0x0e, 0x01, 0x00, 0x07};      // [sp-1] = 1, width code 3
+    for (int i = 0; i < 4; ++i) REQUIRE(f.vm.step(t).has_value());
+    CHECK(t.stack[0x0ff0] == 0xfe);
+    CHECK(t.stack[0x0ff1] == 0xff);
+    CHECK(t.stack[0x4ff0] == 0xcc); // displacement uses all 16 bits
+    CHECK(t.stack[0x4ff8] == 0x80);
+    CHECK(load_u32le(t.stack.data() + 0x4ffc) == 0x01000001u);
+    CHECK(t.ip == t.program.size());
+    CHECK(t.depth == 1);
+    CHECK(t.expr[0] == 0x12345678);
+}
+
+TEST_CASE("vm relative jump uses the opcode address") {
+    Fixture f;
+    Thread t;
+    t.expr.resize(4);
+    t.program = {0x13, 0x05, 0x00, 0, 0, 0x13, 0xfb, 0xff};
+    REQUIRE(f.vm.step(t).has_value());
+    CHECK(t.ip == 5);
+    REQUIRE(f.vm.step(t).has_value());
+    CHECK(t.ip == 0);
+    CHECK(t.depth == 0);
+}
+
+TEST_CASE("vm push several stack-relative values") {
+    Fixture f;
+    Thread t;
+    t.stack.resize(0x100);
+    t.expr.resize(8);
+    t.sp = 0x100;
+    t.stack[0xfc] = 0x80;
+    t.stack[0xfa] = 0xfe; t.stack[0xfb] = 0xff;
+    t.stack[0xf8] = 0x34; t.stack[0xf9] = 0x12;
+    t.program = {0xe3, 0x02, 0x04, 0x00, 0x06, 0x40, 0x08, 0x80};
+    REQUIRE(f.vm.step(t).has_value());
+    REQUIRE(t.depth == 3);
+    CHECK(t.expr[0] == 0xffffff80u);
+    CHECK(t.expr[1] == 0xfffffffeu);
+    CHECK(t.expr[2] == 0xfffe1234u);
+    CHECK(t.ip == t.program.size());
+}
+
+TEST_CASE("vm load through local address plus packed displacement") {
+    Fixture f;
+    Thread t;
+    t.stack.resize(0x100);
+    t.expr.resize(8);
+    t.sp = 0x100;
+    t.stack[0xfc] = 0x00; t.stack[0xfd] = 0x01; // 32-bit base = 0x100
+    const std::uint8_t values[] = {0x80, 0xfe, 0xff};
+    REQUIRE(f.vm.global.write(0xfe, sizeof values, values));
+    t.program = {0xe4, 0x04, 0x80, 0x78, // signed 8-bit [0x100 - 2]
+                 0xe4, 0x04, 0x80, 0x7d}; // signed 16-bit [0x100 - 1]
+    REQUIRE(f.vm.step(t).has_value());
+    REQUIRE(f.vm.step(t).has_value());
+    REQUIRE(t.depth == 2);
+    CHECK(t.expr[0] == 0xffffff80u);
+    CHECK(t.expr[1] == 0xfffffffeu);
+    CHECK(t.ip == t.program.size());
+}
+
+TEST_CASE("vm load through base plus scaled local") {
+    Fixture f;
+    Thread t;
+    t.stack.resize(0x100);
+    t.expr.resize(8);
+    t.sp = 0x100;
+    t.stack[0xfc] = 0xfe; // signed index -2
+    const std::uint8_t value[] = {0x34, 0x80};
+    REQUIRE(f.vm.global.write(0xf8, sizeof value, value));
+    t.expr[0] = 0x100; t.depth = 1;
+    t.program = {0xe5, 0x04, 0x00, 0x11}; // [base + (-2)*4], signed 16-bit
+    REQUIRE(f.vm.step(t).has_value());
+    CHECK(t.depth == 1);
+    CHECK(t.expr[0] == 0xffff8034u);
+    CHECK(t.ip == t.program.size());
+}
+
+TEST_CASE("vm store base plus scaled local") {
+    Fixture f;
+    Thread t;
+    t.stack.resize(0x100);
+    t.expr.resize(8);
+    t.sp = 0x100;
+    t.stack[0xfe] = 0xfe; t.stack[0xff] = 0xff; // signed index -2
+    t.expr[0] = 0x100; t.expr[1] = 0x1000; t.depth = 2;
+    t.program = {0xe7, 0x02, 0x40, 0x12}; // store 0x1000 + (-2)*4 as a dword
+    REQUIRE(f.vm.step(t).has_value());
+    CHECK(g32(f.vm, 0x100) == 0xff8);
+    CHECK(t.depth == 0);
+    CHECK(t.ip == t.program.size());
+}
+
+TEST_CASE("vm store local plus packed immediate") {
+    Fixture f;
+    Thread t;
+    t.stack.resize(0x100);
+    t.expr.resize(8);
+    t.sp = 0x100;
+    t.stack[0xfc] = 0xfb; // signed 8-bit -5
+    t.stack[0xfa] = 0; t.stack[0xfb] = 0x80; // signed 16-bit -32768
+    for (unsigned i = 0xf0; i < 0xf4; ++i) t.stack[i] = 0xff;
+    t.program = {0xe6, 0x04, 0x00, 0x0e, // 32-bit destination: -5 + 3
+                 0xe6, 0x06, 0x40, 0x75, // 16-bit destination: -32768 - 3
+                 0xe6, 0x10, 0x80, 0x06}; // 32-bit destination: 0xffffffff + 1
+    t.expr[0] = 0x100; t.depth = 1;
+    REQUIRE(f.vm.step(t).has_value());
+    t.expr[0] = 0x104; t.depth = 1;
+    REQUIRE(f.vm.step(t).has_value());
+    t.expr[0] = 0x108; t.depth = 1;
+    REQUIRE(f.vm.step(t).has_value());
+    CHECK(g32(f.vm, 0x100) == 0xfffffffeu);
+    CHECK(g32(f.vm, 0x104) == 0x7ffdu);
+    CHECK(g32(f.vm, 0x108) == 0);
+    CHECK(t.depth == 0);
+    CHECK(t.ip == t.program.size());
+}
+
 TEST_CASE("vm signed ops, division by zero and shifts") {
     Fixture f;
     Asm a;

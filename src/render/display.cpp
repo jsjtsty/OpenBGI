@@ -1,3 +1,4 @@
+#include <chrono>
 #include <cstdlib>
 #include <cstdio>
 #include "render/display.hpp"
@@ -289,6 +290,26 @@ Result<std::unique_ptr<Display>> Display::create(Renderer& renderer, std::uint32
     if (!tex) return std::unexpected(tex.error());
     m.screen_tex = std::move(*tex);
     return d;
+}
+
+Result<void> Display::resize_screen(std::uint32_t width, std::uint32_t height) {
+    Impl& m = *impl_;
+    if (!width || !height || std::uint64_t{width} * height > (1u << 26)) return fail(Errc::Range, "bad screen size");
+    if (width == m.screen.info.width && height == m.screen.info.height) return {};
+    if (auto r = m.flush(true); !r) return r;
+    auto buffer = m.make_buffer(width * height);
+    if (!buffer) return std::unexpected(buffer.error());
+    auto tex = m.renderer->create_target_texture(width, height);
+    if (!tex) { SDL_ReleaseGPUBuffer(m.device, *buffer); return std::unexpected(tex.error()); }
+    if (auto r = m.renderer->resize_canvas(width, height); !r) {
+        SDL_ReleaseGPUBuffer(m.device, *buffer);
+        return r;
+    }
+    SDL_ReleaseGPUBuffer(m.device, m.screen.buffer);
+    m.screen.buffer = *buffer;
+    m.screen.info = {width, height, SlotFormat::Bgrx};
+    m.screen_tex = std::move(*tex);
+    return m.fill(m.screen, 0);
 }
 
 const SlotInfo* Display::slot(std::uint32_t id) const {
@@ -976,7 +997,11 @@ Result<std::vector<std::uint32_t>> Display::read_screen() { return impl_->downlo
 
 Result<void> Display::present() {
     Impl& m = *impl_;
+    const bool perf = std::getenv("OBGI_PERF") != nullptr;
+    const auto perf_start = std::chrono::steady_clock::now();
     if (auto r = compose(); !r) return r;
+    const auto compose_ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - perf_start).count();
+    if (perf && compose_ms >= 20) std::fprintf(stderr, "PERF compose ms=%lld\n", static_cast<long long>(compose_ms));
 
     auto c = m.ensure_cmd();
     if (!c) return std::unexpected(c.error());

@@ -82,6 +82,26 @@ std::uint32_t Renderer::logical_width() const { return impl_->opt.logical_width;
 std::uint32_t Renderer::logical_height() const { return impl_->opt.logical_height; }
 void Renderer::raise_window() { if (impl_->window) SDL_RaiseWindow(impl_->window); }
 
+Result<void> Renderer::resize_canvas(std::uint32_t width, std::uint32_t height) {
+    auto& m = *impl_;
+    if (!width || !height || std::uint64_t{width} * height > (1u << 26)) return fail(Errc::Range, "bad canvas size");
+    if (m.opt.logical_width == width && m.opt.logical_height == height) return {};
+    if (m.offscreen) {
+        SDL_GPUTextureCreateInfo ti{};
+        ti.type = SDL_GPU_TEXTURETYPE_2D;
+        ti.format = m.target_format;
+        ti.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
+        ti.width = width; ti.height = height;
+        ti.layer_count_or_depth = 1; ti.num_levels = 1;
+        auto* target = SDL_CreateGPUTexture(m.device, &ti);
+        if (!target) return std::unexpected(sdl_error("resize offscreen target"));
+        SDL_ReleaseGPUTexture(m.device, m.offscreen);
+        m.offscreen = target;
+    }
+    m.opt.logical_width = width; m.opt.logical_height = height;
+    return {};
+}
+
 Result<void> Renderer::update_texture(Texture& texture, ByteView pixels) {
     auto& m = *impl_;
     const auto bytes = std::size_t{texture.width()} * texture.height() * 4;
