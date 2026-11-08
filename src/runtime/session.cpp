@@ -1,9 +1,11 @@
 #include "runtime/session.hpp"
 #include <algorithm>
+#include <cctype>
 #include <cstdio>
 #include <cstdlib>
 #include <ctime>
 #include <sstream>
+#include <string_view>
 #include "audio/device.hpp"
 #include "audio/timeline.hpp"
 #include "bindings/arc_image_source.hpp"
@@ -36,6 +38,25 @@ std::filesystem::path default_data_dir(const std::filesystem::path& game) {
     std::ostringstream id;
     id << std::hex << hash;
     return base / "OpenBGI" / id.str();
+}
+
+std::optional<std::string> game_name_from_system_ipl(vm::ProgramProvider& programs) {
+    auto block = programs.load("system.arc", "ipl._bp");
+    if (!block || block->size() < 8) return std::nullopt;
+    const std::uint32_t offset = load_u32le(block->data());
+    const std::uint32_t size = load_u32le(block->data() + 4);
+    if (static_cast<std::uint64_t>(offset) + size > block->size()) return std::nullopt;
+    const std::string_view code(reinterpret_cast<const char*>(block->data() + offset), size);
+    constexpr std::string_view marker("debug.inf\0", 10);
+    const auto marker_at = code.find(marker);
+    if (marker_at == std::string_view::npos) return std::nullopt;
+    const std::size_t begin = marker_at + marker.size();
+    const auto end = code.find('\0', begin);
+    if (end == std::string_view::npos || end == begin || end - begin > 128) return std::nullopt;
+    const std::string_view name = code.substr(begin, end - begin);
+    if (!std::all_of(name.begin(), name.end(), [](unsigned char ch) { return std::isalnum(ch) != 0; }))
+        return std::nullopt;
+    return std::string(name);
 }
 } // namespace
 
@@ -80,6 +101,7 @@ Result<std::unique_ptr<EngineSession>> EngineSession::create(SessionOptions opti
     std::unique_ptr<EngineSession> session(new EngineSession);
     session->impl_ = std::make_unique<Impl>(std::move(options));
     auto& m = *session->impl_;
+    if (auto name = game_name_from_system_ipl(m.programs)) m.system.game_name = std::move(*name);
     RendererOptions ro;
     ro.headless = !m.options.window;
     ro.logical_width = m.options.width; ro.logical_height = m.options.height;

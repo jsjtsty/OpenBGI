@@ -188,7 +188,7 @@ Result<int> Vm::step(Thread& t) {
     case 0x00: { auto v = static_cast<std::int8_t>(r.u8()); t.ip = r.p; c.push(static_cast<Word>(v)); break; }
     case 0x01: { auto v = s16(r.u16()); t.ip = r.p; c.push(static_cast<Word>(static_cast<std::int32_t>(v))); break; }
     case 0x02: { Word v = r.u32(); t.ip = r.p; c.push(v); break; }
-    case 0x04: { unsigned v = r.u16(); t.ip = r.p; c.push(make_addr(Tag::Stack, t.sp - v) | 0); break; }
+    case 0x04: { unsigned v = r.u16(); t.ip = r.p; c.push(make_addr(Tag::Stack, t.sp - v)); break; }
     case 0x05: { unsigned v = r.u16(); t.ip = r.p; c.push((pc + static_cast<Word>(s16(v))) | make_addr(Tag::Program, 0)); break; }
     case 0x06: { unsigned v = r.u16(); t.ip = r.p; c.push(pc + static_cast<Word>(static_cast<std::int32_t>(s16(v)))); break; }
     case 0x08: {
@@ -223,6 +223,19 @@ Result<int> Vm::step(Thread& t) {
     case 0x0f: {
         unsigned v = r.u16(); t.ip = r.p;
         c.write(stack_addr(v), c.pop(), width_of(v >> 14));
+        break;
+    }
+    case 0x10: // push the current data-frame cursor as an untagged offset
+        t.ip = r.p;
+        c.push(t.sp);
+        break;
+    case 0x11: { // restore/set the data-frame cursor from an untagged offset
+        t.ip = r.p;
+        Word sp = c.pop();
+        if (c.ok()) {
+            if (sp >= t.stack.size()) c.fail(Errc::Range, "frame pointer is outside the thread data area");
+            else t.sp = sp;
+        }
         break;
     }
     case 0x12: { auto v = r.sleb(); t.ip = r.p; t.sp = static_cast<Word>(t.sp + v); break; }
