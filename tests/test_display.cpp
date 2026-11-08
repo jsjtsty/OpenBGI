@@ -2,6 +2,7 @@
 #include <array>
 
 #include "render/display.hpp"
+#include "render/background_fx.hpp"
 #include "support.hpp"
 
 using namespace obgi;
@@ -31,6 +32,27 @@ Rig make_rig(const char* driver) {
 constexpr const char* kDrivers[] = {"vulkan", "direct3d12", "metal"};
 
 } // namespace
+
+TEST_CASE("GPU crossfade matches the scalar picture blend" * doctest::test_suite("gpu")) {
+    auto rig = make_rig(nullptr);
+    REQUIRE(rig.display);
+    const std::vector<std::uint32_t> a{0x00010203, 0xff204060, 0x8020ffe0, 0x01551144, 0xffabcdef};
+    const std::vector<std::uint32_t> b{0x00abcdef, 0xffe0a080, 0x40ff2080, 0xffaabbcc, 0x01123456};
+    for (auto format : {SlotFormat::Bgrx, SlotFormat::Bgra}) {
+        REQUIRE(rig.display->upload_slot(1, 5, 1, format, a));
+        REQUIRE(rig.display->upload_slot(2, 5, 1, format, b));
+        auto& sprite = rig.display->sprite(7);
+        sprite.slot = 1; sprite.slot2 = 2; sprite.blend = 0; sprite.visible = true;
+        for (unsigned ratio : {1u, 17u, 128u, 255u, 256u}) {
+            sprite.mix_ratio = ratio;
+            REQUIRE(rig.display->compose());
+            auto mixed = rig.display->read_slot(0x7f500007);
+            REQUIRE(mixed);
+            auto expected = bgfx::crossfade_to(bgfx::Image{5, 1, a}, bgfx::Image{5, 1, b}, int(ratio), format == SlotFormat::Bgra);
+            CHECK(*mixed == expected.px);
+        }
+    }
+}
 
 TEST_CASE("resizing the screen preserves the full logical canvas" * doctest::test_suite("gpu")) {
     auto rig = make_rig(nullptr);

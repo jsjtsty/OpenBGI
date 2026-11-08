@@ -47,6 +47,7 @@ struct Display::Impl {
     SDL_GPUDevice* device = nullptr;
     SDL_GPUComputePipeline* blit_pipeline = nullptr;
     SDL_GPUComputePipeline* present_pipeline = nullptr;
+    SDL_GPUComputePipeline* crossfade_pipeline = nullptr;
     SDL_GPUBuffer* dummy = nullptr; // bound as the unused read-only buffer of fills
     std::map<std::uint32_t, GpuSlot> slots;
     std::uint64_t next_generation = 0;
@@ -94,6 +95,7 @@ struct Display::Impl {
         if (dummy) SDL_ReleaseGPUBuffer(device, dummy);
         if (blit_pipeline) SDL_ReleaseGPUComputePipeline(device, blit_pipeline);
         if (present_pipeline) SDL_ReleaseGPUComputePipeline(device, present_pipeline);
+        if (crossfade_pipeline) SDL_ReleaseGPUComputePipeline(device, crossfade_pipeline);
         screen_tex.reset();
     }
 
@@ -157,6 +159,21 @@ struct Display::Impl {
         SDL_BindGPUComputeStorageBuffers(pass, 0, &src, 1);
         SDL_PushGPUComputeUniformData(*c, 0, &p, sizeof p);
         SDL_DispatchGPUCompute(pass, (p.job[0] + 7) / 8, (p.job[1] + 7) / 8, 1);
+        SDL_EndGPUComputePass(pass);
+        return {};
+    }
+
+    Result<void> crossfade(GpuSlot& dst, GpuSlot& a, GpuSlot& b, std::uint32_t ratio) {
+        auto c = ensure_cmd();
+        if (!c) return std::unexpected(c.error());
+        SDL_GPUStorageBufferReadWriteBinding rw{dst.buffer, false};
+        SDL_GPUComputePass* pass = SDL_BeginGPUComputePass(*c, nullptr, 0, &rw, 1);
+        SDL_BindGPUComputePipeline(pass, crossfade_pipeline);
+        SDL_GPUBuffer* sources[] = {a.buffer, b.buffer};
+        SDL_BindGPUComputeStorageBuffers(pass, 0, sources, 2);
+        const std::uint32_t info[] = {a.info.width, a.info.height, ratio, a.info.format == SlotFormat::Bgra ? 1u : 0u};
+        SDL_PushGPUComputeUniformData(*c, 0, info, sizeof info);
+        SDL_DispatchGPUCompute(pass, (a.info.width + 7) / 8, (a.info.height + 7) / 8, 1);
         SDL_EndGPUComputePass(pass);
         return {};
     }
@@ -277,6 +294,7 @@ Result<std::unique_ptr<Display>> Display::create(Renderer& renderer, std::uint32
     };
     if (auto r = make_pipeline("blit_rect", 1, 1, 0, m.blit_pipeline); !r) return std::unexpected(r.error());
     if (auto r = make_pipeline("slot_present", 1, 0, 1, m.present_pipeline); !r) return std::unexpected(r.error());
+    if (auto r = make_pipeline("crossfade", 2, 1, 0, m.crossfade_pipeline); !r) return std::unexpected(r.error());
 
     auto dummy = m.make_buffer(1);
     if (!dummy) return std::unexpected(dummy.error());
@@ -849,13 +867,14 @@ Result<void> Display::compose(std::optional<std::uint32_t> max_priority) {
                 const std::uint32_t tmp_id = 0x7F500000u | (kv->first & 0xFFFFFu);
                 const std::vector<std::int64_t> key = {sp.slot, sp.slot2, sp.mix_ratio, version_of(sp.slot), version_of(sp.slot2)};
                 if (!m.slots.count(tmp_id) || mc.key != key) {
-                    auto pa = m.download(a0->second);
-                    auto pb = m.download(b0->second);
-                    if (pa && pb) {
-                        const bgfx::Image ia{a0->second.info.width, a0->second.info.height, std::move(*pa)}, ib{b0->second.info.width, b0->second.info.height, std::move(*pb)};
-                        const bgfx::Image mixed = bgfx::crossfade_to(ia, ib, static_cast<int>(std::min(sp.mix_ratio, 0x100u)), a0->second.info.format == SlotFormat::Bgra);
-                        if (upload_slot(tmp_id, mixed.w, mixed.h, a0->second.info.format, mixed.px)) mc.key = key, m.scales.erase(kv->first);
+                    const auto tmp = m.slots.find(tmp_id);
+                    if (tmp == m.slots.end() || tmp->second.info.width != a0->second.info.width ||
+                        tmp->second.info.height != a0->second.info.height || tmp->second.info.format != a0->second.info.format) {
+                        if (auto result = create_slot(tmp_id, a0->second.info.width, a0->second.info.height, a0->second.info.format); !result) return result;
                     }
+                    if (auto result = m.crossfade(m.slots.at(tmp_id), a0->second, b0->second, std::min(sp.mix_ratio, 0x100u)); !result) return result;
+                    mc.key = key;
+                    m.scales.erase(kv->first);
                 }
                 if (m.slots.count(tmp_id) && mc.key == key) draw_id = tmp_id;
             }
