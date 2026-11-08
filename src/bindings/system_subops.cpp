@@ -14,6 +14,7 @@
 #include <system_error>
 
 #include "formats/sdc.hpp"
+#include "resources/directory_index.hpp"
 #include "text/encoding.hpp"
 
 namespace obgi {
@@ -70,7 +71,14 @@ std::filesystem::path host_path(const SystemState& s, const std::string& script_
         else utf8 += {char(0xF0 | (ch >> 18)), char(0x80 | ((ch >> 12) & 0x3F)), char(0x80 | ((ch >> 6) & 0x3F)), char(0x80 | (ch & 0x3F))};
     }
     std::filesystem::path p(std::u8string(utf8.begin(), utf8.end()));
-    if (in_game) p = s.game_dir / p;
+    if (in_game) {
+        // The prefix came from the host itself. A simple relative suffix can be
+        // redirected without weakly_canonical's filesystem lookups.
+        auto normalized = p.lexically_normal();
+        if (!normalized.is_absolute() && (normalized.empty() || *normalized.begin() != ".."))
+            return s.data_dir / normalized;
+        p = s.game_dir / p;
+    }
     std::error_code ec;
     auto rel = std::filesystem::relative(p, s.game_dir, ec);
     if (!ec && !rel.empty() && *rel.begin() != "..") return s.data_dir / rel;
@@ -123,6 +131,7 @@ constexpr Word kGdbOk = 0, kGdbMissing = 1, kGdbDamaged = 2;
 void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourceFinder& resources) {
     SystemState* s = &state;
     ArcResourceFinder* res = &resources;
+    auto directory_index = std::make_shared<DirectoryIndex>();
 
     // the engine clock in milliseconds (low 32 bits): the scheduler's time
     add(r, 0x8004, "clock", 0, 1, [](Ctx& c) {
@@ -229,19 +238,33 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     });
     // (prefix, name): does the resource exist, as a file (an absolute path, or one relative to the game directory;
     // paths under the game directory are looked up in the data directory first) or as an archive member
-    add(r, 0x8034, "resource exists", 2, 1, [s, res](Ctx& c) {
+    add(r, 0x8034, "resource exists", 2, 1, [s, res, directory_index](Ctx& c) {
         std::string name = c.cstring(c.pop());
         std::string prefix = c.cstring(c.pop());
         if (!c.ok()) return 0;
         std::error_code ec;
         bool found = false;
         if (std::getenv("OBGI_DBG34")) std::fprintf(stderr, "80:34 prefix=[%s] name=[%s]\n", prefix.c_str(), name.c_str());
-        if (!name.empty()) {
-            const std::filesystem::path as_given = host_path(*s, name);
-            found = std::filesystem::is_regular_file(as_given, ec) || std::filesystem::is_regular_file(std::filesystem::path(name), ec);
-            if (!found && std::filesystem::path(name).is_relative()) found = std::filesystem::is_regular_file(s->game_dir / name, ec);
+        const std::string game_prefix = s->game_dir.string() + "\\";
+        const bool absolute_game_path = !name.empty() && name.starts_with(game_prefix);
+        if (absolute_game_path) {
+            const auto redirected = host_path(*s, name);
+            std::string normalized = name;
+            std::replace(normalized.begin(), normalized.end(), '\\', '/');
+            const std::filesystem::path original(normalized);
+            found = directory_index->is_regular_file(redirected, c.vm.frame) ||
+                    directory_index->is_regular_file(original, c.vm.frame);
+            // A literal backslash can also occur in a POSIX filename.
+            if (!found) found = directory_index->is_regular_file(std::filesystem::path(name), c.vm.frame);
+            if (!found) found = res->exists_in_archives(prefix, name);
+        } else {
+            if (!name.empty()) {
+                const std::filesystem::path as_given = host_path(*s, name);
+                found = std::filesystem::is_regular_file(as_given, ec) || std::filesystem::is_regular_file(std::filesystem::path(name), ec);
+                if (!found && std::filesystem::path(name).is_relative()) found = std::filesystem::is_regular_file(s->game_dir / name, ec);
+            }
+            if (!found) found = res->exists(prefix, name);
         }
-        if (!found) found = res->exists(prefix, name);
         c.push(found ? 1 : 0);
         return 0;
     });
@@ -432,7 +455,8 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     });
     // (prefix, name): deletes a file; only files OpenBGI itself wrote (the data directory) can be removed, the game's
     // own are read-only. Pushes 1 when a file was deleted.
-    add(r, 0x8033, "delete file", 2, 1, [s](Ctx& c) {
+    add(r, 0x8033, "delete file", 2, 1, [s, directory_index](Ctx& c) {
+        directory_index->clear();
         std::string name = c.cstring(c.pop());
         const Word prefix_addr = c.pop();
         std::string prefix = prefix_addr ? c.cstring(prefix_addr) : std::string();
@@ -547,7 +571,8 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
         c.push(dir ? 1 : 0);
         return 0;
     });
-    add(r, 0x8028, "create directory", 1, 1, [s](Ctx& c) {
+    add(r, 0x8028, "create directory", 1, 1, [s, directory_index](Ctx& c) {
+        directory_index->clear();
         std::string path = c.cstring(c.pop());
         if (!c.ok()) return 0;
         std::error_code ec;
@@ -590,7 +615,8 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
         return 0;
     });
     // save BGI.gdb. The original returns an unset register here, so the value pushed (0) carries no information.
-    add(r, 0x8081, "save global data", 0, 1, [s](Ctx& c) {
+    add(r, 0x8081, "save global data", 0, 1, [s, directory_index](Ctx& c) {
+        directory_index->clear();
         const std::size_t keep = std::min(s->scratch_size, s->gdb.settings.size());
         if (keep) c.vm.global.read(0, keep, s->gdb.settings.data());
         const auto bytes = gdb_encode(s->gdb);
@@ -1095,7 +1121,8 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     });
     // 80:32 (name, data, size): creates or overwrites a file with the bytes; pushes 1 when all were written. Files inside the game
     // folder go to the data directory (host_path); anything that would land elsewhere is refused (pushes 0).
-    add(r, 0x8032, "write file", 3, 1, [s](Ctx& c) {
+    add(r, 0x8032, "write file", 3, 1, [s, directory_index](Ctx& c) {
+        directory_index->clear();
         const Word size = c.pop(), data = c.pop(), name_addr = c.pop();
         if (!c.ok()) return 0;
         const std::string name = name_addr ? c.cstring(name_addr) : std::string();
@@ -1117,7 +1144,8 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     });
     // 81:2F (directory): 1 when a file can be created there (the original makes and deletes a temporary file), else 0. The
     // scripts ask it about their user-data folder; here: the directory exists on the host (creating it when it is the data dir).
-    add(r, 0x812F, "directory writable", 1, 1, [s](Ctx& c) {
+    add(r, 0x812F, "directory writable", 1, 1, [s, directory_index](Ctx& c) {
+        directory_index->clear();
         const Word addr = c.pop();
         if (!c.ok()) return 0;
         const std::string name = addr ? c.cstring(addr) : std::string();

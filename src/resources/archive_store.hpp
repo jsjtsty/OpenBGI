@@ -18,13 +18,17 @@ class ArcResourceFinder {
     explicit ArcResourceFinder(std::filesystem::path game_dir);
 
     // `prefix` names the archive (with or without ".arc"); when it matches none, every archive is searched.
-    Result<std::vector<std::uint8_t>> read(std::string_view prefix, std::string_view name);
+    Result<std::vector<std::uint8_t>> read(std::string_view prefix, std::string_view name, bool* from_loose = nullptr);
 
     Result<std::vector<std::uint8_t>> read_archive(std::string_view archive, std::string_view name);
     void add_search_path(std::filesystem::path path);
 
     // Whether read() would find it (no decoding).
     bool exists(std::string_view prefix, std::string_view name);
+    // Loose resources always override archive entries and may change at runtime.
+    bool has_loose_file(std::string_view name) const;
+    // Check only archive members when the caller has already checked all loose-file locations.
+    bool exists_in_archives(std::string_view prefix, std::string_view name);
 
   private:
     std::optional<ByteView> locate(std::string_view prefix, std::string_view name);

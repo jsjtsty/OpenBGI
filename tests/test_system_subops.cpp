@@ -2,8 +2,10 @@
 
 #include <cstring>
 #include <filesystem>
+#include <fstream>
 
 #include "bindings/system_subops.hpp"
+#include "bindings/arc_image_source.hpp"
 #include "support.hpp"
 #include "vm/vm.hpp"
 
@@ -95,6 +97,97 @@ TEST_CASE("render size checks the desktop aspect ratio") {
     REQUIRE(rig.run(Asm().i32(0x104).i32(800).i32(600).sub(0x81, 0x6c).store32().ret()).has_value());
     CHECK(rig.mem(0x104, 4) == std::vector<std::uint8_t>{0, 0, 0, 0});
     CHECK(rig.state.records[0x816c] == std::vector<std::uint32_t>{1280, 720});
+}
+
+TEST_CASE("resource existence sees game and redirected data files change immediately") {
+    Rig rig(false);
+    rig.state.game_dir = rig.data / "游戏";
+    std::filesystem::create_directories(rig.state.game_dir / "UserData");
+    std::filesystem::create_directories(rig.data / "UserData");
+    rig.put(0x100, rig.state.game_dir.string() + "\\UserData\\slot.sud");
+    rig.put(0x200, "");
+    auto check = [&](vm::Word dst, bool expected) {
+        REQUIRE(rig.run(Asm().i32(dst).i32(0x200).i32(0x100).sub(0x80, 0x34).store32().ret()).has_value());
+        CHECK(rig.mem(dst, 4)[0] == (expected ? 1 : 0));
+    };
+    check(0x300, false);
+    { std::ofstream file(rig.data / "UserData/slot.sud"); file << 'x'; }
+    check(0x304, true);
+    std::filesystem::remove(rig.data / "UserData/slot.sud");
+    check(0x308, false);
+    { std::ofstream file(rig.state.game_dir / "UserData/slot.sud"); file << 'x'; }
+    check(0x30c, true);
+    std::filesystem::remove(rig.state.game_dir / "UserData/slot.sud");
+    check(0x310, false);
+}
+
+TEST_CASE("engine file changes invalidate negative directory entries within a frame") {
+    Rig rig(false);
+    rig.state.game_dir = rig.data / "game";
+    std::filesystem::create_directories(rig.state.game_dir / "UserData");
+    std::filesystem::create_directories(rig.data / "UserData");
+    rig.put(0x100, rig.state.game_dir.string() + "\\UserData\\new.sud");
+    rig.put(0x200, ""); rig.put(0x220, "x");
+    Asm a;
+    a.i32(0x300).i32(0x200).i32(0x100).sub(0x80, 0x34).store32();
+    a.i32(0x304).i32(0x100).i32(0x220).i32(1).sub(0x80, 0x32).store32();
+    a.i32(0x308).i32(0x200).i32(0x100).sub(0x80, 0x34).store32();
+    a.i32(0x30c).i32(0x200).i32(0x100).sub(0x80, 0x33).store32();
+    a.i32(0x310).i32(0x200).i32(0x100).sub(0x80, 0x34).store32().ret();
+    REQUIRE(rig.run(a).has_value());
+    CHECK(rig.mem(0x300, 4)[0] == 0);
+    CHECK(rig.mem(0x304, 4)[0] == 1);
+    CHECK(rig.mem(0x308, 4)[0] == 1);
+    CHECK(rig.mem(0x30c, 4)[0] == 1);
+    CHECK(rig.mem(0x310, 4)[0] == 0);
+}
+
+TEST_CASE("archive image cache is bounded and respects live loose overrides") {
+    Rig rig(false);
+    std::filesystem::create_directories(rig.data);
+    auto plain = [](std::uint32_t pixel) {
+        std::vector<std::uint8_t> data(20, 0);
+        data[0] = 1; data[2] = 1; data[4] = 32;
+        for (int i = 0; i < 4; ++i) data[16 + i] = std::uint8_t(pixel >> (8 * i));
+        return data;
+    };
+    auto save = [](const std::filesystem::path& path, const std::vector<std::uint8_t>& data) {
+        std::ofstream out(path, std::ios::binary);
+        out.write(reinterpret_cast<const char*>(data.data()), std::streamsize(data.size()));
+        REQUIRE(out.good());
+    };
+    auto archive = [&](const char* filename, const char* member, std::uint32_t pixel) {
+        std::vector<std::uint8_t> bytes(16 + 128, 0);
+        std::memcpy(bytes.data(), "BURIKO ARC20", 12);
+        bytes[12] = 1;
+        std::memcpy(bytes.data() + 16, member, std::strlen(member));
+        bytes[16 + 0x64] = 20;
+        auto data = plain(pixel);
+        bytes.insert(bytes.end(), data.begin(), data.end());
+        save(rig.data / filename, bytes);
+    };
+    archive("a.arc", "a", 0x11223344);
+    archive("b.arc", "b", 0x55667788);
+    ArcResourceFinder finder(rig.data);
+    ArcImageSource images(finder, 4); // one 1x1 image
+    auto a = images.load("a", "a"); REQUIRE(a); CHECK(a->pixels[0] == 0x11223344);
+    CHECK(images.cached_bytes() == 4); CHECK(images.cached_images() == 1);
+    auto b = images.load("b", "b"); REQUIRE(b); CHECK(b->pixels[0] == 0x55667788);
+    CHECK(images.cached_bytes() == 4); CHECK(images.cached_images() == 1);
+    a = images.load("a", "a"); REQUIRE(a); CHECK(a->pixels[0] == 0x11223344);
+    save(rig.data / "a", plain(0xaabbccdd));
+    a = images.load("a", "a"); REQUIRE(a); CHECK(a->pixels[0] == 0xaabbccdd);
+    save(rig.data / "a", plain(0x12345678));
+    a = images.load("a", "a"); REQUIRE(a); CHECK(a->pixels[0] == 0x12345678);
+    std::filesystem::remove(rig.data / "a");
+    a = images.load("a", "a"); REQUIRE(a); CHECK(a->pixels[0] == 0x11223344);
+    std::filesystem::create_directory(rig.data / "override");
+    save(rig.data / "override/a", plain(0xdeadbeef));
+    finder.add_search_path("override");
+    a = images.load("a", "a"); REQUIRE(a); CHECK(a->pixels[0] == 0xdeadbeef);
+    std::filesystem::remove(rig.data / "override/a");
+    a = images.load("a", "a"); REQUIRE(a); CHECK(a->pixels[0] == 0x11223344);
+    images.clear_cache(); CHECK(images.cached_bytes() == 0); CHECK(images.cached_images() == 0);
 }
 
 TEST_CASE("system directory paths preserve a UTF-8 game directory") {

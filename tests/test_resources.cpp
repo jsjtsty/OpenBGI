@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <fstream>
 #include "bindings/arc_program_provider.hpp"
+#include "resources/directory_index.hpp"
 
 using namespace obgi;
 
@@ -50,6 +51,10 @@ TEST_CASE("resource search paths consistently override archives for media") {
     resources.add_search_path("override");
     CHECK(text(resources.read("data", "same")) == "override");
     CHECK(resources.exists("data", "same"));
+    CHECK(resources.exists_in_archives("data", "same"));
+    write(dir.path / "loose_only", "content");
+    CHECK(resources.exists("data", "loose_only"));
+    CHECK_FALSE(resources.exists_in_archives("data", "loose_only"));
     // Executable modules deliberately use exact archive lookup through the same store.
     ArcProgramProvider programs(resources);
     CHECK(text(programs.load("data.arc", "same")) == "archive");
@@ -64,4 +69,21 @@ TEST_CASE("corrupt selected archives are reported instead of silently selecting 
     auto result = resources.read("broken", "same");
     REQUIRE_FALSE(result);
     CHECK(result.error().code == Errc::Format);
+}
+
+TEST_CASE("directory negative index refreshes and supports explicit invalidation") {
+    Directory dir;
+    DirectoryIndex index;
+    const auto file = dir.path / "new.sud";
+    CHECK_FALSE(index.is_regular_file(file, 1));
+    write(file, "x");
+    CHECK_FALSE(index.is_regular_file(file, 1)); // external changes become visible on the next frame
+    CHECK(index.is_regular_file(file, 2));
+    std::filesystem::remove(file);
+    CHECK_FALSE(index.is_regular_file(file, 2)); // positives still consult the filesystem
+    write(dir.path / "later.sud", "x");
+    CHECK_FALSE(index.is_regular_file(dir.path / "later.sud", 2));
+    index.clear();
+    CHECK(index.is_regular_file(dir.path / "later.sud", 2));
+    CHECK(index.is_regular_file(file, 3) == false);
 }

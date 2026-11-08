@@ -9,7 +9,38 @@
 
 namespace obgi {
 
-ArcImageSource::ArcImageSource(ArcResourceFinder& finder) : finder_(finder) {}
+ArcImageSource::ArcImageSource(ArcResourceFinder& finder, std::size_t cache_limit)
+    : finder_(finder), cache_limit_(cache_limit) {}
+
+void ArcImageSource::clear_cache() {
+    cache_.clear(); lru_.clear(); cached_bytes_ = 0;
+}
+
+Result<SlotImage> ArcImageSource::load(std::string_view prefix, std::string_view name) {
+    // Never retain loose files: they can be edited, replaced or removed while
+    // the game is running. A newly added override takes priority immediately.
+    if (finder_.has_loose_file(name)) return load_uncached(prefix, name);
+    Key key{std::string(prefix), std::string(name)};
+    if (auto it = cache_.find(key); it != cache_.end()) {
+        lru_.splice(lru_.begin(), lru_, it->second.lru);
+        return it->second.image;
+    }
+    bool from_loose = false;
+    auto image = load_uncached(prefix, name, &from_loose);
+    if (!image || from_loose) return image;
+    const std::size_t bytes = image->pixels.size() * sizeof(std::uint32_t);
+    if (bytes && bytes <= cache_limit_) {
+        while (cached_bytes_ > cache_limit_ - bytes) {
+            auto victim = cache_.find(lru_.back());
+            cached_bytes_ -= victim->second.image.pixels.size() * sizeof(std::uint32_t);
+            cache_.erase(victim); lru_.pop_back();
+        }
+        lru_.push_front(key);
+        cache_.emplace(std::move(key), CachedImage{*image, lru_.begin()});
+        cached_bytes_ += bytes;
+    }
+    return image;
+}
 
 namespace {
 
@@ -47,8 +78,8 @@ std::optional<SlotImage> decode_plain_image(ByteView d) {
 
 } // namespace
 
-Result<SlotImage> ArcImageSource::load(std::string_view prefix, std::string_view name) {
-    auto bytes = finder_.read(prefix, name);
+Result<SlotImage> ArcImageSource::load_uncached(std::string_view prefix, std::string_view name, bool* from_loose) {
+    auto bytes = finder_.read(prefix, name, from_loose);
     if (!bytes) return std::unexpected(bytes.error());
     ByteView data = *bytes;
     if (!is_cbg(data))

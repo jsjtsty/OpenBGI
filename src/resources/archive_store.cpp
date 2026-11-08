@@ -79,8 +79,16 @@ std::optional<std::filesystem::path> ArcResourceFinder::loose_file(std::string_v
     return std::nullopt;
 }
 
+bool ArcResourceFinder::has_loose_file(std::string_view name) const {
+    return loose_file(name).has_value();
+}
+
 bool ArcResourceFinder::exists(std::string_view prefix, std::string_view name) {
     return loose_file(name).has_value() || locate(prefix, name).has_value();
+}
+
+bool ArcResourceFinder::exists_in_archives(std::string_view prefix, std::string_view name) {
+    return locate(prefix, name).has_value();
 }
 
 Result<std::vector<std::uint8_t>> ArcResourceFinder::read_archive(std::string_view archive, std::string_view name) {
@@ -95,8 +103,10 @@ Result<std::vector<std::uint8_t>> ArcResourceFinder::read_archive(std::string_vi
     return std::vector<std::uint8_t>(bytes.begin(), bytes.end());
 }
 
-Result<std::vector<std::uint8_t>> ArcResourceFinder::read(std::string_view prefix, std::string_view name) {
+Result<std::vector<std::uint8_t>> ArcResourceFinder::read(std::string_view prefix, std::string_view name, bool* from_loose) {
+    if (from_loose) *from_loose = false;
     if (const auto path = loose_file(name)) {
+        if (from_loose) *from_loose = true;
         std::ifstream input(*path, std::ios::binary | std::ios::ate);
         if (!input) return fail(Errc::Io, "cannot open resource: " + path->string());
         const auto size = input.tellg();
