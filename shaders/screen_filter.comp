@@ -1,0 +1,43 @@
+#version 450
+#extension GL_GOOGLE_include_directive : require
+#include "blend.glsl"
+
+layout(local_size_x = 8, local_size_y = 8) in;
+layout(std430, set = 0, binding = 0) readonly buffer Gray { uint gray_px[]; };
+layout(std430, set = 1, binding = 0) buffer Screen { uint pixels[]; };
+layout(std140, set = 2, binding = 0) uniform Params {
+    uvec4 info; // width, height, colour, kind (4 = gray)
+    ivec4 effect; // level, gray parameter
+};
+
+void main() {
+    uvec2 p = gl_GlobalInvocationID.xy;
+    if (p.x >= info.x || p.y >= info.y) return;
+    uint i = p.y * info.x + p.x;
+    ivec4 src = px_unpack(pixels[i]);
+    ivec3 colour = px_unpack(info.z).xyz;
+    int level = clamp(effect.x, 0, 256), inv = 256 - level;
+    if (info.w == 4u) {
+        int v = (int(gray_px[i] & 255u) << effect.y) + 256 - ((1 << effect.y) + 1) * level;
+        if (v <= 0) pixels[i] = info.z;
+        else if (v < 256) pixels[i] = px_pack(ivec4(clamp(colour + (((src.xyz - colour) * (v >> 1)) >> 7), 0, 255), 0));
+        return;
+    }
+    if (level == 0) return;
+    ivec3 rgb;
+    int alpha = 0;
+    if (info.w == 0u || (info.w == 1u && info.z == 0u)) {
+        rgb = ((src.xyz * inv) >> 8) + ((colour * level) >> 8);
+    } else if (info.w == 1u) {
+        rgb = src.xyz + ((colour * level) >> 8);
+        alpha = src.w;
+    } else if (info.w == 2u) {
+        int luma = (src.x * 28 + src.y * 151 + src.z * 77) >> 9;
+        int v = min((luma + 1) * level, 32767);
+        rgb = ((src.xyz * inv) >> 8) + (((colour * v) >> 16) << 1);
+    } else {
+        rgb = src.xyz + ((((src.xyz ^ colour) - src.xyz) * (level >> 1)) >> 7);
+        alpha = src.w;
+    }
+    pixels[i] = px_pack(ivec4(clamp(rgb, 0, 255), alpha));
+}

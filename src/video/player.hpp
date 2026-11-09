@@ -12,7 +12,7 @@ namespace obgi {
 // Point channel the movie's sound track plays on (the last one, which scripts do not normally use).
 constexpr std::uint32_t kMovieChannel = kPointChannels - 1;
 
-enum class MovieEnd { Finished, Skipped, WindowClosed };
+enum class MovieEnd { Finished, Skipped, WindowClosed, Failed };
 struct MovieRect { std::int32_t x, y, width, height; };
 
 // Incremental player: it never polls host events, sleeps or runs a second VM loop.
@@ -21,6 +21,9 @@ class MoviePlayer {
     MoviePlayer(Renderer& renderer, Mixer& mixer);
     ~MoviePlayer();
     Result<void> start(std::vector<std::uint8_t> bytes, const std::string& name, std::int64_t now_ms, std::optional<MovieRect> rect = std::nullopt, bool realtime = false);
+    Result<void> start(OwnedBytes bytes, const std::string& name, std::int64_t now_ms, std::optional<MovieRect> rect = std::nullopt, bool realtime = false);
+    Result<void> start_async(OwnedBytes bytes, const std::string& name, std::optional<MovieRect> rect = std::nullopt);
+    bool preparing() const;
     Result<void> update(std::int64_t now_ms);
     Result<void> present();
     void stop(MovieEnd end = MovieEnd::Skipped);

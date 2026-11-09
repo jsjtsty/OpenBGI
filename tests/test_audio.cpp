@@ -1,6 +1,7 @@
 #include <doctest/doctest.h>
 
 #include <cmath>
+#include <chrono>
 #include <cstdlib>
 
 #include <SDL3/SDL.h>
@@ -31,6 +32,26 @@ std::vector<std::int16_t> render(Mixer& m, std::uint32_t frames) {
 }
 
 } // namespace
+
+TEST_CASE("stream audio remains bounded and resumes after underrun") {
+    auto stream = std::make_shared<PcmStream>(3);
+    const std::int16_t input[] = {1000, -1000, 2000, -2000, 3000, -3000, 4000, -4000};
+    CHECK(stream->write(input, 4) == 3);
+    CHECK(stream->writable() == 0);
+    Mixer mixer(44100);
+    REQUIRE(mixer.load_stream(Bank::Point, 1, stream));
+    REQUIRE(mixer.play(Bank::Point, 1, 0x80, 0x40));
+    auto first = render(mixer, 4);
+    CHECK(first[0] == doctest::Approx(1000).epsilon(0.01));
+    CHECK(first[6] == 0);
+    CHECK(stream->consumed() == 3);
+    CHECK(mixer.state(Bank::Point, 1) == ChannelState::Playing);
+    CHECK(stream->write(input + 6, 1) == 1);
+    stream->finish();
+    auto last = render(mixer, 2);
+    CHECK(last[0] == doctest::Approx(4000).epsilon(0.01));
+    CHECK(mixer.state(Bank::Point, 1) == ChannelState::Stopped);
+}
 
 TEST_CASE("FFmpeg is the LGPL build") {
     const std::string license = ffmpeg_license();
@@ -164,6 +185,68 @@ class OneProgram final : public vm::ProgramProvider {
 };
 
 } // namespace
+
+TEST_CASE("cached sounds honor live loose overrides and restart playback") {
+    const auto dir = std::filesystem::temp_directory_path() /
+        ("obgi_sound_cache_" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count()));
+    std::filesystem::create_directory(dir);
+    struct Cleanup { std::filesystem::path dir; ~Cleanup() { std::error_code ec; std::filesystem::remove_all(dir, ec); } } cleanup{dir};
+    auto sound = [](std::int16_t value) {
+        std::vector<std::uint8_t> b(64 + 44 + 128, 0);
+        auto u16 = [&](unsigned off, unsigned v) { b[off] = v; b[off + 1] = v >> 8; };
+        auto u32 = [&](unsigned off, unsigned v) { for (unsigned i = 0; i < 4; ++i) b[off + i] = v >> (8 * i); };
+        u32(0, 64); std::memcpy(b.data() + 4, "bw  ", 4);
+        u32(8, 44 + 128); u32(12, 64); u32(16, 44100); u32(20, 1);
+        std::memcpy(b.data() + 64, "RIFF", 4); u32(68, 36 + 128);
+        std::memcpy(b.data() + 72, "WAVEfmt ", 8); u32(80, 16);
+        u16(84, 1); u16(86, 1); u32(88, 44100); u32(92, 88200); u16(96, 2); u16(98, 16);
+        std::memcpy(b.data() + 100, "data", 4); u32(104, 128);
+        for (unsigned off = 108; off < b.size(); off += 2) u16(off, static_cast<std::uint16_t>(value));
+        return b;
+    };
+    auto write = [](const auto& path, const auto& bytes) {
+        std::ofstream f(path, std::ios::binary);
+        f.write(reinterpret_cast<const char*>(bytes.data()), std::streamsize(bytes.size()));
+        REQUIRE(f.good());
+    };
+    auto original = sound(12000);
+    std::vector<std::uint8_t> arc(144, 0);
+    std::memcpy(arc.data(), "BURIKO ARC20", 12); arc[12] = 1;
+    std::memcpy(arc.data() + 16, "tone", 4);
+    arc[16 + 0x64] = original.size() & 255;
+    arc[16 + 0x65] = original.size() >> 8;
+    arc.insert(arc.end(), original.begin(), original.end());
+    write(dir / "data.arc", arc);
+    Mixer mixer;
+    ArcResourceFinder finder(dir);
+    SoundHost host{&mixer, &finder};
+    vm::SubopRegistry registry; vm::register_core_subops(registry); register_audio_subops(registry, host);
+    OneProgram provider; vm::Vm machine(provider, registry);
+    const std::uint8_t strings[] = "data\0tone";
+    REQUIRE(machine.global.write(0x100, sizeof strings, strings));
+    auto load = [&] {
+        provider.set(Asm().i32(7).i32(0x100).i32(0x105).sub(0xA0, 0x20).ret());
+        vm::ThreadConfig cfg; cfg.stack_size = 0x1000; cfg.program_capacity = 0x10000;
+        REQUIRE(machine.spawn(cfg, "x", "main")); REQUIRE(machine.run_frame(0));
+        REQUIRE(mixer.play(Bank::Point, 7, 0x80, 0x40));
+        return render(mixer, 80)[0];
+    };
+    const auto archive_sample = load();
+    CHECK(archive_sample > 10000);
+    CHECK(load() == archive_sample); // reuse and restart at sample zero
+    write(dir / "tone", sound(-12000));
+    CHECK(load() < -10000);
+    write(dir / "tone", sound(3000));
+    CHECK(load() > 2000); CHECK(load() < 4000);
+    std::filesystem::remove(dir / "tone");
+    CHECK(load() == archive_sample);
+    std::filesystem::create_directory(dir / "override");
+    write(dir / "override/tone", sound(-3000));
+    finder.add_search_path("override");
+    CHECK(load() < -2000);
+    std::filesystem::remove(dir / "override/tone");
+    CHECK(load() == archive_sample);
+}
 
 TEST_CASE("A0 sub-opcodes load and play game sounds" * doctest::test_suite("game")) {
     REQUIRE(std::filesystem::exists(obgi_test::game_dir() / "data05500.arc"));

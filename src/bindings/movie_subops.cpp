@@ -31,10 +31,25 @@ void register_movie_subops(vm::SubopRegistry& r, MovieHost& host) {
         if (std::getenv("OBGI_PERF")) std::fprintf(stderr, "movie request %s/%s rect=%d,%d %dx%d\n", prefix.c_str(), name.c_str(), x, y, width, height);
         if (width <= 0 || height <= 0) { c.fail(Errc::Range, "invalid movie size"); return 0; }
         if (!h->player || !h->resources || name.empty()) { c.push(0); return 0; }
-        auto file = h->resources->read(prefix, name);
+        auto file = h->resources->open_media(prefix, name);
         if (!file) { c.push(0); return 0; }
         const auto read_ms = h->realtime ? std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - begin).count() : 0;
-        auto started = h->player->start(std::move(*file), name, c.vm.now_ms + read_ms, MovieRect{x, y, width, height}, h->realtime);
+        if (h->realtime) {
+            auto started = h->player->start_async(std::move(*file), name, MovieRect{x, y, width, height});
+            if (!started) { c.push(0); return 0; }
+            vm::WaitObject wait;
+            wait.kind = vm::WaitObject::Kind::Poll;
+            wait.cleanup = [h] { if (h->player->preparing()) h->player->stop(); };
+            wait.poll = [h](const vm::WaitContext&) -> Result<vm::WaitUpdate> {
+                if (h->player->preparing()) return vm::WaitUpdate::pending();
+                const auto duration = h->player->duration_ms();
+                const Word result = h->player->active() ? (duration > 0 && duration <= 0xffffffffLL ? static_cast<Word>(duration) : 1u) : 0u;
+                return vm::WaitUpdate::complete({result});
+            };
+            c.suspend(std::move(wait), 1);
+            return static_cast<int>(vm::StayThread);
+        }
+        auto started = h->player->start(std::move(*file), name, c.vm.now_ms + read_ms, MovieRect{x, y, width, height}, false);
         if (!started) {
             std::fprintf(stderr, "movie %s/%s: %s\n", prefix.c_str(), name.c_str(), started.error().message.c_str());
             c.push(0); return 0;
@@ -42,7 +57,7 @@ void register_movie_subops(vm::SubopRegistry& r, MovieHost& host) {
         const auto duration = h->player->duration_ms();
         c.push(duration > 0 && duration <= 0xffffffffLL ? static_cast<Word>(duration) : 1u);
         return 0;
-    }});
+    }, 1});
     r.add({0x90F1, "stop movie", 0, 0, [h](Ctx&) {
         if (h->player && h->player->active()) h->player->stop();
         return 0;
@@ -65,21 +80,23 @@ void register_movie_subops(vm::SubopRegistry& r, MovieHost& host) {
                std::string name = c.cstring(c.pop());
                std::string prefix = c.cstring(c.pop());
                if (!c.ok()) return 0;
-               auto file = h->resources->read(prefix, name);
+               auto file = h->resources->open_media(prefix, name);
                if (!file) {
                    c.push(kStatusNotFound);
                    return 0;
                }
                if (h->player) {
                    const auto read_ms = h->realtime ? std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - begin).count() : 0;
-                   auto started = h->player->start(std::move(*file), name, c.vm.now_ms + read_ms, std::nullopt, h->realtime);
+                   auto started = h->realtime ? h->player->start_async(std::move(*file), name)
+                                              : h->player->start(std::move(*file), name, c.vm.now_ms + read_ms, std::nullopt, false);
                    if (!started) { c.push(kStatusError); return 0; }
                    vm::WaitObject wait;
                    wait.kind = vm::WaitObject::Kind::Poll;
                    wait.cleanup = [h] { if (h->player->active()) h->player->stop(); };
                    wait.poll = [h](const vm::WaitContext& context) -> Result<vm::WaitUpdate> {
                        if (context.notified) h->player->stop(MovieEnd::Skipped);
-                       return h->player->result() ? vm::WaitUpdate::complete({kStatusOk}) : vm::WaitUpdate::pending();
+                       const auto result = h->player->result();
+                       return result ? vm::WaitUpdate::complete({*result == MovieEnd::Failed ? kStatusError : kStatusOk}) : vm::WaitUpdate::pending();
                    };
                    c.suspend(std::move(wait), 1);
                    return static_cast<int>(vm::StayThread);
@@ -88,7 +105,7 @@ void register_movie_subops(vm::SubopRegistry& r, MovieHost& host) {
                    c.push(kStatusOk);
                    return 0;
                }
-               auto end = h->play(*file, name);
+               auto end = h->play(file->bytes, name);
                if (!end) {
                    std::fprintf(stderr, "movie %s/%s: %s\n", prefix.c_str(), name.c_str(), end.error().message.c_str());
                    c.push(kStatusError);

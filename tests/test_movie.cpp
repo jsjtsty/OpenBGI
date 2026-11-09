@@ -2,6 +2,8 @@
 
 #include <cstring>
 #include <filesystem>
+#include <thread>
+#include <chrono>
 
 #include "audio/pcm.hpp"
 #include "bindings/movie_subops.hpp"
@@ -86,6 +88,102 @@ TEST_CASE("the movie's sound track decodes with the audio path" * doctest::test_
     CHECK((*pcm)->channels == 2);
     CHECK((*pcm)->sample_rate >= 32000);
     CHECK((*pcm)->frames() > (*pcm)->sample_rate * 10u); // an opening is longer than ten seconds
+}
+
+TEST_CASE("incremental movie audio matches the full decoder" * doctest::test_suite("game")) {
+    REQUIRE(have_movies());
+    auto arc = Arc::open(obgi_test::game_dir() / "data02280.arc"); REQUIRE(arc);
+    const auto* entry = arc->find("ac2_op.mpg"); REQUIRE(entry);
+    auto full = decode_audio(arc->data(*entry), "ac2_op.mpg"); REQUIRE(full);
+    auto stream = StreamAudioDecoder::open(arc->data(*entry), "ac2_op.mpg", (*full)->sample_rate); REQUIRE(stream);
+    std::vector<std::int16_t> samples;
+    while (samples.size() < 44100) {
+        auto block = (*stream)->next(); REQUIRE(block); REQUIRE_FALSE(block->empty());
+        samples.insert(samples.end(), block->begin(), block->end());
+    }
+    REQUIRE((*full)->channels == 2); REQUIRE((*full)->samples.size() >= samples.size());
+    CHECK(std::equal(samples.begin(), samples.end(), (*full)->samples.begin()));
+}
+
+TEST_CASE("realtime movie workers stop safely and can be restarted" * doctest::test_suite("game")) {
+    REQUIRE(have_movies());
+    ArcResourceFinder finder(obgi_test::game_dir());
+    auto media = finder.open_media("data02280", "ac2_op.mpg"); REQUIRE(media);
+    RendererOptions options; options.headless = true;
+    auto renderer = Renderer::create(options); REQUIRE(renderer);
+    Mixer mixer; MoviePlayer player(**renderer, mixer);
+    for (int repeat = 0; repeat < 3; ++repeat) {
+        REQUIRE(player.start(*media, "ac2_op.mpg", 0, std::nullopt, true));
+        CHECK(player.active()); CHECK(player.duration_ms() > 10000);
+        std::vector<std::int16_t> samples(4096);
+        for (int frame = 0; frame < 8; ++frame) {
+            mixer.mix(samples.data(), 2048);
+            REQUIRE(player.update(frame * 47));
+            std::this_thread::sleep_for(std::chrono::milliseconds(2));
+        }
+        player.stop();
+        CHECK_FALSE(player.active());
+        CHECK(player.result() == MovieEnd::Skipped);
+        CHECK(mixer.state(Bank::Point, kMovieChannel) == ChannelState::Empty);
+    }
+}
+
+TEST_CASE("movie preparation is asynchronous, cancellable and restartable" * doctest::test_suite("game")) {
+    REQUIRE(have_movies());
+    ArcResourceFinder finder(obgi_test::game_dir());
+    auto media = finder.open_media("data02280", "ac2_op.mpg"); REQUIRE(media);
+    RendererOptions options; options.headless = true;
+    auto renderer = Renderer::create(options); REQUIRE(renderer);
+    Mixer mixer; MoviePlayer player(**renderer, mixer);
+    REQUIRE(player.start_async(*media, "ac2_op.mpg"));
+    CHECK(player.active()); CHECK(player.preparing());
+    player.stop();
+    CHECK_FALSE(player.active());
+    REQUIRE(player.start_async(*media, "ac2_op.mpg"));
+    for (int i = 0; i < 1000 && player.preparing(); ++i) {
+        REQUIRE(player.update(i * 2));
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+    CHECK_FALSE(player.preparing());
+    CHECK(player.active()); CHECK(player.duration_ms() > 10000);
+    player.stop();
+    auto bad = std::make_shared<std::vector<std::uint8_t>>(100, 0);
+    REQUIRE(player.start_async(OwnedBytes{bad, ByteView(*bad)}, "broken.mpg"));
+    for (int i = 0; i < 1000 && player.preparing(); ++i) {
+        REQUIRE(player.update(i * 2));
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+    CHECK_FALSE(player.active());
+    CHECK(player.result() == MovieEnd::Failed);
+}
+
+TEST_CASE("archive movie opcode resumes with duration after async preparation" * doctest::test_suite("game")) {
+    REQUIRE(have_movies());
+    RendererOptions options; options.headless = true;
+    auto renderer = Renderer::create(options); REQUIRE(renderer);
+    Mixer mixer; MoviePlayer player(**renderer, mixer);
+    ArcResourceFinder finder(obgi_test::game_dir());
+    MovieHost host; host.resources = &finder; host.player = &player; host.realtime = true;
+    vm::SubopRegistry registry; vm::register_core_subops(registry); register_movie_subops(registry, host);
+    OneProgram provider; vm::Vm machine(provider, registry);
+    const char arc[] = "data02280.arc", name[] = "ac2_op.mpg";
+    REQUIRE(machine.global.write(0x100, sizeof arc, reinterpret_cast<const std::uint8_t*>(arc)));
+    REQUIRE(machine.global.write(0x120, sizeof name, reinterpret_cast<const std::uint8_t*>(name)));
+    Asm a; a.i32(0x400).i32(0x100).i32(0x120).i32(0).i32(0).i32(1280).i32(720)
+        .sub(0x92, 0xF0).raw({0x09, 0x02}).ret();
+    provider.set(a); vm::ThreadConfig cfg; cfg.stack_size = 1024;
+    auto thread = machine.spawn(cfg, "x.arc", "main"); REQUIRE(thread);
+    const auto id = (*thread)->id;
+    REQUIRE(machine.run_frame(0));
+    CHECK(player.preparing()); CHECK(machine.find(id));
+    for (int i = 1; i < 1000 && machine.find(id); ++i) {
+        REQUIRE(player.update(i * 2)); REQUIRE(machine.run_frame(i * 2));
+        std::this_thread::sleep_for(std::chrono::milliseconds(2));
+    }
+    CHECK_FALSE(machine.find(id)); CHECK(player.active());
+    std::uint8_t result[4]; REQUIRE(machine.global.read(0x400, 4, result));
+    CHECK(load_u32le(result) > 10000);
+    player.stop();
 }
 
 TEST_CASE("91:F8 plays a movie from the archive" * doctest::test_suite("game")) {

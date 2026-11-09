@@ -48,6 +48,7 @@ struct Display::Impl {
     SDL_GPUComputePipeline* blit_pipeline = nullptr;
     SDL_GPUComputePipeline* present_pipeline = nullptr;
     SDL_GPUComputePipeline* crossfade_pipeline = nullptr;
+    SDL_GPUComputePipeline* filter_pipeline = nullptr;
     SDL_GPUBuffer* dummy = nullptr; // bound as the unused read-only buffer of fills
     std::map<std::uint32_t, GpuSlot> slots;
     std::uint64_t next_generation = 0;
@@ -96,6 +97,7 @@ struct Display::Impl {
         if (blit_pipeline) SDL_ReleaseGPUComputePipeline(device, blit_pipeline);
         if (present_pipeline) SDL_ReleaseGPUComputePipeline(device, present_pipeline);
         if (crossfade_pipeline) SDL_ReleaseGPUComputePipeline(device, crossfade_pipeline);
+        if (filter_pipeline) SDL_ReleaseGPUComputePipeline(device, filter_pipeline);
         screen_tex.reset();
     }
 
@@ -174,6 +176,25 @@ struct Display::Impl {
         const std::uint32_t info[] = {a.info.width, a.info.height, ratio, a.info.format == SlotFormat::Bgra ? 1u : 0u};
         SDL_PushGPUComputeUniformData(*c, 0, info, sizeof info);
         SDL_DispatchGPUCompute(pass, (a.info.width + 7) / 8, (a.info.height + 7) / 8, 1);
+        SDL_EndGPUComputePass(pass);
+        return {};
+    }
+
+    Result<void> filter(const Sprite& sp, int level, SDL_GPUBuffer* gray) {
+        auto c = ensure_cmd();
+        if (!c) return std::unexpected(c.error());
+        SDL_GPUStorageBufferReadWriteBinding rw{screen.buffer, false};
+        auto* pass = SDL_BeginGPUComputePass(*c, nullptr, 0, &rw, 1);
+        SDL_BindGPUComputePipeline(pass, filter_pipeline);
+        auto* source = gray ? gray : dummy;
+        SDL_BindGPUComputeStorageBuffers(pass, 0, &source, 1);
+        struct Params {
+            std::uint32_t info[4];
+            std::int32_t effect[4];
+        } params{{screen.info.width, screen.info.height, sp.filter_colour & 0xFFFFFFu,
+                  gray ? 4u : static_cast<std::uint32_t>(sp.filter_kind)}, {level, sp.filter_param, 0, 0}};
+        SDL_PushGPUComputeUniformData(*c, 0, &params, sizeof params);
+        SDL_DispatchGPUCompute(pass, (screen.info.width + 7) / 8, (screen.info.height + 7) / 8, 1);
         SDL_EndGPUComputePass(pass);
         return {};
     }
@@ -295,6 +316,8 @@ Result<std::unique_ptr<Display>> Display::create(Renderer& renderer, std::uint32
     if (auto r = make_pipeline("blit_rect", 1, 1, 0, m.blit_pipeline); !r) return std::unexpected(r.error());
     if (auto r = make_pipeline("slot_present", 1, 0, 1, m.present_pipeline); !r) return std::unexpected(r.error());
     if (auto r = make_pipeline("crossfade", 2, 1, 0, m.crossfade_pipeline); !r) return std::unexpected(r.error());
+
+    if (auto r = make_pipeline("screen_filter", 1, 1, 0, m.filter_pipeline); !r) return std::unexpected(r.error());
 
     auto dummy = m.make_buffer(1);
     if (!dummy) return std::unexpected(dummy.error());
@@ -681,23 +704,14 @@ Result<void> Display::compose(std::optional<std::uint32_t> max_priority) {
         if (sp.filter_kind >= 0) {
             // filter.c: a colour operation on everything drawn so far. The filter's effect is 0xC0, the strength family, so the level
             // is ((0x100 - fade) * level * opacity) >> 16 (dispobj.c: DispObj_EffectiveLevel); with a gray bitmap (90:66) every kind is
-            // the per-pixel tint of Blit_TintByGray. Done on the CPU on the screen's pixels.
+            // the per-pixel tint of Blit_TintByGray. Each pixel stays on the GPU.
             const std::int32_t level = static_cast<std::int32_t>(((0x100u - std::min(sp.fade, 0x100u)) * std::min(sp.alpha, 0x100u) * sp.opacity) >> 16);
             const auto gi = sp.filter_gray != 0xFFFFFFFFu ? m.slots.find(sp.filter_gray) : m.slots.end();
             const bool by_gray = gi != m.slots.end() && gi->second.info.format == SlotFormat::Gray8 && gi->second.info.width == m.screen.info.width &&
                                  gi->second.info.height == m.screen.info.height;
             if (sp.filter_gray != 0xFFFFFFFFu && !by_gray) continue; // the bitmap was freed or replaced: nothing is drawn
             if (!by_gray && (sp.filter_kind > 3 || level <= 0)) continue;
-            auto px = m.download(m.screen);
-            if (!px) return std::unexpected(px.error());
-            if (by_gray) {
-                auto gray = m.download(gi->second);
-                if (!gray) return std::unexpected(gray.error());
-                bgfx::filter_by_gray(*px, sp.filter_colour & 0xFFFFFFu, *gray, sp.filter_param, level);
-            } else {
-                bgfx::filter_kind(*px, sp.filter_kind, sp.filter_colour & 0xFFFFFFu, level);
-            }
-            if (auto up_r = m.upload(m.screen.buffer, *px); !up_r) return up_r;
+            if (auto r = m.filter(sp, level, by_gray ? gi->second.buffer : nullptr); !r) return r;
             continue;
         }
         if (sp.effector) {

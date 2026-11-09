@@ -17,26 +17,32 @@ void ArcImageSource::clear_cache() {
 }
 
 Result<SlotImage> ArcImageSource::load(std::string_view prefix, std::string_view name) {
-    // Never retain loose files: they can be edited, replaced or removed while
-    // the game is running. A newly added override takes priority immediately.
-    if (finder_.has_loose_file(name)) return load_uncached(prefix, name);
-    Key key{std::string(prefix), std::string(name)};
-    if (auto it = cache_.find(key); it != cache_.end()) {
+    auto image = load_shared(prefix, name);
+    if (!image) return std::unexpected(image.error());
+    return **image; // compatibility for callers that need mutable pixels
+}
+
+Result<std::shared_ptr<const SlotImage>> ArcImageSource::load_shared(std::string_view prefix, std::string_view name) {
+    // Loose files can change at runtime; always decode the latest override.
+    const bool loose = finder_.has_loose_file(name);
+    Key key{ascii_lower(prefix), ascii_lower(name)};
+    if (!loose) if (auto it = cache_.find(key); it != cache_.end()) {
         lru_.splice(lru_.begin(), lru_, it->second.lru);
         return it->second.image;
     }
     bool from_loose = false;
-    auto image = load_uncached(prefix, name, &from_loose);
-    if (!image || from_loose) return image;
+    auto decoded = load_uncached(prefix, name, &from_loose);
+    if (!decoded) return std::unexpected(decoded.error());
+    std::shared_ptr<const SlotImage> image = std::make_shared<SlotImage>(std::move(*decoded));
     const std::size_t bytes = image->pixels.size() * sizeof(std::uint32_t);
-    if (bytes && bytes <= cache_limit_) {
+    if (!loose && !from_loose && bytes && bytes <= cache_limit_) {
         while (cached_bytes_ > cache_limit_ - bytes) {
             auto victim = cache_.find(lru_.back());
-            cached_bytes_ -= victim->second.image.pixels.size() * sizeof(std::uint32_t);
+            cached_bytes_ -= victim->second.image->pixels.size() * sizeof(std::uint32_t);
             cache_.erase(victim); lru_.pop_back();
         }
         lru_.push_front(key);
-        cache_.emplace(std::move(key), CachedImage{*image, lru_.begin()});
+        cache_.emplace(std::move(key), CachedImage{image, lru_.begin()});
         cached_bytes_ += bytes;
     }
     return image;
@@ -79,9 +85,9 @@ std::optional<SlotImage> decode_plain_image(ByteView d) {
 } // namespace
 
 Result<SlotImage> ArcImageSource::load_uncached(std::string_view prefix, std::string_view name, bool* from_loose) {
-    auto bytes = finder_.read(prefix, name, from_loose);
+    auto bytes = finder_.open_media(prefix, name, from_loose);
     if (!bytes) return std::unexpected(bytes.error());
-    ByteView data = *bytes;
+    ByteView data = bytes->bytes;
     if (!is_cbg(data))
         if (auto plain = decode_plain_image(data)) return std::move(*plain);
     auto img = cbg_decode(data);

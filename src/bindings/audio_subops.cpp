@@ -1,6 +1,8 @@
 #include "bindings/audio_subops.hpp"
 
 #include <string>
+#include <list>
+#include <map>
 
 namespace obgi {
 
@@ -27,17 +29,50 @@ bool level_ok(Ctx& c, Word v) {
     return c.ok();
 }
 
-Result<std::shared_ptr<Pcm>> load_sound(SoundHost& h, const std::string& prefix, const std::string& name) {
-    auto bytes = h.resources->read(prefix, name);
-    if (!bytes) return std::unexpected(bytes.error());
-    return decode_bw(*bytes);
-}
+// Cached PCM is immutable and may outlive eviction while a mixer channel uses it.
+// The limit bounds cache ownership, not the active channels' independent lifetime.
+class SoundCache {
+    using Key = std::pair<std::string, std::string>;
+    struct Entry { std::shared_ptr<const Pcm> pcm; std::list<Key>::iterator lru; };
+    static constexpr std::size_t limit = 64u * 1024u * 1024u;
+    std::map<Key, Entry> entries_;
+    std::list<Key> lru_;
+    std::size_t bytes_ = 0;
+  public:
+    Result<std::shared_ptr<const Pcm>> load(SoundHost& h, const std::string& prefix, const std::string& name) {
+        const bool loose = h.resources->has_loose_file(name);
+        Key key{ascii_lower(prefix), ascii_lower(name)};
+        if (!loose) if (auto it = entries_.find(key); it != entries_.end()) {
+            lru_.splice(lru_.begin(), lru_, it->second.lru);
+            return it->second.pcm;
+        }
+        bool from_loose = false;
+        auto bytes = h.resources->open_media(prefix, name, &from_loose);
+        if (!bytes) return std::unexpected(bytes.error());
+        auto decoded = decode_bw(bytes->bytes);
+        if (!decoded) return std::unexpected(decoded.error());
+        std::shared_ptr<const Pcm> pcm = std::move(*decoded);
+        const auto size = pcm->samples.size() * sizeof(std::int16_t);
+        if (!loose && !from_loose && size && size <= limit) {
+            while (bytes_ > limit - size) {
+                auto victim = entries_.find(lru_.back());
+                bytes_ -= victim->second.pcm->samples.size() * sizeof(std::int16_t);
+                entries_.erase(victim); lru_.pop_back();
+            }
+            lru_.push_front(key);
+            entries_.emplace(std::move(key), Entry{pcm, lru_.begin()});
+            bytes_ += size;
+        }
+        return pcm;
+    }
+};
 
 } // namespace
 
 void register_audio_subops(vm::SubopRegistry& r, SoundHost& host) {
     Mixer& mx = *host.mixer;
     SoundHost* h = &host;
+    auto cache = std::make_shared<SoundCache>();
 
     // ---- configured (options) volume ----
     add(r, 0xA008, "set stream config volume", 2, 0, [&mx](Ctx& c) {
@@ -53,13 +88,13 @@ void register_audio_subops(vm::SubopRegistry& r, SoundHost& host) {
 
     // ---- streams (bank A) ----
     // (ch, prefix, name, volume, pan): loads the stream; it starts playing unless the script paused the channel first.
-    add(r, 0xA011, "load stream", 5, 0, [&mx, h](Ctx& c) {
+    add(r, 0xA011, "load stream", 5, 0, [&mx, h, cache](Ctx& c) {
         Word pan = c.pop(), vol = c.pop();
         std::string name = c.cstring(c.pop());
         std::string prefix = c.cstring(c.pop());
         Word ch = c.pop();
         if (!c.ok() || !channel_ok(c, Bank::Stream, ch) || !level_ok(c, vol) || !level_ok(c, pan)) return 0;
-        auto pcm = load_sound(*h, prefix, name);
+        auto pcm = cache->load(*h, prefix, name);
         if (!pcm) {
             c.fail(pcm.error().code, pcm.error().message);
             return 0;
@@ -75,14 +110,14 @@ void register_audio_subops(vm::SubopRegistry& r, SoundHost& host) {
     });
     // (ch, prefix, intro, loop file, loop switch, volume, pan): a single file loops from 0 when the switch is
     // set; two different files play the intro once, then repeat the second.
-    add(r, 0xA012, "load stream (loop control)", 7, 0, [&mx, h](Ctx& c) {
+    add(r, 0xA012, "load stream (loop control)", 7, 0, [&mx, h, cache](Ctx& c) {
         Word pan = c.pop(), vol = c.pop(), loop_sw = c.pop();
         std::string second = c.cstring(c.pop());
         std::string first = c.cstring(c.pop());
         std::string prefix = c.cstring(c.pop());
         Word ch = c.pop();
         if (!c.ok() || !channel_ok(c, Bank::Stream, ch) || !level_ok(c, vol) || !level_ok(c, pan)) return 0;
-        auto a = load_sound(*h, prefix, first);
+        auto a = cache->load(*h, prefix, first);
         if (!a) {
             c.fail(a.error().code, a.error().message);
             return 0;
@@ -91,7 +126,7 @@ void register_audio_subops(vm::SubopRegistry& r, SoundHost& host) {
         bool loop = loop_sw != 0;
         std::uint32_t loop_start = 0;
         if (first != second) {
-            auto b = load_sound(*h, prefix, second);
+            auto b = cache->load(*h, prefix, second);
             if (!b) {
                 c.fail(b.error().code, b.error().message);
                 return 0;
@@ -152,12 +187,12 @@ void register_audio_subops(vm::SubopRegistry& r, SoundHost& host) {
     });
 
     // ---- point sounds (bank B) ----
-    add(r, 0xA020, "load point sound", 3, 0, [&mx, h](Ctx& c) {
+    add(r, 0xA020, "load point sound", 3, 0, [&mx, h, cache](Ctx& c) {
         std::string name = c.cstring(c.pop());
         std::string prefix = c.cstring(c.pop());
         Word ch = c.pop();
         if (!c.ok() || !channel_ok(c, Bank::Point, ch)) return 0;
-        auto pcm = load_sound(*h, prefix, name);
+        auto pcm = cache->load(*h, prefix, name);
         if (!pcm) {
             c.fail(pcm.error().code, pcm.error().message);
             return 0;
@@ -166,13 +201,13 @@ void register_audio_subops(vm::SubopRegistry& r, SoundHost& host) {
         return 0;
     });
     // A0:21: the same load with a time in milliseconds and a value (their uses are not known yet)
-    add(r, 0xA021, "load point sound (timed)", 5, 0, [&mx, h](Ctx& c) {
+    add(r, 0xA021, "load point sound (timed)", 5, 0, [&mx, h, cache](Ctx& c) {
         c.pop(), c.pop();
         std::string name = c.cstring(c.pop());
         std::string prefix = c.cstring(c.pop());
         Word ch = c.pop();
         if (!c.ok() || !channel_ok(c, Bank::Point, ch)) return 0;
-        auto pcm = load_sound(*h, prefix, name);
+        auto pcm = cache->load(*h, prefix, name);
         if (!pcm) {
             c.fail(pcm.error().code, pcm.error().message);
             return 0;

@@ -5,6 +5,7 @@
 #include <mutex>
 
 #include "audio/pcm.hpp"
+#include "audio/stream.hpp"
 
 namespace obgi {
 
@@ -31,6 +32,7 @@ class Mixer {
     // Puts a sound on a channel, stopped. `loop`/`loop_start` come from the file or the script.
     // A pause requested for the channel before loading (pause(…, true)) stays in force.
     Result<void> load(Bank bank, std::uint32_t ch, std::shared_ptr<const Pcm> pcm, bool loop, std::uint32_t loop_start);
+    Result<void> load_stream(Bank bank, std::uint32_t ch, std::shared_ptr<PcmStream> stream);
     Result<void> unload(Bank bank, std::uint32_t ch);
 
     // Starts the loaded sound from the beginning at the given volume/pan.
@@ -61,6 +63,7 @@ class Mixer {
     void mix_block(std::int16_t* out, std::uint32_t frames);
     struct Channel {
         std::shared_ptr<const Pcm> pcm;
+        std::shared_ptr<PcmStream> stream;
         bool loop = false;
         std::uint32_t loop_start = 0;
         bool playing = false;

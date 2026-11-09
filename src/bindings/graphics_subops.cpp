@@ -68,11 +68,12 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         if (!c.ok() || !slot_ok(c, slot)) return 0;
         if (std::getenv("OBGI_SLOTS")) std::fprintf(stderr, "90:10 slot %u <- %s/%s\n", slot, prefix.c_str(), name.c_str());
         d.vecmaps.erase(slot);
-        auto img = host.images->load(prefix, name);
-        if (!img) {
-            c.fail(img.error().code, "\"" + prefix + "/" + name + "\": " + img.error().message);
+        auto loaded = host.images->load_shared(prefix, name);
+        if (!loaded) {
+            c.fail(loaded.error().code, "\"" + prefix + "/" + name + "\": " + loaded.error().message);
             return 0;
         }
+        const auto& img = *loaded;
         if (d.slot(slot)) (*base_sizes)[slot] = {-1, -1}; // replacing a live bitmap frees its old metadata
         check(c, d.upload_slot(slot, img->width, img->height, img->format, img->pixels));
         if (img->has_base) (*base_sizes)[slot] = {static_cast<std::int32_t>(img->base_width), static_cast<std::int32_t>(img->base_height)};

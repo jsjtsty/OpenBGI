@@ -44,7 +44,7 @@ add_executable(obgi_spvmsl ../tools/spvmsl/main.cpp)
 target_include_directories(obgi_spvmsl PRIVATE "${spirv_cross_SOURCE_DIR}")
 target_link_libraries(obgi_spvmsl PRIVATE spirv-cross-msl spirv-cross-core spirv-cross-glsl)
 
-obgi_shader_pack(OBGI_SHADER_PACK NAME obgi SHADERS blend_cases.comp blit.vert blit.frag blit_rect.comp crossfade.comp slot_present.comp
+obgi_shader_pack(OBGI_SHADER_PACK NAME obgi SHADERS blend_cases.comp blit.vert blit.frag blit_rect.comp crossfade.comp screen_filter.comp slot_present.comp
   DEPENDS "${PROJECT_SOURCE_DIR}/shaders/blend.glsl")
 set(OBGI_SHADER_PACK "${OBGI_SHADER_PACK}" CACHE INTERNAL "")
 add_library(obgi_render STATIC render/gpu_blend.cpp render/display.cpp render/background_fx.cpp render/vector_maps.cpp render/renderer.cpp render/shader_pack.cpp render/shader_library.cpp)
@@ -65,7 +65,7 @@ if(APPLE)
 endif()
 obgi_target_defaults(obgi_text)
 
-add_library(obgi_audio STATIC audio/av_input.cpp audio/pcm.cpp audio/mixer.cpp audio/device.cpp)
+add_library(obgi_audio STATIC audio/av_input.cpp audio/pcm.cpp audio/stream.cpp audio/mixer.cpp audio/device.cpp)
 target_link_libraries(obgi_audio PUBLIC obgi_core PRIVATE obgi_formats FFmpeg::avformat FFmpeg::avcodec FFmpeg::swresample FFmpeg::avutil SDL3::SDL3)
 obgi_target_defaults(obgi_audio)
 

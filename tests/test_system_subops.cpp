@@ -232,8 +232,13 @@ TEST_CASE("archive image cache is bounded and respects live loose overrides") {
     ArcImageSource images(finder, 4); // one 1x1 image
     auto a = images.load("a", "a"); REQUIRE(a); CHECK(a->pixels[0] == 0x11223344);
     CHECK(images.cached_bytes() == 4); CHECK(images.cached_images() == 1);
+    auto shared = images.load_shared("a", "a"); REQUIRE(shared);
+    auto again = images.load_shared("A", "A"); REQUIRE(again);
+    CHECK(shared->get() == again->get());
+    CHECK((*shared)->pixels.data() == (*again)->pixels.data());
     auto b = images.load("b", "b"); REQUIRE(b); CHECK(b->pixels[0] == 0x55667788);
     CHECK(images.cached_bytes() == 4); CHECK(images.cached_images() == 1);
+    CHECK((*shared)->pixels[0] == 0x11223344); // eviction preserves active readers
     a = images.load("a", "a"); REQUIRE(a); CHECK(a->pixels[0] == 0x11223344);
     save(rig.data / "a", plain(0xaabbccdd));
     a = images.load("a", "a"); REQUIRE(a); CHECK(a->pixels[0] == 0xaabbccdd);

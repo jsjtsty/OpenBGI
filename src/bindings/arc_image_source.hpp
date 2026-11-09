@@ -29,11 +29,13 @@ class ArcImageSource {
     std::size_t cached_images() const { return cache_.size(); }
     void clear_cache();
 
+    // Shared immutable pixels avoid a full image copy on a cache hit.
+    Result<std::shared_ptr<const SlotImage>> load_shared(std::string_view prefix, std::string_view name);
     Result<SlotImage> load(std::string_view prefix, std::string_view name);
 
   private:
     using Key = std::pair<std::string, std::string>;
-    struct CachedImage { SlotImage image; std::list<Key>::iterator lru; };
+    struct CachedImage { std::shared_ptr<const SlotImage> image; std::list<Key>::iterator lru; };
     Result<SlotImage> load_uncached(std::string_view prefix, std::string_view name, bool* from_loose = nullptr);
     ArcResourceFinder& finder_;
     std::size_t cache_limit_, cached_bytes_ = 0;

@@ -61,6 +61,21 @@ TEST_CASE("resource search paths consistently override archives for media") {
     CHECK_FALSE(programs.load("missing.arc", "same"));
 }
 
+TEST_CASE("media views retain their archive and honor loose overrides") {
+    Directory dir;
+    archive(dir.path / "data.arc", "movie.mpg", "archive media");
+    MediaResource held;
+    {
+        ArcResourceFinder resources(dir.path);
+        auto media = resources.open_media("data", "movie.mpg"); REQUIRE(media);
+        held = *media;
+        write(dir.path / "movie.mpg", "loose media");
+        auto loose = resources.open_media("data", "movie.mpg"); REQUIRE(loose);
+        CHECK(std::string(loose->bytes.begin(), loose->bytes.end()) == "loose media");
+    }
+    CHECK(std::string(held.bytes.begin(), held.bytes.end()) == "archive media");
+}
+
 TEST_CASE("corrupt selected archives are reported instead of silently selecting another copy") {
     Directory dir;
     archive(dir.path / "other.arc", "same", "wrong copy");

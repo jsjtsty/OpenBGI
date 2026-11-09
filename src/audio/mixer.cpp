@@ -31,14 +31,14 @@ const Mixer::Channel* Mixer::find(Bank bank, std::uint32_t ch) const {
 }
 
 Result<void> Mixer::load(Bank bank, std::uint32_t ch, std::shared_ptr<const Pcm> pcm, bool loop, std::uint32_t loop_start) {
-    std::shared_ptr<const Pcm> retired;
+    Channel retired;
     std::lock_guard lock(mutex_);
     Channel* c = find(bank, ch);
     if (!c) return std::unexpected(bad_channel());
     if (!pcm || pcm->frames() == 0) return fail(Errc::Format, "empty sound");
     const bool keep_paused = c->paused;
     const auto keep_config = c->config;
-    retired = std::move(c->pcm);
+    retired = std::move(*c);
     *c = Channel{};
     c->config = keep_config;
     c->paused = keep_paused;
@@ -48,13 +48,26 @@ Result<void> Mixer::load(Bank bank, std::uint32_t ch, std::shared_ptr<const Pcm>
     return {};
 }
 
-Result<void> Mixer::unload(Bank bank, std::uint32_t ch) {
-    std::shared_ptr<const Pcm> retired;
+Result<void> Mixer::load_stream(Bank bank, std::uint32_t ch, std::shared_ptr<PcmStream> stream) {
+    if (!stream) return fail(Errc::Format, "empty audio stream");
+    Channel retired;
     std::lock_guard lock(mutex_);
     Channel* c = find(bank, ch);
     if (!c) return std::unexpected(bad_channel());
-    retired = std::move(c->pcm);
+    retired = std::move(*c);
+    *c = Channel{};
+    c->config = retired.config; c->paused = retired.paused;
+    c->stream = std::move(stream);
+    return {};
+}
+
+Result<void> Mixer::unload(Bank bank, std::uint32_t ch) {
+    Channel retired;
+    std::lock_guard lock(mutex_);
+    Channel* c = find(bank, ch);
+    if (!c) return std::unexpected(bad_channel());
     const auto keep_config = c->config;
+    retired = std::move(*c);
     *c = Channel{};
     c->config = keep_config;
     return {};
@@ -64,7 +77,7 @@ Result<void> Mixer::play(Bank bank, std::uint32_t ch, std::uint32_t volume, std:
     std::lock_guard lock(mutex_);
     Channel* c = find(bank, ch);
     if (!c) return std::unexpected(bad_channel());
-    if (!c->pcm) return fail(Errc::Range, "no sound loaded on the channel");
+    if (!c->pcm && !c->stream) return fail(Errc::Range, "no sound loaded on the channel");
     c->playing = true;
     c->pos = 0;
     c->loops = 0;
@@ -79,7 +92,7 @@ Result<void> Mixer::start(Bank bank, std::uint32_t ch) {
     std::lock_guard lock(mutex_);
     Channel* c = find(bank, ch);
     if (!c) return std::unexpected(bad_channel());
-    if (!c->pcm) return fail(Errc::Range, "no sound loaded on the channel");
+    if (!c->pcm && !c->stream) return fail(Errc::Range, "no sound loaded on the channel");
     c->playing = true;
     c->pos = 0;
     c->loops = 0;
@@ -150,7 +163,7 @@ Result<void> Mixer::fade_to(Bank bank, std::uint32_t ch, std::uint32_t target, s
 ChannelState Mixer::state(Bank bank, std::uint32_t ch) const {
     std::lock_guard lock(mutex_);
     const Channel* c = find(bank, ch);
-    if (!c || !c->pcm) return ChannelState::Empty;
+    if (!c || (!c->pcm && !c->stream)) return ChannelState::Empty;
     if (!c->playing) return ChannelState::Stopped;
     return c->paused ? ChannelState::Paused : ChannelState::Playing;
 }
@@ -181,7 +194,29 @@ void Mixer::mix_block(std::int16_t* out, std::uint32_t frames) {
     std::array<float, 1024> acc{};
 
     auto render = [&](Channel& c) {
-        if (!c.playing || c.paused || !c.pcm) return;
+        if (!c.playing || c.paused) return;
+        if (c.stream) {
+            const float pan = (float(c.pan) - float(kCenterPan)) / float(kCenterPan);
+            const float gl = std::min(1.0f, 1.0f - pan), gr = std::min(1.0f, 1.0f + pan);
+            for (std::uint32_t i = 0; i < frames; ++i) {
+                if (c.step != 0) {
+                    c.volume += c.step;
+                    if ((c.step > 0 && c.volume >= c.target) || (c.step < 0 && c.volume <= c.target)) {
+                        c.volume = c.target; c.step = 0;
+                        if (c.stop_after) { c.playing = false; break; }
+                    }
+                }
+                std::int16_t l = 0, r = 0;
+                if (!c.stream->read(l, r)) {
+                    if (c.stream->finished()) c.playing = false;
+                    break;
+                }
+                const float gain = volume_gain(c.volume, c.config) / 32768.0f;
+                acc[2 * i] += l * gain * gl; acc[2 * i + 1] += r * gain * gr;
+            }
+            return;
+        }
+        if (!c.pcm) return;
         const Pcm& p = *c.pcm;
         const std::uint32_t total = p.frames();
         const double ratio = double(p.sample_rate) / rate_;

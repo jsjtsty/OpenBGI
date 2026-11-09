@@ -54,6 +54,52 @@ TEST_CASE("GPU crossfade matches the scalar picture blend" * doctest::test_suite
     }
 }
 
+TEST_CASE("GPU filters match scalar filters at every strength" * doctest::test_suite("gpu")) {
+    auto rig = make_rig(nullptr);
+    REQUIRE(rig.display);
+    auto& d = *rig.display;
+    // Odd dimensions exercise shader bounds; varied top bytes exercise alpha preservation.
+    constexpr unsigned w = 17, h = 9;
+    REQUIRE(d.resize_screen(w, h));
+    std::vector<std::uint32_t> pixels(w * h), gray(w * h);
+    std::uint32_t seed = 0x12345678;
+    for (unsigned i = 0; i < pixels.size(); ++i) {
+        seed = seed * 1664525u + 1013904223u;
+        pixels[i] = seed;
+        gray[i] = i * 255u / (pixels.size() - 1);
+    }
+    REQUIRE(d.upload_slot(1, w, h, SlotFormat::Bgrx, pixels));
+    REQUIRE(d.upload_slot(2, w, h, SlotFormat::Gray8, gray));
+    auto& bg = d.sprite(1); bg.slot = 1; bg.priority = 0;
+    auto& fx = d.sprite(2); fx.priority = 1;
+    // compose's blit establishes the input (including its packed top byte).
+    fx.visible = false;
+    REQUIRE(d.compose());
+    auto baseline = d.read_screen(); REQUIRE(baseline);
+    fx.visible = true;
+    for (unsigned colour : {0u, 0x123456u, 0xffffffu}) {
+        fx.filter_colour = colour;
+        for (int kind = 0; kind <= 4; ++kind) {
+            fx.filter_kind = kind;
+            fx.filter_gray = kind == 4 ? 2u : 0xffffffffu;
+            for (int param : {0, 1, 4, 8}) {
+                if (kind != 4 && param != 0) continue;
+                fx.filter_param = param;
+                for (unsigned level = 0; level <= 256; ++level) {
+                    CAPTURE(colour); CAPTURE(kind); CAPTURE(param); CAPTURE(level);
+                    fx.alpha = level;
+                    auto expected = *baseline;
+                    if (kind == 4) bgfx::filter_by_gray(expected, colour, gray, param, int(level));
+                    else bgfx::filter_kind(expected, kind, colour, int(level));
+                    REQUIRE(d.compose());
+                    auto actual = d.read_screen(); REQUIRE(actual);
+                    REQUIRE(*actual == expected);
+                }
+            }
+        }
+    }
+}
+
 TEST_CASE("resizing the screen preserves the full logical canvas" * doctest::test_suite("gpu")) {
     auto rig = make_rig(nullptr);
     REQUIRE(rig.display);
