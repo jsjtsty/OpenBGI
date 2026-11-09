@@ -1,5 +1,6 @@
 #include "runtime/session.hpp"
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <chrono>
 #include <cstdio>
@@ -59,6 +60,19 @@ std::optional<std::string> game_name_from_system_ipl(vm::ProgramProvider& progra
         return std::nullopt;
     return std::string(name);
 }
+
+bool has_gbk_story_patch(ArcResourceFinder& resources) {
+    auto script = resources.read("data01120.arc", "ac3_01mikuri");
+    if (!script || script->size() < 0x120 ||
+        !std::string_view(reinterpret_cast<const char*>(script->data()), script->size()).starts_with("BurikoCompiledScriptVer1.00"))
+        return false;
+    constexpr std::array<std::uint8_t, 6> name = {0xC3, 0xC0, 0xBE, 0xC3, 0xC0, 0xF5}; // GBK: 美久栗
+    constexpr std::array<std::uint8_t, 10> phrase_prefix = {0xBD, 0xF1, 0xCC, 0xEC, 0xCA, 0xC7, 0xC8, 0xA5, 0xBB, 0xA8}; // 今天是去花...
+    const auto contains = [&](const auto& bytes) {
+        return std::search(script->begin(), script->end(), bytes.begin(), bytes.end()) != script->end();
+    };
+    return contains(name) && contains(phrase_prefix);
+}
 } // namespace
 
 struct EngineSession::Impl {
@@ -108,6 +122,10 @@ Result<std::unique_ptr<EngineSession>> EngineSession::create(SessionOptions opti
         m.images.set_queue(m.resource_jobs.get());
     }
     if (auto name = game_name_from_system_ipl(m.programs)) m.system.game_name = std::move(*name);
+    if (has_gbk_story_patch(m.resources)) {
+        m.system.code_page = 936;
+        m.system.code_page_locked = true;
+    }
     RendererOptions ro;
     ro.headless = !m.options.window;
     ro.logical_width = m.options.width; ro.logical_height = m.options.height;

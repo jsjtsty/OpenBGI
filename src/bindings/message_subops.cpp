@@ -150,7 +150,7 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         if (!fnt) { c.push(0x80000003u); return 0; }
         TextStyle style;
         style.wrap = false;
-        auto img = render_text(**fnt, s->code_page == 65001 ? utf8_to_utf32(str) : cp932_to_utf32(str), style, 0);
+        auto img = render_text(**fnt, script_to_utf32(str, s->code_page), style, 0);
         c.write(out, img ? img->width : 0, 4);
         c.push(0);
         return 0;
@@ -167,7 +167,7 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         auto fnt = th->fonts->open(fh->table.ids[font_no], static_cast<int>(size));
         if (!fnt) { c.push(0x80000003u); return 0; }
         const std::string str = c.cstring(str_addr);
-        const std::u32string text = s->code_page == 65001 ? utf8_to_utf32(str) : cp932_to_utf32(str);
+        const std::u32string text = script_to_utf32(str, s->code_page);
         Word n = 0;
         for (char32_t ch : text) {
             const Glyph* g = (*fnt)->glyph(ch);
@@ -404,7 +404,7 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         style.first_indent = cur.x - p->area[0];
         const std::int64_t room = std::int64_t{p->area[2]} - p->area[0] + 1;
         const std::uint32_t max_w = room > 0 ? static_cast<std::uint32_t>(room) : 1;
-        const std::u32string text = s->code_page == 65001 ? utf8_to_utf32(str) : cp932_to_utf32(str);
+        const std::u32string text = script_to_utf32(str, s->code_page);
         int ruby_x = 0, ruby_y = 0;
         if (opts.ruby) {
             const auto it = s->records.find(0x9198);

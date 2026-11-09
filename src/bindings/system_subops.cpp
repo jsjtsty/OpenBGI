@@ -865,13 +865,13 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
         c.write_bytes(dst, st.data(), 8);
         return 0;
     });
-    // (source, destination): CP932 string -> UTF-8 (the caller sizes the destination)
-    add(r, 0x8121, "cp932 to utf8", 2, 0, [](Ctx& c) {
+    // (source, destination): script-encoding string -> UTF-8 (the caller sizes the destination)
+    add(r, 0x8121, "script string to utf8", 2, 0, [s](Ctx& c) {
         std::string src = c.cstring(c.pop());
         const Word dst = c.pop();
         if (!c.ok()) return 0;
         std::string utf8;
-        for (char32_t ch : cp932_to_utf32(src)) {
+        for (char32_t ch : script_to_utf32(src, s->code_page)) {
             if (ch < 0x80) utf8 += char(ch);
             else if (ch < 0x800) utf8 += {char(0xC0 | (ch >> 6)), char(0x80 | (ch & 0x3F))};
             else if (ch < 0x10000) utf8 += {char(0xE0 | (ch >> 12)), char(0x80 | ((ch >> 6) & 0x3F)), char(0x80 | (ch & 0x3F))};
@@ -916,9 +916,8 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     add(r, 0x8100, "string code page", 1, 1, [s](Ctx& c) {
         const Word v = c.pop();
         if (!c.ok()) return 0;
-        if (v == 0) s->code_page = 932;
-        else if (v == 1) s->code_page = 65001;
-        c.push(v <= 1 ? 1 : 0);
+        if (v <= 2 && !s->code_page_locked) s->code_page = v == 0 ? 932 : v == 1 ? 65001 : 936;
+        c.push(v <= 2 ? 1 : 0);
         return 0;
     });
     add(r, 0x9002, "frame rate", 1, 0, [s](Ctx& c) {

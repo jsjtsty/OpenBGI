@@ -27,7 +27,8 @@ struct SystemState : InputState {
     std::string game_name = "AmairoChocolate2ML"; // 80:E8
     std::uint32_t frame_ms = 4;            // 90:02: present interval in ms; the original scheduler starts at 250 fps
     bool display_enabled = true;           // 90:01: whether the runner presents the composed display
-    std::uint32_t code_page = 932;         // 81:00: 932 (CP932) or 65001 (UTF-8) for script strings
+    std::uint32_t code_page = 932;         // 81:00: 932 (CP932), 936 (GBK), or 65001 (UTF-8)
+    bool code_page_locked = false;          // an identified translated script set has a fixed source encoding
     // 90:20..24, 90:28, 90:29: timed changes of a display object (position along an ease curve, level along another),
     // advanced by advance_motions() once per scheduler frame
     struct Motion {

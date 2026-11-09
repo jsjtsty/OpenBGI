@@ -39,7 +39,7 @@ void register_text_subops(vm::SubopRegistry& r, TextHost& host) {
                TextStyle style;
                style.wrap = false;
                const std::int64_t room = std::int64_t{info->width} - x;
-               auto img = render_text(**font, host.code_page && *host.code_page == 65001 ? utf8_to_utf32(text) : cp932_to_utf32(text), style, room > 0 ? static_cast<std::uint32_t>(room) : 1);
+               auto img = render_text(**font, script_to_utf32(text, host.code_page ? *host.code_page : 932), style, room > 0 ? static_cast<std::uint32_t>(room) : 1);
                if (!img) { c.fail(img.error().code, img.error().message); return 0; }
                if (auto up = host.display->upload_slot(kTextSlot, img->width, img->height, SlotFormat::Bgra, img->pixels); !up) {
                    c.fail(up.error().code, up.error().message);
@@ -112,7 +112,7 @@ void register_text_subops(vm::SubopRegistry& r, TextHost& host) {
                    y += static_cast<std::int32_t>(std::int64_t{size} * ruby_percent / 100);
                }
                const std::int64_t room = std::int64_t{info->width} - draw_x;
-               auto img = render_text(**font, host.code_page && *host.code_page == 65001 ? utf8_to_utf32(text) : cp932_to_utf32(text), style, room > 0 ? static_cast<std::uint32_t>(room) : 1);
+               auto img = render_text(**font, script_to_utf32(text, host.code_page ? *host.code_page : 932), style, room > 0 ? static_cast<std::uint32_t>(room) : 1);
                if (!img) {
                    c.fail(img.error().code, img.error().message);
                    return 0;
