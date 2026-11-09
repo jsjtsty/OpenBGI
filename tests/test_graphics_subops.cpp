@@ -749,3 +749,97 @@ TEST_CASE("an effector displaces everything drawn below it" * doctest::test_suit
     CHECK(((*screen)[22 * sw + 7] & 0xFFFFFF) == 0xFF0000);  // the picture moved from x 10..17 to x 5..12
     CHECK(((*screen)[22 * sw + 14] & 0xFFFFFF) != 0xFF0000);
 }
+
+TEST_CASE("92:91 draws styled window text immediately without a result or input wait" * doctest::test_suite("gpu")) {
+    RendererOptions options; options.headless = true;
+    auto renderer = Renderer::create(options); REQUIRE(renderer);
+    auto display = Display::create(**renderer, 160, 80); REQUIRE(display);
+    auto library = FontLibrary::create(); REQUIRE(library);
+    REQUIRE((*library)->open("", 24));
+    auto& d = **display;
+    SystemState state; state.display = &d; state.code_page = 65001;
+    state.planes[0] = SystemState::Plane{};
+    auto& plane = *state.planes[0];
+    plane.width = 160; plane.height = 80; plane.area = {0, 0, 159, 79};
+    REQUIRE(d.create_slot(0x10000, 160, 80, SlotFormat::Bgra));
+    TextHost text{&d, library->get()}; FontHost fonts;
+    SubopRegistry registry; register_core_subops(registry);
+    register_message_subops(registry, state, text, fonts);
+    auto draw = [](Asm& a, Word address) {
+        a.i32(0xB0000000).i32(address).i32(0xFF0000).i32(0).i32(0).i32(0);
+        a.i32(1).i32(20).i32(20).i32(0x00FF00).i32(256).sub(0x92, 0x91);
+    };
+    MemProvider provider; Asm a;
+    a.i32(0x300);
+    draw(a, 0x100);
+    // A sentinel below the call must survive, and the next instruction executes this frame.
+    a.i32(7).raw({0x09, 0x02}).ret(); provider.set(a);
+    Vm vm(provider, registry); put_string(vm, 0x100, "AB");
+    ThreadConfig config; config.stack_size = 1024;
+    REQUIRE(vm.spawn(config, "test", "immediate text"));
+    auto status = vm.run_frame(0); REQUIRE_MESSAGE(status.has_value(), (status ? "" : status.error().message));
+    std::uint8_t value[4]; REQUIRE(vm.global.read(0x300, 4, value));
+    CHECK(load_u32le(value) == 7);
+    CHECK(state.message_wait_clicks == 0);
+    CHECK(text.messages->cursors[0].x == 24);
+    auto pixels = d.read_slot(0x20000); REQUIRE(pixels);
+    bool first = false, second = false, shadow = false;
+    for (unsigned y = 0; y < 80; ++y) for (unsigned x = 0; x < 160; ++x) {
+        const auto pixel = (*pixels)[y * 160 + x];
+        if (pixel >> 24) {
+            if (pixel & 0xFF0000) { if (x < 12) first = true; else second = true; }
+            if (pixel & 0x00FF00) shadow = true;
+        }
+    }
+    CHECK(first); CHECK(second); CHECK(shadow);
+    // The immediate variant clears control pages synchronously, without a fade wait.
+    Asm clear; draw(clear, 0x100); clear.ret(); provider.set(clear);
+    Vm next(provider, registry); put_string(next, 0x100, "\x0C" "A");
+    REQUIRE(next.spawn(config, "test", "clear page")); REQUIRE(next.run_frame(0));
+    CHECK(text.messages->cursors[0].x == 12);
+    auto cleared = d.read_slot(0x20000); REQUIRE(cleared);
+    bool old_text_remains = false;
+    for (unsigned y = 0; y < 80; ++y) for (unsigned x = 32; x < 160; ++x)
+        old_text_remains |= (*cleared)[y * 160 + x] != 0;
+    CHECK_FALSE(old_text_remains);
+}
+
+TEST_CASE("90:29 keeps fractional path coordinates through a small character movement" * doctest::test_suite("gpu")) {
+    RendererOptions options; options.headless = true;
+    auto renderer = Renderer::create(options); REQUIRE(renderer);
+    auto display = Display::create(**renderer, 16, 16); REQUIRE(display);
+    auto& d = **display;
+    constexpr Word object = 0x80000004;
+    auto& sp = d.sprite(object); sp.projected = true; sp.smooth = true;
+    sp.script_fixed_move_to(0x1680000, 0);
+    SystemState state; state.display = &d;
+    SubopRegistry registry; register_core_subops(registry); register_plane_subops(registry, state, &d);
+    MemProvider provider;
+    // Actual game's two points: y=2 and y=5, curve 2, duration 200 ms.
+    provider.set(Asm().i32(object).i32(2).i32(0x100).i32(2).i32(0).i32(0).i32(256).i32(200).i32(250).i32(0).i32(0).i32(0x710).sub(0x90, 0x29).ret());
+    Vm vm(provider, registry);
+    std::uint8_t points[32]{};
+    const auto put = [&](int offset, Word value) { for (int i = 0; i < 4; ++i) points[offset + i] = static_cast<std::uint8_t>(value >> (8 * i)); };
+    put(0, 0x1680000); put(4, 0x20000);
+    put(16, 0x1680000); put(20, 0x50000);
+    REQUIRE(vm.global.write(0x100, sizeof points, points));
+    ThreadConfig config; config.stack_size = 1024;
+    REQUIRE(vm.spawn(config, "test", "character bob")); REQUIRE(vm.run_frame(0));
+    advance_motions(state, d, 16);
+    CHECK(sp.x == 360); CHECK(sp.y == 0);
+    CHECK(sp.fixed_y() == 29003); // native amachoco3.exe spline at 16 ms
+    CHECK(sp.fraction_y > 0); CHECK(sp.fraction_y < 65536);
+    auto previous = sp.fixed_y();
+    for (int ms = 32; ms <= 192; ms += 16) {
+        advance_motions(state, d, ms);
+        CHECK(sp.fixed_y() > previous);
+        previous = sp.fixed_y();
+    }
+    advance_motions(state, d, 200);
+    CHECK(sp.fixed_y() == 0x50000); CHECK(sp.fraction_y == 0);
+    // Negative fractional positions remain negative fractions; integer moves reset the remainder.
+    sp.script_fixed_move_to(-32768, -16384);
+    CHECK(sp.x == -1); CHECK(sp.fraction_x == 32768);
+    CHECK(sp.script_fixed_y() == -16384);
+    sp.script_move_to(1, 2); CHECK(sp.fraction_x == 0); CHECK(sp.fraction_y == 0);
+}

@@ -34,6 +34,17 @@ struct Sprite {
     std::int32_t off_x = 0, off_y = 0, off2_x = 0, off2_y = 0;
     // the background's upper picture is drawn at minus the object's position (a view origin, not a place)
     bool flip_position = false;
+    std::uint32_t fraction_x = 0, fraction_y = 0; // low 16 bits of the logical fixed position
+    std::int32_t fixed_x() const { return static_cast<std::int32_t>((static_cast<std::uint32_t>(x) << 16) | fraction_x); }
+    std::int32_t fixed_y() const { return static_cast<std::int32_t>((static_cast<std::uint32_t>(y) << 16) | fraction_y); }
+    std::int32_t script_fixed_x() const { return flip_position ? -fixed_x() : fixed_x(); }
+    std::int32_t script_fixed_y() const { return flip_position ? -fixed_y() : fixed_y(); }
+    void script_fixed_move_to(std::int32_t fx, std::int32_t fy) {
+        if (flip_position) fx = -fx, fy = -fy;
+        move_to(fx >> 16, fy >> 16);
+        fraction_x = static_cast<std::uint32_t>(fx) & 0xffffu;
+        fraction_y = static_cast<std::uint32_t>(fy) & 0xffffu;
+    }
     std::int32_t script_x() const { return flip_position ? -x : x; }
     std::int32_t script_y() const { return flip_position ? -y : y; }
     void script_move_to(std::int32_t nx, std::int32_t ny) { move_to(flip_position ? -nx : nx, flip_position ? -ny : ny); }
@@ -85,6 +96,8 @@ struct Sprite {
     // The two 16.16 offsets added to the fixed position (91:37 and 91:36, dispobj.c: DispObj_EffFixedPos); a projected plane is placed and
     // scaled by the sum.
     std::int32_t fix_off1[3] = {}, fix_off2[3] = {};
+    std::int64_t proj_fixed_x() const { return std::int64_t{fixed_x()} + fix_off1[0] + fix_off2[0]; }
+    std::int64_t proj_fixed_y() const { return std::int64_t{fixed_y()} + fix_off1[1] + fix_off2[1]; }
     std::int32_t proj_x() const { return x + ((fix_off1[0] + fix_off2[0]) >> 16); }
     std::int32_t proj_y() const { return y + ((fix_off1[1] + fix_off2[1]) >> 16); }
     std::int32_t proj_depth() const { return depth + fix_off1[2] + fix_off2[2]; }
@@ -95,7 +108,7 @@ struct Sprite {
     std::uint32_t master = 0;
     std::int32_t master_dx = 0, master_dy = 0;
     bool moved = false;
-    void move_to(std::int32_t nx, std::int32_t ny) { x = nx, y = ny, moved = true; }
+    void move_to(std::int32_t nx, std::int32_t ny) { x = nx, y = ny, fraction_x = fraction_y = 0, moved = true; }
     // The 1-bit hit mask of 90:3C (dispobj.c: DispObj_BuildHitMask): one bit per pixel of its own size, set where the picture is opaque.
     // No mask means the whole picture hits.
     std::vector<std::uint8_t> hit_bits;

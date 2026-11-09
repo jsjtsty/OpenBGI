@@ -12,8 +12,32 @@ layout(std430, set = 1, binding = 0) buffer Dst { uint dst_px[]; };
 layout(std140, set = 2, binding = 0) uniform Params {
     uvec4 sizes;  // dst width, dst height, src width, src height
     ivec4 origin; // dst x, dst y, src x, src y (the fill value when job.w == 1)
+    ivec4 sampling; // fractional translation in 16.16 (used only when job.w == 2)
     uvec4 job;    // rect width, rect height, mode | sf << 8 | df << 10 | P << 16, 1 = fill instead of blit
 };
+
+uint source_at(ivec2 p) {
+    if (any(lessThan(p, ivec2(0))) || any(greaterThanEqual(p, ivec2(sizes.zw)))) return 0u;
+    return src_px[uint(p.y) * sizes.z + uint(p.x)];
+}
+
+// Native SampleXY retains seven fraction bits and interpolates packed channels before blending.
+uint translated_sample(ivec2 p) {
+    ivec2 fixed_pos = (p << 16) - sampling.xy;
+    ivec2 q = fixed_pos >> 16;
+    ivec2 f = (fixed_pos & 0xfe00) >> 9;
+    uint taps[4] = uint[4](source_at(q), source_at(q + ivec2(1, 0)),
+                          source_at(q + ivec2(0, 1)), source_at(q + ivec2(1, 1)));
+    uint result = 0u;
+    for (int shift = 0; shift < 32; shift += 8) {
+        int a = int((taps[0] >> shift) & 255u), b = int((taps[1] >> shift) & 255u);
+        int c = int((taps[2] >> shift) & 255u), d = int((taps[3] >> shift) & 255u);
+        int top = (((a - b) * (128 - f.x)) >> 7) + b;
+        int bottom = (((c - d) * (128 - f.x)) >> 7) + d;
+        result |= uint(clamp((((top - bottom) * (128 - f.y)) >> 7) + bottom, 0, 255)) << shift;
+    }
+    return result;
+}
 
 void main() {
     uvec2 p = gl_GlobalInvocationID.xy;
@@ -25,6 +49,11 @@ void main() {
     }
     uint mode = job.z & 255u, sf = (job.z >> 8) & 3u, df = (job.z >> 10) & 3u;
     int P = int(job.z >> 16);
+    if (job.w == 2u) {
+        uint source = translated_sample(origin.zw + ivec2(p));
+        dst_px[di] = blend_pixel(mode, sf, df, P, source, dst_px[di]);
+        return;
+    }
     uint si = uint(origin.w + int(p.y)) * sizes.z + uint(origin.z + int(p.x));
     dst_px[di] = blend_pixel(mode, sf, df, P, src_px[si], dst_px[di]);
 }

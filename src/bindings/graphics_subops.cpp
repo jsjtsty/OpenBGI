@@ -611,6 +611,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
             return 0;
         }
         Sprite& s = d.sprite(id);
+        s.fraction_x = s.fraction_y = 0;
         s.slot = slot, s.x = x, s.y = y, s.blend = blend, s.alpha = alpha, s.priority = priority;
         s.projected = false, s.xform = false, s.slot2 = 0xFFFFFFFFu, s.mix_ratio = 0, s.level_route = -1, s.ripple_map = -1;
         return 0;
@@ -632,6 +633,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         Sprite& s = d.sprite(id);
         if (i1->width != i2->width || i1->height != i2->height || i1->format != i2->format) return 0;
         s.slot = static_cast<Word>(bmp1), s.slot2 = static_cast<Word>(bmp2), s.mix_ratio = mix, s.level_route = route;
+        s.fraction_x = s.fraction_y = 0;
         s.x = x, s.y = y, s.blend = 1, s.alpha = level, s.priority = priority;
         s.projected = false, s.xform = false, s.ripple_map = -1;
         return 0;
@@ -669,6 +671,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         }
         if (!d.slot(slot)) { c.fail(Errc::Range, "no image slot " + std::to_string(slot)); return 0; }
         Sprite& s = d.sprite(id);
+        s.fraction_x = s.fraction_y = 0;
         s.slot = slot, s.x = x, s.y = y, s.blend = effect, s.alpha = level, s.priority = priority;
         s.projected = false, s.xform = false, s.slot2 = 0xFFFFFFFFu, s.mix_ratio = 0, s.level_route = -1, s.ripple_map = -1;
         const SlotInfo* gi = d.slot(gray);
@@ -718,6 +721,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         s->projected = true, s->xform = false, s->ripple_map = -1;
         s->x = static_cast<std::int32_t>(v[15]) >> 16;
         s->y = static_cast<std::int32_t>(v[14]) >> 16;
+        s->fraction_x = v[15] & 0xffffu, s->fraction_y = v[14] & 0xffffu;
         s->depth = static_cast<std::int32_t>(v[13]);
         if (blend_mode_supported(v[2])) s->blend = v[2]; // v[2] is the effect, not a visibility flag
         s->set_level(v[1]);
@@ -857,7 +861,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         case 2: c.write(out, s->level(), 4); break;
         case 3: c.write(out, s->priority, 4); break;
         case 0x20:
-            c.write(out, static_cast<Word>(s->script_x()) << 16, 4), c.write(out + 4, static_cast<Word>(s->script_y()) << 16, 4);
+            c.write(out, static_cast<Word>(s->script_fixed_x()), 4), c.write(out + 4, static_cast<Word>(s->script_fixed_y()), 4);
             c.write(out + 8, static_cast<Word>(s->depth), 4);
             break;
         default: break;
@@ -1172,6 +1176,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         s.slot = static_cast<Word>(bmp), s.slot2 = 0xFFFFFFFFu, s.mix_ratio = 0, s.level_route = -1, s.projected = false, s.xform = false;
         s.ripple_map = map, s.rings = rings, s.ripple_no = ripple, s.ripple_sel = 0;
         s.alpha = static_cast<Word>(level);
+        s.fraction_x = s.fraction_y = 0;
         s.x = x, s.y = y, s.blend = 1, s.fade = fade, s.priority = priority;
         return 0;
     });
@@ -1197,7 +1202,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
             fy = static_cast<std::int32_t>((static_cast<std::uint32_t>(fy) + 0x8000u) & 0xffff0000u);
         }
         s->depth = fz;
-        s->script_move_to(fx >> 16, fy >> 16);
+        s->script_fixed_move_to(fx, fy);
         return 0;
     });
     // 91:37 (object, x, y, z) and 91:36 (object, x, y, z): the first and the second 16.16 offset added to the fixed position

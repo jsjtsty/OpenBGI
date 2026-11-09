@@ -533,7 +533,7 @@ std::int64_t start_motion(SystemState& s, Display& display, Ctx& c, Word id, boo
     m.to_progress = progress < 0 ? m.from_progress : progress; // -1 keeps it
     m.from_z = sp->depth, m.to_z = sp->depth;
     if (!path.empty()) { // the start plus the points: two points are a straight line, more make a spline
-        m.path.push_back({double(m.from_x), double(m.from_y), m.from_z / 65536.0});
+        m.path.push_back({sp->script_fixed_x() / 65536.0, sp->script_fixed_y() / 65536.0, m.from_z / 65536.0});
         m.path.insert(m.path.end(), path.begin(), path.end());
         m.to_z = static_cast<std::int32_t>(path.back()[2] * 65536.0);
     }
@@ -543,7 +543,11 @@ std::int64_t start_motion(SystemState& s, Display& display, Ctx& c, Word id, boo
         std::fprintf(stderr, "motion object %X: %d,%d -> %d,%d level %d -> %d over %u ms\n", id, m.from_x, m.from_y, m.to_x, m.to_y, m.from_level, m.to_level, duration);
     std::erase_if(s.motions, [&](const auto& o) { return o.object == id; });
     if (m.duration_ms <= 0) {
-        if (move) sp->script_move_to(m.to_x, m.to_y), sp->depth = m.to_z;
+        if (move) {
+            if (!m.path.empty()) sp->script_fixed_move_to(static_cast<std::int32_t>(m.path.back()[0] * 65536.0), static_cast<std::int32_t>(m.path.back()[1] * 65536.0));
+            else sp->script_move_to(m.to_x, m.to_y);
+            sp->depth = m.to_z;
+        }
         display.set_level(id, level);
         if (m.to_progress != m.from_progress) display.set_progress(id, static_cast<std::uint32_t>(m.to_progress));
         return 1;
@@ -714,12 +718,15 @@ void advance_motions(SystemState& state, Display& display, std::int64_t now_ms) 
             const std::int64_t fp = done ? 0x10000 : ease(t, it->curve), fl = done ? 0x10000 : ease(t, it->level_curve);
             if (it->path.size() >= 3) {
                 const auto p = spline_at(it->path, double(fp) / 65536.0);
-                sp->script_move_to(static_cast<std::int32_t>(p[0]), static_cast<std::int32_t>(p[1]));
+                sp->script_fixed_move_to(static_cast<std::int32_t>(p[0] * 65536.0), static_cast<std::int32_t>(p[1] * 65536.0));
                 sp->depth = static_cast<std::int32_t>(p[2] * 65536.0);
-            } else if (it->path.size() == 2) { // one point: a straight line, depth included
-                sp->script_move_to(it->from_x + static_cast<std::int32_t>((std::int64_t{it->to_x} - it->from_x) * fp >> 16),
-                                   it->from_y + static_cast<std::int32_t>((std::int64_t{it->to_y} - it->from_y) * fp >> 16));
-                sp->depth = it->from_z + static_cast<std::int32_t>((std::int64_t{it->to_z} - it->from_z) * fp >> 16);
+            } else if (it->path.size() == 2) { // interpolate in the original 16.16 units, retaining negative fractions
+                const auto fixed_axis = [fp](double a, double b) {
+                    const auto from = static_cast<std::int32_t>(a * 65536.0);
+                    return from + static_cast<std::int32_t>((b - a) * fp);
+                };
+                sp->script_fixed_move_to(fixed_axis(it->path[0][0], it->path[1][0]), fixed_axis(it->path[0][1], it->path[1][1]));
+                sp->depth = fixed_axis(it->path[0][2], it->path[1][2]);
             } else {
                 sp->script_move_to(it->from_x + static_cast<std::int32_t>((std::int64_t{it->to_x} - it->from_x) * fp >> 16),
                             it->from_y + static_cast<std::int32_t>((std::int64_t{it->to_y} - it->from_y) * fp >> 16));

@@ -324,3 +324,28 @@ TEST_CASE("a wipe sprite is revealed through its gray pattern as progress grows"
         }
     }
 }
+
+TEST_CASE("projected character translations keep subpixel sampling on the GPU" * doctest::test_suite("gpu")) {
+    auto rig = make_rig(nullptr); REQUIRE(rig.display);
+    auto& d = *rig.display;
+    REQUIRE(d.upload_slot(1, 2, 2, SlotFormat::Bgrx, std::vector<std::uint32_t>(4, 0x00ffffff)));
+    auto& sp = d.sprite(7); sp.slot = 1; sp.projected = true; sp.smooth = true; sp.blend = 0x80;
+    // make_rig uses a 1280x720 display by default; position the small sprite near the origin.
+    const auto w = d.screen_width(), h = d.screen_height();
+    for (int fraction : {0, 16384, 32768, 49152}) {
+        sp.script_fixed_move_to(-static_cast<int>(w << 15) + (4 << 16), -static_cast<int>(h << 15) + (4 << 16) + fraction);
+        REQUIRE(d.compose()); auto screen = d.read_screen(); REQUIRE(screen);
+        // At the top edge white mixes with zero outside. The interior row remains white.
+        const unsigned top = 255u - ((255u * (fraction >> 9) + 127u) >> 7);
+        CHECK(((*screen)[4 * w + 4] & 0xffu) == top);
+        CHECK(((*screen)[5 * w + 4] & 0xffffffu) == 0xffffffu);
+    }
+    sp.script_fixed_move_to(-static_cast<int>(w << 15) - 32768, -static_cast<int>(h << 15) + (4 << 16));
+    REQUIRE(d.compose()); auto clipped = d.read_screen(); REQUIRE(clipped);
+    CHECK(((*clipped)[4 * w] & 0xffffffu) == 0xffffffu);
+    CHECK(((*clipped)[4 * w + 1] & 0xffffffu) == 0x7f7f7fu);
+    sp.script_fixed_move_to(-static_cast<int>(w << 15) + (4 << 16), -static_cast<int>(h << 15) + (4 << 16) + 49152);
+    sp.smooth = false;
+    REQUIRE(d.compose()); auto nearest = d.read_screen(); REQUIRE(nearest);
+    CHECK(((*nearest)[4 * w + 4] & 0xffffffu) == 0xffffffu);
+}

@@ -23,6 +23,7 @@ Error sdl_error(const char* what) { return Error{Errc::Io, std::string(what) + "
 struct BlitParams {
     std::uint32_t sizes[4]; // dst w, dst h, src w, src h
     std::int32_t origin[4]; // dst x, dst y, src x / fill value, src y
+    std::int32_t sampling[4]; // fractional translation for projected sprites
     std::uint32_t job[4];   // rect w, rect h, mode | sf << 8 | df << 10 | P << 16, fill flag
 };
 struct PresentParams {
@@ -253,6 +254,26 @@ struct Display::Impl {
         auto r = dispatch_blit(*tmp, dst.buffer, p);
         SDL_ReleaseGPUBuffer(device, *tmp);
         return r;
+    }
+
+    // Full image translated by a fractional pixel. Clip only the destination: the sampler supplies
+    // transparent neighbours outside the image, including the extra right/bottom edge pixel.
+    Result<void> fractional_blit(GpuSlot& dst, std::int32_t dx, std::int32_t dy, GpuSlot& src,
+                                 std::uint32_t fx, std::uint32_t fy, std::uint32_t mode, std::uint32_t alpha) {
+        const auto left = std::max(dx, 0), top = std::max(dy, 0);
+        const auto right = std::min<std::int64_t>(std::int64_t{dx} + src.info.width + (fx != 0), dst.info.width);
+        const auto bottom = std::min<std::int64_t>(std::int64_t{dy} + src.info.height + (fy != 0), dst.info.height);
+        if (right <= left || bottom <= top) return {};
+        BlitParams p{};
+        p.sizes[0] = dst.info.width; p.sizes[1] = dst.info.height;
+        p.sizes[2] = src.info.width; p.sizes[3] = src.info.height;
+        p.origin[0] = left; p.origin[1] = top; p.origin[2] = left - dx; p.origin[3] = top - dy;
+        p.sampling[0] = fx; p.sampling[1] = fy;
+        p.job[0] = static_cast<std::uint32_t>(right - left); p.job[1] = static_cast<std::uint32_t>(bottom - top);
+        p.job[2] = mode | static_cast<std::uint32_t>(src.info.format) << 8 | static_cast<std::uint32_t>(dst.info.format) << 10 |
+                   std::min<std::uint32_t>(alpha, 0x100) << 16;
+        p.job[3] = 2;
+        return dispatch_blit(src.buffer, dst.buffer, p);
     }
 
     Result<std::vector<std::uint32_t>> download(GpuSlot& s) {
@@ -652,10 +673,14 @@ bool Display::screen_rect(std::uint32_t id, std::int32_t& left, std::int32_t& to
     if (it == impl_->slots.end()) return false;
     std::int64_t w = it->second.info.width, h = it->second.info.height, x = sp->x + sp->off_x + sp->off2_x, y = sp->y + sp->off_y + sp->off2_y;
     if (sp->projected) {
-        const std::int64_t k = project_scale(sp->depth, sp->no_perspective ? 0 : sp->dist);
+        const std::int64_t k = project_scale(sp->proj_depth(), sp->no_perspective ? 0 : sp->dist);
         const auto scaled = [k](std::int64_t v) { return v * k >> 16; };
-        x = std::int64_t{impl_->screen.info.width / 2} + (sp->scale_position ? scaled(sp->x) : sp->x) - scaled(sp->origin_x) + sp->off_x + sp->off2_x;
-        y = std::int64_t{impl_->screen.info.height / 2} + (sp->scale_position ? scaled(sp->y) : sp->y) - scaled(sp->origin_y) + sp->off_y + sp->off2_y;
+        const auto fx = (std::int64_t{impl_->screen.info.width} << 15) +
+            (sp->scale_position ? sp->proj_fixed_x() * k >> 16 : sp->proj_fixed_x()) - std::int64_t{sp->origin_x} * k;
+        const auto fy = (std::int64_t{impl_->screen.info.height} << 15) +
+            (sp->scale_position ? sp->proj_fixed_y() * k >> 16 : sp->proj_fixed_y()) - std::int64_t{sp->origin_y} * k;
+        x = (fx >> 16) + sp->off_x + sp->off2_x;
+        y = (fy >> 16) + sp->off_y + sp->off2_y;
         w = std::max<std::int64_t>(1, scaled(w)), h = std::max<std::int64_t>(1, scaled(h));
     } else if (sp->xform) {
         x -= std::int64_t{sp->origin_x} * sp->sx >> 16, y -= std::int64_t{sp->origin_y} * sp->sy >> 16;
@@ -914,17 +939,19 @@ Result<void> Display::compose(std::optional<std::uint32_t> max_priority) {
             }
         }
         bool xformed = false;
+        std::uint32_t fraction_x = 0, fraction_y = 0;
         // sprite.c modes 2 and 5 with a rotation or unequal scales: the picture is transformed on the CPU into a temporary slot
         if (sp.xform || (sp.projected && sp.angle != 0)) {
             const auto s0 = m.slots.find(draw_id);
             if (s0 != m.slots.end() && (s0->second.info.format == SlotFormat::Bgra || s0->second.info.format == SlotFormat::Bgrx)) {
                 const std::int32_t k = sp.projected ? project_scale(sp.proj_depth(), sp.no_perspective ? 0 : sp.dist) : 0;
                 const std::int32_t kx = sp.projected ? k : sp.sx, ky = sp.projected ? k : sp.sy;
-                const auto scaled = [k](std::int64_t v) { return static_cast<std::int32_t>(v * k >> 16); };
                 std::int32_t pos_x = sp.x, pos_y = sp.y;
                 if (sp.projected) {
-                    pos_x = static_cast<std::int32_t>(m.screen.info.width / 2) + (sp.scale_position ? scaled(sp.proj_x()) : sp.proj_x());
-                    pos_y = static_cast<std::int32_t>(m.screen.info.height / 2) + (sp.scale_position ? scaled(sp.proj_y()) : sp.proj_y());
+                    const auto fx = (std::int64_t{m.screen.info.width} << 15) + (sp.scale_position ? sp.proj_fixed_x() * k >> 16 : sp.proj_fixed_x());
+                    const auto fy = (std::int64_t{m.screen.info.height} << 15) + (sp.scale_position ? sp.proj_fixed_y() * k >> 16 : sp.proj_fixed_y());
+                    pos_x = static_cast<std::int32_t>(fx >> 16), pos_y = static_cast<std::int32_t>(fy >> 16);
+                    if (sp.smooth) fraction_x = static_cast<std::uint32_t>(fx) & 0xffffu, fraction_y = static_cast<std::uint32_t>(fy) & 0xffffu;
                 }
                 Impl::TempCache& xc = m.xforms[kv->first];
                 const std::uint32_t tmp_id = 0x7F600000u | (kv->first & 0xFFFFFu);
@@ -951,9 +978,13 @@ Result<void> Display::compose(std::optional<std::uint32_t> max_priority) {
         if (xformed) {
         } else if (sp.projected) { // sprite.c mode 5: the picture's origin lands on the projected position, shrunk by the depth
             const std::int32_t k = project_scale(sp.proj_depth(), sp.no_perspective ? 0 : sp.dist);
-            const auto scaled = [k](std::int64_t v) { return static_cast<std::int32_t>(v * k >> 16); };
-            blit_x = static_cast<std::int32_t>(m.screen.info.width / 2) + (sp.scale_position ? scaled(sp.proj_x()) : sp.proj_x()) - scaled(sp.origin_x) + sp.off_x + sp.off2_x;
-            blit_y = static_cast<std::int32_t>(m.screen.info.height / 2) + (sp.scale_position ? scaled(sp.proj_y()) : sp.proj_y()) - scaled(sp.origin_y) + sp.off_y + sp.off2_y;
+            const auto fixed_x = (std::int64_t{m.screen.info.width} << 15) +
+                (sp.scale_position ? sp.proj_fixed_x() * k >> 16 : sp.proj_fixed_x()) - std::int64_t{sp.origin_x} * k;
+            const auto fixed_y = (std::int64_t{m.screen.info.height} << 15) +
+                (sp.scale_position ? sp.proj_fixed_y() * k >> 16 : sp.proj_fixed_y()) - std::int64_t{sp.origin_y} * k;
+            blit_x = static_cast<std::int32_t>(fixed_x >> 16) + sp.off_x + sp.off2_x;
+            blit_y = static_cast<std::int32_t>(fixed_y >> 16) + sp.off_y + sp.off2_y;
+            if (sp.smooth) fraction_x = static_cast<std::uint32_t>(fixed_x) & 0xffffu, fraction_y = static_cast<std::uint32_t>(fixed_y) & 0xffffu;
             auto s0 = m.slots.find(draw_id);
             if (k != 0x10000 && k > 0 && s0 != m.slots.end() && (s0->second.info.format == SlotFormat::Bgra || s0->second.info.format == SlotFormat::Bgrx)) {
                 Impl::ScaleCache& sc = m.scales[kv->first];
@@ -1009,10 +1040,10 @@ Result<void> Display::compose(std::optional<std::uint32_t> max_priority) {
         if (sp.ripple_map != -1) alpha = std::min(sp.fade, 0x100u); // Blit_RippleLevel draws with the fade as its level, the amplitude is the level
         if (windows_level && sp.blend == 1 && window_parts.count(kv->first))
             alpha = 0x100u - (((0x100u - std::min(alpha, 0x100u)) * (0x100u - std::min(windows_level, 0x100u))) >> 8);
-        if (auto r = m.do_blit(m.screen, blit_x, blit_y, it->second, 0, 0, it->second.info.width, it->second.info.height, sp.blend,
-                               alpha);
-            !r)
-            return r;
+        auto rendered = (fraction_x || fraction_y)
+            ? m.fractional_blit(m.screen, blit_x, blit_y, it->second, fraction_x, fraction_y, sp.blend, alpha)
+            : m.do_blit(m.screen, blit_x, blit_y, it->second, 0, 0, it->second.info.width, it->second.info.height, sp.blend, alpha);
+        if (!rendered) return rendered;
     }
     return {};
 }

@@ -363,6 +363,8 @@ int main(int argc, char** argv) {
                                      " proj=%d depth=%d xform=%d sx=%d sy=%d angle=%d filter=%d fx=%d progress=%u\n",
                              id, sp.slot, sp.slot2, sp.mix_ratio, sp.x, sp.y, sp.alpha, sp.fade, sp.opacity, sp.blend, sp.priority, sp.sort_bias,
                              display->scene().creation_order(id), sp.projected, sp.depth, sp.xform, sp.sx, sp.sy, sp.angle, sp.filter_kind, sp.effector, sp.progress);
+                if (sp.projected) std::fprintf(stderr, "PROJECT id=%X fixed_x=%d fixed_y=%d fx=%u fy=%u smooth=%d\n", id,
+                    sp.fixed_x(), sp.fixed_y(), sp.fraction_x, sp.fraction_y, sp.smooth);
             }
         }
         if (trace_menu) {

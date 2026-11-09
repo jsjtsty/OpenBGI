@@ -88,6 +88,20 @@ struct TextOpts {
     std::uint32_t shadow_colour = 0;
 };
 
+// Explicit style shared by 92:90 (paced) and 92:91 (immediate).
+TextOpts pop_styled_opts(Ctx& c) {
+    TextOpts opts;
+    opts.shadow_level = static_cast<int>(c.pop());
+    opts.shadow_colour = c.pop();
+    opts.shadow_dy_pct = static_cast<int>(c.pop());
+    opts.shadow_dx_pct = static_cast<int>(c.pop());
+    opts.shadow_on = static_cast<int>(c.pop());
+    opts.kinsoku = c.pop() != 0;
+    c.pop(); // ruby colour
+    opts.ruby = c.pop() != 0;
+    return opts;
+}
+
 // The shadow of the plain output and of 91:90: 90:9C switches it on, 90:9D gives offsets in percent of the font and the level.
 TextOpts global_text_opts(const SystemState& s, bool rich) {
     TextOpts o;
@@ -514,16 +528,8 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         const Word skip = c.pop();
         const Word wait_end = c.pop();
         const Word instant = c.pop();
-        TextOpts opts;
+        auto opts = pop_styled_opts(c);
         opts.rich = true;
-        opts.shadow_level = static_cast<int>(c.pop());
-        opts.shadow_colour = c.pop();
-        opts.shadow_dy_pct = static_cast<int>(c.pop());
-        opts.shadow_dx_pct = static_cast<int>(c.pop());
-        opts.shadow_on = static_cast<int>(c.pop());
-        opts.kinsoku = c.pop() != 0;
-        c.pop(); // ruby colour
-        opts.ruby = c.pop() != 0;
         const Word colour = c.pop();
         const std::string str = c.cstring(c.pop());
         const Word handle = c.pop();
@@ -531,6 +537,19 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         if (!c.ok() || !write_text(c, handle, str, colour, opts, rv)) return 0;
         return finish(c, rv, instant != 0, skip != 0, wait_end != 0, s);
     }, 1);
+    // 92:91 (window, string, colour, ruby on, ruby colour, hang, shadow on, dx, dy, shadow colour, shadow level).
+    // Native 00495170 calls the synchronous window renderer, consumes 11 arguments and pushes nothing.
+    add(r, 0x9291, "draw window text (styled)", 11, 0, [write_text](Ctx& c) {
+        const auto opts = pop_styled_opts(c);
+        const Word colour = c.pop();
+        const std::string str = c.cstring(c.pop());
+        const Word handle = c.pop();
+        Reveal rv;
+        if (!c.ok() || !write_text(c, handle, str, colour, opts, rv)) return 0;
+        if (rv.pre_done) rv.pre_done();
+        if (rv.draw) rv.draw(rv.total);
+        return 0;
+    });
 }
 
 } // namespace obgi
