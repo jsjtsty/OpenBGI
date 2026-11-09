@@ -30,8 +30,9 @@ if(NOT OPENBGI_BUILD_RUNTIME)
 endif()
 
 obgi_fetch_sdl3()
-obgi_fetch_glslang()
-obgi_fetch_spirv_cross()
+if(NOT APPLE)
+  obgi_fetch_glslang()
+endif()
 obgi_fetch_dxc()
 obgi_fetch_freetype()
 obgi_fetch_ffmpeg()
@@ -39,10 +40,6 @@ obgi_fetch_ffmpeg()
 add_executable(obgi_shaderpack ../tools/shaderpack/main.cpp)
 target_include_directories(obgi_shaderpack PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 obgi_target_defaults(obgi_shaderpack)
-
-add_executable(obgi_spvmsl ../tools/spvmsl/main.cpp)
-target_include_directories(obgi_spvmsl PRIVATE "${spirv_cross_SOURCE_DIR}")
-target_link_libraries(obgi_spvmsl PRIVATE spirv-cross-msl spirv-cross-core spirv-cross-glsl)
 
 obgi_shader_pack(OBGI_SHADER_PACK NAME obgi SHADERS blend_cases.comp blit.vert blit.frag blit_rect.comp crossfade.comp screen_filter.comp slot_present.comp
   DEPENDS "${PROJECT_SOURCE_DIR}/shaders/blend.glsl")
