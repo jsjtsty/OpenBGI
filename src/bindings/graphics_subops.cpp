@@ -479,7 +479,10 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
             c.fail(Errc::Range, "no image slot " + std::to_string(d.slot(dst) ? src : dst));
             return 0;
         }
-        check(c, d.blit(dst, dx, dy, src, 0, 0, s->width, s->height, mode, alpha));
+        // The no-gray branch calls native CrossfadeTo(dst, dst, src, level),
+        // not the ordinary source-over blitter. The curve parameter is unused.
+        if (!d.slot(mask)) check(c, d.crossfade_slot(dst, dx, dy, src, alpha));
+        else check(c, d.blit(dst, dx, dy, src, 0, 0, s->width, s->height, mode, alpha));
         return 0;
     });
     add(r, 0x901F, "crop image", 6, 0, [&d](Ctx& c) {

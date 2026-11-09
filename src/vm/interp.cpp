@@ -1,4 +1,5 @@
 #include <cmath>
+#include <array>
 #include <chrono>
 #include <algorithm>
 #include <cstdio>
@@ -160,6 +161,19 @@ Result<int> Vm::step(Thread& t) {
         const std::uint16_t id = static_cast<std::uint16_t>(op << 8 | sub);
         const SubopDef* def = registry.find(id);
         if (!def) return fail(Errc::Unsupported, "sub-opcode " + subop_name(id) + " is not implemented");
+        // Opt-in render argument trace; inclusive virtual milliseconds keep replays small.
+        static const char* render_trace = std::getenv("OBGI_TRACE_RENDER");
+        static const auto render_range = [] {
+            std::array<long long, 2> range{0, INT64_MAX};
+            if (render_trace) std::sscanf(render_trace, "%lld,%lld", &range[0], &range[1]);
+            return range;
+        }();
+        if (render_trace && id >= 0x9000 && id <= 0x92ff && now_ms >= render_range[0] && now_ms <= render_range[1]) {
+            std::fprintf(stderr, "RENDER_OP ms=%lld t=%u ip=%X op=%04X args=", static_cast<long long>(now_ms), t.id, pc, id);
+            for (unsigned i = 0; i < def->pops; ++i)
+                std::fprintf(stderr, " %X", t.expr[(t.depth + t.expr.size() - def->pops + i) % t.expr.size()]);
+            std::fputc('\n', stderr);
+        }
         const Word depth_before = t.depth;
         static const bool perf = std::getenv("OBGI_PERF") != nullptr;
         if (perf) {

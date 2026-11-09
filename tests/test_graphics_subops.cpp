@@ -44,6 +44,28 @@ void put_string(Vm& vm, Word addr, const char* s) {
 
 } // namespace
 
+TEST_CASE("90:19 without a gray map crossfades rather than layering pictures" * doctest::test_suite("gpu")) {
+    RendererOptions options; options.headless = true;
+    auto renderer = Renderer::create(options); REQUIRE(renderer);
+    auto display = Display::create(**renderer, 4, 4); REQUIRE(display);
+    auto& d = **display;
+    const std::vector<std::uint32_t> old{0xff0000ff, 0xff00ff00};
+    const std::vector<std::uint32_t> fresh{0x00000000, 0xffff0000};
+    REQUIRE(d.upload_slot(2, 2, 1, SlotFormat::Bgra, fresh));
+    GraphicsHost host{&d, nullptr}; SubopRegistry registry; register_graphics_subops(registry, host);
+    for (unsigned ratio : {0u, 128u, 256u}) {
+        REQUIRE(d.upload_slot(1, 2, 1, SlotFormat::Bgra, old));
+        MemProvider provider;
+        provider.set(Asm().i32(1).i32(0).i32(0).i32(2).i32(0xffffffffu).i32(0).i32(ratio).sub(0x90, 0x19).ret());
+        Vm vm(provider, registry); ThreadConfig cfg; cfg.stack_size = 1024;
+        REQUIRE(vm.spawn(cfg, "test", "crossfade")); REQUIRE(vm.run_frame(0));
+        auto actual = d.read_slot(1); REQUIRE(actual);
+        if (ratio == 0) CHECK(*actual == old);
+        if (ratio == 128) { CHECK((*actual)[0] == 0x7f0000ff); CHECK((*actual)[1] == 0xff7f7f00); }
+        if (ratio == 256) CHECK(*actual == fresh);
+    }
+}
+
 TEST_CASE("copied images retain their positioning metadata" * doctest::test_suite("gpu")) {
     RendererOptions options; options.headless = true;
     auto renderer = Renderer::create(options); REQUIRE(renderer);

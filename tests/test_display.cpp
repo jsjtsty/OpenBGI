@@ -54,6 +54,41 @@ TEST_CASE("GPU crossfade matches the scalar picture blend" * doctest::test_suite
     }
 }
 
+TEST_CASE("rectangular crossfades preserve alpha and clip without ghosting" * doctest::test_suite("gpu")) {
+    auto rig = make_rig(nullptr); REQUIRE(rig.display);
+    auto& d = *rig.display;
+    const std::vector<std::uint32_t> old{0xff204060, 0x80102030, 0x00010203, 0x01abcdef, 0xff112233, 0x40123456};
+    const std::vector<std::uint32_t> fresh{0x00ffeedd, 0xffaabbcc, 0x01445566, 0x80010203, 0x402288aa, 0xff887766};
+    for (auto format : {SlotFormat::Bgrx, SlotFormat::Bgra}) {
+        REQUIRE(d.upload_slot(2, 3, 2, format, fresh));
+        for (int dx : {-2, 0, 1, 5}) {
+            for (unsigned ratio = 0; ratio <= 256; ++ratio) {
+                CAPTURE(format); CAPTURE(dx); CAPTURE(ratio);
+                REQUIRE(d.upload_slot(1, 3, 2, format, old));
+                auto expected = old;
+                for (int y = 0; y < 2; ++y) for (int x = 0; x < 3; ++x) {
+                    const int sx = x - dx;
+                    if (sx < 0 || sx >= 3) continue;
+                    const auto mixed = bgfx::crossfade_to(bgfx::Image{1, 1, {old[y * 3 + x]}}, bgfx::Image{1, 1, {fresh[y * 3 + sx]}}, int(ratio), format == SlotFormat::Bgra);
+                    expected[y * 3 + x] = mixed.px[0];
+                }
+                REQUIRE(d.crossfade_slot(1, dx, 0, 2, ratio));
+                auto actual = d.read_slot(1); REQUIRE(actual);
+                REQUIRE(*actual == expected);
+            }
+        }
+        REQUIRE(d.upload_slot(1, 3, 2, format, old));
+        // An overlapping self-copy must sample the original pixels, not a neighbor's output.
+        REQUIRE(d.crossfade_slot(1, 1, 0, 1, 128));
+        auto actual = d.read_slot(1); REQUIRE(actual);
+        auto expected = old;
+        for (int y = 0; y < 2; ++y) for (int x = 1; x < 3; ++x)
+            expected[y * 3 + x] = bgfx::crossfade_to(bgfx::Image{1, 1, {old[y * 3 + x]}}, bgfx::Image{1, 1, {old[y * 3 + x - 1]}}, 128, format == SlotFormat::Bgra).px[0];
+        CHECK(*actual == expected);
+    }
+    CHECK_FALSE(d.crossfade_slot(1, 0, 0, 2, 257));
+}
+
 TEST_CASE("GPU filters match scalar filters at every strength" * doctest::test_suite("gpu")) {
     auto rig = make_rig(nullptr);
     REQUIRE(rig.display);

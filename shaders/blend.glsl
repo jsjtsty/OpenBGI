@@ -9,6 +9,19 @@ ivec4 px_unpack(uint v) { return ivec4(v & 255u, (v >> 8) & 255u, (v >> 16) & 25
 uint px_pack(ivec4 c) { return uint(c.x & 255) | uint(c.y & 255) << 8 | uint(c.z & 255) << 16 | uint(c.w & 255) << 24; }
 int sat255(int x) { return clamp(x, 0, 255); }
 
+// CrossfadeTo: ratio 0 keeps a, 256 takes b. Unlike source-over, alpha is
+// interpolated rather than accumulated, including when a and b overlap.
+uint crossfade_pixel(uint av, uint bv, uint ratio, bool has_alpha) {
+    ivec4 a = px_unpack(av), b = px_unpack(bv);
+    if (!has_alpha) return px_pack(clamp(a + (((b - a) * int(ratio)) >> 8), 0, 255));
+    uint wa = uint(a.w) * (256u - ratio), wb = uint(b.w) * ratio;
+    uint sum = (wa + wb) & 65535u;
+    if (sum == 0u) return 0u;
+    int w = int((wa << 7) / sum);
+    ivec3 rgb = clamp(b.xyz + (((a.xyz - b.xyz) * w) >> 7), 0, 255);
+    return px_pack(ivec4(rgb, int((sum >> 8) & 255u)));
+}
+
 ivec3 rgb555(uint v) { return ivec3((v >> 10) & 31u, (v >> 5) & 31u, v & 31u); }
 uint rgb555_pack(ivec3 c) { return uint(c.x) << 10 | uint(c.y) << 5 | uint(c.z); }
 
@@ -58,6 +71,8 @@ uint blend_pixel(uint mode, uint sf, uint df, int P, uint sv, uint dv) {
     ivec4 s = px_unpack(sv), d = px_unpack(dv);
 
     switch (mode) {
+    case 0x81u: // runtime-internal rectangular CrossfadeTo (not a script blend mode)
+        return crossfade_pixel(dv, sv, uint(P), sf == 2u);
     case 0u:
         if (sf == 0u && df == 0u) return sv != 0u ? sv : dv;
         if (sf == 1u && df == 1u) return sv;

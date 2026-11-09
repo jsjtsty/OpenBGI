@@ -275,6 +275,9 @@ int main(int argc, char** argv) {
     }
     const bool progress = std::getenv("OBGI_PROGRESS") != nullptr; // one line per frame on stderr, for finding a stuck frame
     const bool perf = std::getenv("OBGI_PERF") != nullptr;
+    long long scene_first = 0, scene_last = -1;
+    if (const auto* range = std::getenv("OBGI_TRACE_SCENE"))
+        if (std::sscanf(range, "%lld,%lld", &scene_first, &scene_last) != 2) return die("OBGI_TRACE_SCENE needs first_ms,last_ms");
     const bool trace_menu = std::getenv("OBGI_TRACE_MENU") != nullptr;
     std::string last_menu;
     int band_x = 0, band_y = 0, band_w = 0, band_h = 0;
@@ -342,6 +345,21 @@ int main(int argc, char** argv) {
         auto st = session->tick(now_ms);
         const auto perf_present = std::chrono::steady_clock::now();
         if (st) if (auto shown = session->present(); !shown) return die(shown.error().message);
+        if (now_ms >= scene_first && now_ms <= scene_last) {
+            const auto rendered = std::chrono::steady_clock::now();
+            const auto tick_us = std::chrono::duration_cast<std::chrono::microseconds>(perf_present - perf_tick).count();
+            const auto present_us = std::chrono::duration_cast<std::chrono::microseconds>(rendered - perf_present).count();
+            std::fprintf(stderr, "SCENE frame=%ld ms=%lld tick_us=%lld present_us=%lld motions=%zu bg_type=%d bg_revision=%llu\n", f, static_cast<long long>(now_ms),
+                         static_cast<long long>(tick_us), static_cast<long long>(present_us), system.motions.size(), display->bg_fx.type,
+                         static_cast<unsigned long long>(display->bg_fx.revision));
+            for (const auto& [id, sp] : display->scene().objects()) {
+                if (!sp.is_shown() && !sp.background) continue;
+                std::fprintf(stderr, "DRAW id=%X slot=%u slot2=%u mix=%u x=%d y=%d a=%u fade=%u opacity=%u blend=%u prio=%u bias=%d order=%u"
+                                     " proj=%d depth=%d xform=%d sx=%d sy=%d angle=%d filter=%d fx=%d progress=%u\n",
+                             id, sp.slot, sp.slot2, sp.mix_ratio, sp.x, sp.y, sp.alpha, sp.fade, sp.opacity, sp.blend, sp.priority, sp.sort_bias,
+                             display->scene().creation_order(id), sp.projected, sp.depth, sp.xform, sp.sx, sp.sy, sp.angle, sp.filter_kind, sp.effector, sp.progress);
+            }
+        }
         if (trace_menu) {
             std::ostringstream state;
             state << "windows=" << display->windows_shown << " level=" << display->windows_level << " limit=" << display->draw_limit;

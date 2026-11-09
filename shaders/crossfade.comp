@@ -12,16 +12,5 @@ void main() {
     uvec2 p = gl_GlobalInvocationID.xy;
     if (p.x >= info.x || p.y >= info.y) return;
     uint i = p.y * info.x + p.x;
-    ivec4 a = px_unpack(a_px[i]), b = px_unpack(b_px[i]);
-    int ratio = int(info.z);
-    if (info.w == 0u) {
-        out_px[i] = px_pack(clamp(a + (((b - a) * ratio) >> 8), 0, 255));
-        return;
-    }
-    uint wa = uint(a.w) * (256u - info.z), wb = uint(b.w) * info.z;
-    uint sum = (wa + wb) & 65535u;
-    if (sum == 0u) { out_px[i] = 0u; return; }
-    int w = int((wa << 7) / sum);
-    ivec3 rgb = clamp(b.xyz + (((a.xyz - b.xyz) * w) >> 7), 0, 255);
-    out_px[i] = px_pack(ivec4(rgb, int((sum >> 8) & 255u)));
+    out_px[i] = crossfade_pixel(a_px[i], b_px[i], info.z, info.w != 0u);
 }

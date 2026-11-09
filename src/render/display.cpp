@@ -422,6 +422,18 @@ Result<void> Display::blit(std::uint32_t dst, std::int32_t dx, std::int32_t dy, 
     return m.do_blit(d->second, dx, dy, s->second, sx, sy, w, h, mode, alpha);
 }
 
+Result<void> Display::crossfade_slot(std::uint32_t dst, std::int32_t dx, std::int32_t dy, std::uint32_t src, std::uint32_t ratio) {
+    auto& m = *impl_;
+    const auto d = m.slots.find(dst), s = m.slots.find(src);
+    if (d == m.slots.end() || s == m.slots.end()) return fail(Errc::Range, "no such image slot");
+    if (ratio > 0x100) return fail(Errc::Range, "crossfade ratio out of range");
+    const auto format = s->second.info.format;
+    // The native CrossfadeTo leaves unsupported or mismatched formats untouched.
+    if (format != d->second.info.format || (format != SlotFormat::Bgra && format != SlotFormat::Bgrx)) return {};
+    m.stale(dst);
+    return m.do_blit(d->second, dx, dy, s->second, 0, 0, s->second.info.width, s->second.info.height, 0x81, ratio);
+}
+
 Result<std::vector<std::uint32_t>> Display::read_slot(std::uint32_t id) {
     auto it = impl_->slots.find(id);
     if (it == impl_->slots.end()) return fail(Errc::Range, "no such image slot");

@@ -45,6 +45,8 @@ class Display {
     // Copies/blends a rectangle of src into dst, clipped to both. mode/alpha are the script values.
     Result<void> blit(std::uint32_t dst, std::int32_t dx, std::int32_t dy, std::uint32_t src, std::int32_t sx,
                       std::int32_t sy, std::uint32_t w, std::uint32_t h, std::uint32_t mode, std::uint32_t alpha);
+    // Alpha-weighted image crossfade into a clipped destination rectangle (90:19 without a gray map).
+    Result<void> crossfade_slot(std::uint32_t dst, std::int32_t dx, std::int32_t dy, std::uint32_t src, std::uint32_t ratio);
     Result<std::vector<std::uint32_t>> read_slot(std::uint32_t id);
 
     // ---- sprites ----

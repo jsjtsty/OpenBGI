@@ -784,7 +784,7 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
         }
     }
     // 90:29: the same over a path of n points (four 16.16 words each: x, y, z, padding); popped in this order: priority, skip,
-    // max skip, fps, duration (frames), progress, level curve, level, curve, point address, n, object. The path is the object's
+    // max skip, fps, duration (ms), progress, level curve, level, curve, point address, n, object. The path is the object's
     // position followed by the points; one point is a line, more are a natural cubic spline, walked along the eased time.
     if (display) add(r, 0x9029, "move object along a path", 12, 2, [s, display](Ctx& c) {
         Word a[12];
