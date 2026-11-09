@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "render/display.hpp"
-#include "bindings/arc_resource_finder.hpp"
+#include "resources/decoded_cache.hpp"
 
 namespace obgi {
 
@@ -24,23 +24,21 @@ struct SlotImage {
 // Loads pictures (CBG, optionally DSC-wrapped) from the game's archives by (archive prefix, member name).
 class ArcImageSource {
   public:
+    using Cache = DecodedCache<SlotImage>;
+    using Request = Cache::Request;
     explicit ArcImageSource(ArcResourceFinder& finder, std::size_t cache_limit = 128u * 1024u * 1024u);
-    std::size_t cached_bytes() const { return cached_bytes_; }
-    std::size_t cached_images() const { return cache_.size(); }
-    void clear_cache();
-
-    // Shared immutable pixels avoid a full image copy on a cache hit.
-    Result<std::shared_ptr<const SlotImage>> load_shared(std::string_view prefix, std::string_view name);
+    void set_queue(DecodeQueue* queue) { cache_.set_queue(queue); }
+    std::size_t cached_bytes() const { return cache_.bytes(); }
+    std::size_t cached_images() const { return cache_.count(); }
+    void clear_cache() { cache_.clear(); }
+    Result<Request> request(std::string_view prefix, std::string_view name) { return cache_.request(prefix, name); }
+    std::optional<Result<std::shared_ptr<const SlotImage>>> poll(const Request& request) { return cache_.poll(request); }
+    Result<std::shared_ptr<const SlotImage>> load_shared(std::string_view prefix, std::string_view name) { return cache_.load_sync(prefix, name); }
     Result<SlotImage> load(std::string_view prefix, std::string_view name);
-
   private:
-    using Key = std::pair<std::string, std::string>;
-    struct CachedImage { std::shared_ptr<const SlotImage> image; std::list<Key>::iterator lru; };
-    Result<SlotImage> load_uncached(std::string_view prefix, std::string_view name, bool* from_loose = nullptr);
-    ArcResourceFinder& finder_;
-    std::size_t cache_limit_, cached_bytes_ = 0;
-    std::list<Key> lru_;
-    std::map<Key, CachedImage> cache_;
+    static Result<SlotImage> decode(OwnedBytes raw);
+    Cache cache_;
+
 };
 
 } // namespace obgi

@@ -19,6 +19,7 @@ struct SessionOptions {
     bool render_offscreen = false; // exercise presentation in deterministic headless replays
     // Offline runs execute jobs inline: worker completion timing cannot change a replay.
     bool deterministic = true;
+    bool async_resources = false; // explicit override for paced headless diagnostics
     std::int64_t calendar_epoch = 1609459200; // fixed UTC epoch for replayed calendar-time queries
 };
 

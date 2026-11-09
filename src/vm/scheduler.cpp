@@ -116,7 +116,10 @@ Result<FrameStatus> Vm::run_frame(std::int64_t now) {
         if (exclusive_thread && t.id != exclusive_thread) { ++i; continue; }
         if (t.wait.kind != WaitObject::Kind::None) {
             auto update = update_wait(t);
-            if (!update) return std::unexpected(update.error());
+            if (!update) {
+                update.error().message = "thread " + std::to_string(t.id) + ": " + subop_name(t.wait.opcode) + ": " + update.error().message;
+                return std::unexpected(update.error());
+            }
             if (update->status == WaitUpdate::Status::Pending) { ++i; continue; }
             if (update->values.size() != t.wait.result_count || t.depth != t.wait.resume_depth)
                 return fail(Errc::Format, "completion stack mismatch for " + subop_name(t.wait.opcode));

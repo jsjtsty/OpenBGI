@@ -65,19 +65,14 @@ std::optional<ByteView> ArcResourceFinder::locate(std::string_view prefix, std::
     return resource ? std::optional<ByteView>(resource->bytes) : std::nullopt;
 }
 
-Result<MediaResource> ArcResourceFinder::open_media(std::string_view prefix, std::string_view name, bool* from_loose) {
+Result<MediaResource> ArcResourceFinder::open_raw(std::string_view prefix, std::string_view name, bool* from_loose) {
     if (from_loose) *from_loose = false;
     if (const auto path = loose_file(name)) {
         if (from_loose) *from_loose = true;
         auto mapped = MappedFile::open(*path);
         if (!mapped) return std::unexpected(mapped.error());
         auto owner = std::make_shared<MappedFile>(std::move(*mapped));
-        MediaResource result{owner, owner->bytes()};
-        if (!is_dsc(result.bytes)) return result;
-        auto decoded = dsc_decode(result.bytes);
-        if (!decoded) return std::unexpected(decoded.error());
-        auto bytes = std::make_shared<std::vector<std::uint8_t>>(std::move(*decoded));
-        return MediaResource{bytes, ByteView(*bytes)};
+        return MediaResource{owner, owner->bytes()};
     }
     auto key = ascii_lower(prefix);
     if (!key.ends_with(".arc")) key += ".arc";
@@ -87,7 +82,12 @@ Result<MediaResource> ArcResourceFinder::open_media(std::string_view prefix, std
     }
     auto result = locate_owned(prefix, name);
     if (!result) return fail(Errc::Io, "resource not found: " + std::string(prefix) + "/" + std::string(name));
-    if (!is_dsc(result->bytes)) return *result;
+    return *result;
+}
+
+Result<MediaResource> ArcResourceFinder::open_media(std::string_view prefix, std::string_view name, bool* from_loose) {
+    auto result = open_raw(prefix, name, from_loose);
+    if (!result || !is_dsc(result->bytes)) return result;
     auto decoded = dsc_decode(result->bytes);
     if (!decoded) return std::unexpected(decoded.error());
     auto bytes = std::make_shared<std::vector<std::uint8_t>>(std::move(*decoded));

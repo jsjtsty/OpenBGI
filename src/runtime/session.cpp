@@ -68,6 +68,7 @@ struct EngineSession::Impl {
     std::unique_ptr<FontLibrary> fonts;
     ArcResourceFinder resources;
     ArcProgramProvider programs;
+    std::unique_ptr<DecodeQueue> resource_jobs;
     ArcImageSource images;
     Mixer mixer;
     AudioTimeline audio_time{mixer};
@@ -102,6 +103,10 @@ Result<std::unique_ptr<EngineSession>> EngineSession::create(SessionOptions opti
     std::unique_ptr<EngineSession> session(new EngineSession);
     session->impl_ = std::make_unique<Impl>(std::move(options));
     auto& m = *session->impl_;
+    if (!m.options.deterministic || m.options.async_resources) {
+        m.resource_jobs = std::make_unique<DecodeQueue>();
+        m.images.set_queue(m.resource_jobs.get());
+    }
     if (auto name = game_name_from_system_ipl(m.programs)) m.system.game_name = std::move(*name);
     RendererOptions ro;
     ro.headless = !m.options.window;
@@ -128,7 +133,7 @@ Result<std::unique_ptr<EngineSession>> EngineSession::create(SessionOptions opti
     m.text.display = m.display.get(); m.text.fonts = m.fonts.get(); m.text.system = &m.system;
     m.text.code_page = &m.system.code_page; m.text.font_ids = &m.font.table.ids;
     m.font.fonts = m.fonts.get();
-    m.sound = {&m.mixer, &m.resources};
+    m.sound = {&m.mixer, &m.resources, m.resource_jobs.get()};
     m.movie.resources = &m.resources;
     m.movie.realtime = m.options.window;
     m.sequences = std::make_unique<SequenceService>(*m.display, m.options.deterministic);

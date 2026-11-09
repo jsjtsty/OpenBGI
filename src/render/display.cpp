@@ -51,7 +51,8 @@ struct Display::Impl {
     SDL_GPUComputePipeline* filter_pipeline = nullptr;
     SDL_GPUBuffer* dummy = nullptr; // bound as the unused read-only buffer of fills
     std::map<std::uint32_t, GpuSlot> slots;
-    std::uint64_t next_generation = 0;
+    std::uint64_t next_generation = 0, load_clock = 0;
+    std::map<std::uint32_t, std::uint64_t> load_tickets;
     // a wipe sprite's picture and gray pattern as pixels, and the progress its temporary slot was last made for
     struct WipeCache {
         std::uint32_t src = 0, gray = 0, progress = 0xFFFFFFFFu, mode = 0;
@@ -80,6 +81,7 @@ struct Display::Impl {
     // a slot's pixels changed: the pixels cached from it are stale (the temporary slots 0x7F... are the cache's own)
     void stale(std::uint32_t id) {
         if (id >= 0x7F000000u) return;
+        if (id < 0x4000u) load_tickets[id] = ++load_clock;
         bg_images.erase(id);
         ++versions[id];
         for (auto it = wipes.begin(); it != wipes.end();) it = (it->second.src == id || it->second.gray == id) ? wipes.erase(it) : std::next(it);
@@ -363,6 +365,12 @@ std::uint64_t Display::slot_generation(std::uint32_t id) const {
     return it == impl_->slots.end() ? 0 : it->second.generation;
 }
 
+std::uint64_t Display::reserve_slot_load(std::uint32_t id) { return impl_->load_tickets[id] = ++impl_->load_clock; }
+std::uint64_t Display::slot_load_ticket(std::uint32_t id) const {
+    const auto it = impl_->load_tickets.find(id);
+    return it == impl_->load_tickets.end() ? 0 : it->second;
+}
+
 Result<void> Display::create_slot(std::uint32_t id, std::uint32_t w, std::uint32_t h, SlotFormat format) {
     Impl& m = *impl_;
     if (std::getenv("OBGI_SLOTS")) std::fprintf(stderr, "slot %u create %ux%u fmt %u\n", id, w, h, static_cast<unsigned>(format));
@@ -381,7 +389,7 @@ Result<void> Display::create_slot(std::uint32_t id, std::uint32_t w, std::uint32
 Result<void> Display::free_slot(std::uint32_t id) {
     Impl& m = *impl_;
     auto it = m.slots.find(id);
-    if (it == m.slots.end()) return fail(Errc::Range, "no such image slot");
+    if (it == m.slots.end()) { (void)reserve_slot_load(id); return fail(Errc::Range, "no such image slot"); }
     SDL_ReleaseGPUBuffer(m.device, it->second.buffer);
     m.slots.erase(it);
     m.stale(id);

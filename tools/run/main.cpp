@@ -88,7 +88,7 @@ int main(int argc, char** argv) {
     long frames = 20000;
     std::string effects_path, shot_path, mouse_script;
     long shot_frame = -1;
-    bool render_headless = false;
+    bool render_headless = false, async_resources = false, pace_headless = false;
     bool window = false, frames_set = false, show_threads = false, live_cli = false;
     long progress_every = 0, click_first = 0, click_period = 0;
     auto number = [](const char* text, long& value) {
@@ -104,6 +104,8 @@ int main(int argc, char** argv) {
                         "  --frames N             stop after N frames (default 20000)\n"
                         "  --window               use a window and real time\n"
                         "  --render-headless      render offscreen (GPU diagnostics)\n"
+                        "  --async-resources      enable real background jobs in headless diagnostics\n"
+                        "  --pace-headless        pace virtual 16 ms frames in real time\n"
                         "  --data-dir DIR         isolate saved data\n"
                         "  --driver NAME          select GPU driver\n"
                         "  --entry ARC MEMBER     select startup script\n"
@@ -140,6 +142,8 @@ int main(int argc, char** argv) {
         else if (a == "--shot" && i + 2 < argc) shot_frame = std::atol(argv[i + 1]), shot_path = argv[i + 2], i += 2;
         else if (a == "--window") window = true;
         else if (a == "--render-headless") render_headless = true;
+        else if (a == "--async-resources") async_resources = true;
+        else if (a == "--pace-headless") pace_headless = true;
         else if (a == "--effects" && i + 1 < argc) effects_path = argv[++i];
         else if (a == "--survey" && i + 1 < argc) survey = argv[++i];
         else if (a == "--driver" && i + 1 < argc) driver_s = argv[++i];
@@ -165,6 +169,7 @@ int main(int argc, char** argv) {
     if (!data_dir.empty()) options.data_dir = std::filesystem::path(data_dir);
     options.window = window;
     options.render_offscreen = render_headless;
+    options.async_resources = async_resources;
     options.deterministic = !window;
     options.driver = driver_s;
     auto created = EngineSession::create(std::move(options));
@@ -443,6 +448,7 @@ int main(int argc, char** argv) {
             return 0;
         }
         if (window) std::this_thread::sleep_until(started + std::chrono::milliseconds(vm.now_ms + std::max(system.frame_ms, 1u)));
+        else if (pace_headless) std::this_thread::sleep_until(started + std::chrono::milliseconds((f + 1) * 16));
     }
     std::printf("ran %ld frames without stopping\n", frames);
     report_hits();

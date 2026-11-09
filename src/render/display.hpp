@@ -37,6 +37,8 @@ class Display {
     Result<void> free_slot(std::uint32_t id);
     const SlotInfo* slot(std::uint32_t id) const;
     std::uint64_t slot_generation(std::uint32_t id) const;
+    std::uint64_t reserve_slot_load(std::uint32_t id);
+    std::uint64_t slot_load_ticket(std::uint32_t id) const;
     // Fills every pixel with a raw packed value.
     Result<void> fill_slot(std::uint32_t id, std::uint32_t packed);
     // Creates or replaces a slot with the given packed pixels (w * h values).

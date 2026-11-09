@@ -23,6 +23,9 @@ class ArcResourceFinder {
     // `prefix` names the archive (with or without ".arc"); when it matches none, every archive is searched.
     Result<std::vector<std::uint8_t>> read(std::string_view prefix, std::string_view name, bool* from_loose = nullptr);
 
+    // Raw owned bytes: never performs DSC decompression. Resolve on the owner thread.
+    Result<MediaResource> open_raw(std::string_view prefix, std::string_view name, bool* from_loose = nullptr);
+
     // An owned view is safe to retain across asynchronous media playback.
     Result<MediaResource> open_media(std::string_view prefix, std::string_view name, bool* from_loose = nullptr);
 

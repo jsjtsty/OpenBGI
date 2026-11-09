@@ -30,6 +30,17 @@ const Mixer::Channel* Mixer::find(Bank bank, std::uint32_t ch) const {
     return const_cast<Mixer*>(this)->find(bank, ch);
 }
 
+std::uint64_t Mixer::reserve_load(Bank bank, std::uint32_t ch) {
+    std::lock_guard lock(mutex_);
+    auto* c = find(bank, ch);
+    return c ? c->load_ticket = ++load_clock_ : 0;
+}
+std::uint64_t Mixer::load_ticket(Bank bank, std::uint32_t ch) const {
+    std::lock_guard lock(mutex_);
+    const auto* c = find(bank, ch);
+    return c ? c->load_ticket : 0;
+}
+
 Result<void> Mixer::load(Bank bank, std::uint32_t ch, std::shared_ptr<const Pcm> pcm, bool loop, std::uint32_t loop_start) {
     Channel retired;
     std::lock_guard lock(mutex_);
@@ -40,6 +51,7 @@ Result<void> Mixer::load(Bank bank, std::uint32_t ch, std::shared_ptr<const Pcm>
     const auto keep_config = c->config;
     retired = std::move(*c);
     *c = Channel{};
+    c->load_ticket = ++load_clock_;
     c->config = keep_config;
     c->paused = keep_paused;
     c->loop = loop;
@@ -56,6 +68,7 @@ Result<void> Mixer::load_stream(Bank bank, std::uint32_t ch, std::shared_ptr<Pcm
     if (!c) return std::unexpected(bad_channel());
     retired = std::move(*c);
     *c = Channel{};
+    c->load_ticket = ++load_clock_;
     c->config = retired.config; c->paused = retired.paused;
     c->stream = std::move(stream);
     return {};
@@ -69,6 +82,7 @@ Result<void> Mixer::unload(Bank bank, std::uint32_t ch) {
     const auto keep_config = c->config;
     retired = std::move(*c);
     *c = Channel{};
+    c->load_ticket = ++load_clock_;
     c->config = keep_config;
     return {};
 }
@@ -113,6 +127,7 @@ Result<void> Mixer::stop(Bank bank, std::uint32_t ch) {
     std::lock_guard lock(mutex_);
     Channel* c = find(bank, ch);
     if (!c) return std::unexpected(bad_channel());
+    c->load_ticket = ++load_clock_;
     c->playing = false;
     c->pos = 0;
     return {};

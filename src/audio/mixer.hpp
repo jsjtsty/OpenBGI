@@ -31,6 +31,9 @@ class Mixer {
 
     // Puts a sound on a channel, stopped. `loop`/`loop_start` come from the file or the script.
     // A pause requested for the channel before loading (pause(…, true)) stays in force.
+    // Reserving a load invalidates older jobs; stop/unload/replacement invalidate it too.
+    std::uint64_t reserve_load(Bank bank, std::uint32_t ch);
+    std::uint64_t load_ticket(Bank bank, std::uint32_t ch) const;
     Result<void> load(Bank bank, std::uint32_t ch, std::shared_ptr<const Pcm> pcm, bool loop, std::uint32_t loop_start);
     Result<void> load_stream(Bank bank, std::uint32_t ch, std::shared_ptr<PcmStream> stream);
     Result<void> unload(Bank bank, std::uint32_t ch);
@@ -62,6 +65,7 @@ class Mixer {
   private:
     void mix_block(std::int16_t* out, std::uint32_t frames);
     struct Channel {
+        std::uint64_t load_ticket = 0;
         std::shared_ptr<const Pcm> pcm;
         std::shared_ptr<PcmStream> stream;
         bool loop = false;
@@ -84,6 +88,7 @@ class Mixer {
 
     mutable std::mutex mutex_;
     std::uint32_t rate_;
+    std::uint64_t load_clock_ = 0;
     std::array<Channel, kStreamChannels> streams_{};
     std::array<Channel, kPointChannels> points_{};
 };

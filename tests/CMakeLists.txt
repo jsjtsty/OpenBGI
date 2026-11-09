@@ -11,7 +11,7 @@ add_executable(obgi_tests main.cpp test_sha256.cpp test_dsc.cpp test_formats.cpp
 target_link_libraries(obgi_tests PRIVATE obgi_formats obgi_vfs obgi_vm obgi_programs doctest::doctest)
 if(OPENBGI_BUILD_RUNTIME)
   target_sources(obgi_tests PRIVATE test_blend_gpu.cpp test_display.cpp test_background_fx.cpp test_vector_maps.cpp
-    test_graphics_subops.cpp test_text.cpp test_audio.cpp test_movie.cpp test_system_subops.cpp test_runtime.cpp)
+    test_graphics_subops.cpp test_async_resources.cpp test_text.cpp test_audio.cpp test_movie.cpp test_system_subops.cpp test_runtime.cpp)
   target_link_libraries(obgi_tests PRIVATE SDL3::SDL3 obgi_runtime)
   obgi_install_shaders(obgi_tests obgi_shaders "${OBGI_SHADER_PACK}")
 endif()

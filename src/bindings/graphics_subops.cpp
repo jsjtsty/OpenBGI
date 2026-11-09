@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <chrono>
 #include <array>
 #include <cmath>
 #include <map>
@@ -67,17 +68,32 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         Word slot = c.pop();
         if (!c.ok() || !slot_ok(c, slot)) return 0;
         if (std::getenv("OBGI_SLOTS")) std::fprintf(stderr, "90:10 slot %u <- %s/%s\n", slot, prefix.c_str(), name.c_str());
-        d.vecmaps.erase(slot);
-        auto loaded = host.images->load_shared(prefix, name);
-        if (!loaded) {
-            c.fail(loaded.error().code, "\"" + prefix + "/" + name + "\": " + loaded.error().message);
-            return 0;
-        }
-        const auto& img = *loaded;
-        if (d.slot(slot)) (*base_sizes)[slot] = {-1, -1}; // replacing a live bitmap frees its old metadata
-        check(c, d.upload_slot(slot, img->width, img->height, img->format, img->pixels));
-        if (img->has_base) (*base_sizes)[slot] = {static_cast<std::int32_t>(img->base_width), static_cast<std::int32_t>(img->base_height)};
-        return 0; // the original may go asynchronous (rc 2); loading here is always synchronous
+        const auto ticket = d.reserve_slot_load(slot);
+        auto request = host.images->request(prefix, name);
+        if (!request) { c.fail(request.error().code, request.error().message); return 0; }
+        auto complete = [images = host.images, &d, base_sizes, slot, ticket, request = *request, prefix, name]() -> Result<vm::WaitUpdate> {
+            if (d.slot_load_ticket(slot) != ticket) return vm::WaitUpdate::complete();
+            auto result = images->poll(request);
+            if (!result) return vm::WaitUpdate::pending();
+            if (!*result) return fail(result->error().code, "load image [" + prefix + "/" + name + "]: " + result->error().message);
+            const auto& img = **result;
+            const auto start = std::chrono::steady_clock::now();
+            d.vecmaps.erase(slot);
+            if (d.slot(slot)) (*base_sizes)[slot] = {-1, -1};
+            if (auto uploaded = d.upload_slot(slot, img->width, img->height, img->format, img->pixels); !uploaded)
+                return std::unexpected(uploaded.error());
+            if (img->has_base) (*base_sizes)[slot] = {static_cast<std::int32_t>(img->base_width), static_cast<std::int32_t>(img->base_height)};
+            if (std::getenv("OBGI_PERF_RESOURCE")) std::fprintf(stderr, "RESOURCE image-commit [%s/%s] slot=%u bytes=%zu us=%lld\n", prefix.c_str(), name.c_str(), slot,
+                img->pixels.size() * sizeof(std::uint32_t), static_cast<long long>(std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - start).count()));
+            return vm::WaitUpdate::complete();
+        };
+        auto result = complete();
+        if (!result) { c.fail(result.error().code, result.error().message); return 0; }
+        if (result->status == vm::WaitUpdate::Status::Complete) return 0;
+        vm::WaitObject wait; wait.kind = vm::WaitObject::Kind::Poll;
+        wait.poll = [complete = std::move(complete)](const vm::WaitContext&) { return complete(); };
+        c.suspend(std::move(wait), 0);
+        return static_cast<int>(vm::StayThread);
     });
     // modes 4-6 (vector, height, vector + distance) are the vector-map bitmaps, kept by Display::vecmaps under the slot number
     add(r, 0x9011, "create image", 4, 0, [&d](Ctx& c) {
