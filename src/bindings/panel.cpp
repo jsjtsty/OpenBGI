@@ -89,6 +89,19 @@ void show(SystemState& s, const SystemState::IconControl& ic, const SystemState:
     }
 }
 
+// Button pictures belong to the window, independently of the input controller.
+// A successful new paint/start replaces them; stopping input alone does not.
+void discard_window_pictures(SystemState& s, std::uint32_t window) {
+    for (auto& [id, panel] : s.icon_controls) {
+        if (panel.window != window) continue;
+        for (auto& group : panel.groups)
+            for (auto& button : group.buttons) {
+                if (button.sprite && s.display) s.display->remove_sprite(button.sprite);
+                button.sprite = 0;
+            }
+    }
+}
+
 // The plain panel (90:B8 / 90:BA, the confirmation windows and the like): the same buttons and events, a smaller descriptor.
 // descriptor: group count, group table, current group, ...; group (0x34 bytes): button count (low 16 bits; the high 16 are the
 // columns), button table, selected button, ...; button (0x3C bytes): enabled, x, y, normal bitmap, selected bitmap, ?, focus
@@ -130,6 +143,7 @@ std::uint32_t panel_start_basic(SystemState& s, SystemState::IconControl& ic, st
         out.push_back(std::move(pg));
     }
     const std::int32_t cur = word(c, desc + 8);
+    discard_window_pictures(s, ic.window);
     ic.groups = std::move(out);
     ic.current_group = cur >= 0 && cur < group_count ? cur : -1;
     ic.modal = word(c, desc + 0xC) != 0, ic.mouse = word(c, desc + 0x10) != 0;
@@ -189,6 +203,7 @@ std::uint32_t panel_start(SystemState& s, std::uint32_t id, Ctx& c, std::uint32_
         out.push_back(std::move(pg));
     }
     const std::int32_t cur = word(c, desc + 8);
+    discard_window_pictures(s, ic.window);
     ic.groups = std::move(out);
     ic.current_group = cur >= 0 && cur < group_count ? cur : -1;
     ic.modal = word(c, desc + 0xC) != 0, ic.input_mask = static_cast<std::uint32_t>(word(c, desc + 0x14));
@@ -486,18 +501,7 @@ void panel_input(SystemState& s) {
 // panel_start.
 std::uint32_t panel_paint(SystemState& s, Ctx& c, std::uint32_t window, std::uint32_t desc, bool basic) {
     if (!s.display || !s.display->find_sprite(window)) return 1;
-    // Painting replaces the window's existing sub-sprites, including those
-    // created by a running panel. Keep the controller itself alive until the
-    // script stops it, but detach its old visual items from the window.
-    for (auto& [other_id, other] : s.icon_controls) {
-        if (other.window != window) continue;
-        for (auto& group : other.groups)
-            for (auto& button : group.buttons)
-                if (button.sprite) {
-                    s.display->remove_sprite(button.sprite);
-                    button.sprite = 0;
-                }
-    }
+    discard_window_pictures(s, window);
     const std::uint32_t id = 0x80000000u | (window & 0x7FFFFFFFu);
     panel_stop(s, id);
     auto& ic = s.icon_controls[id];
@@ -547,13 +551,28 @@ void panel_sync(SystemState& s) {
     }
 }
 
-void panel_stop(SystemState& s, std::uint32_t id) {
+void panel_stop(SystemState& s, std::uint32_t id, bool preserve_picture) {
     auto it = s.icon_controls.find(id);
     if (it == s.icon_controls.end()) return;
-    for (auto& g : it->second.groups)
-        for (auto& b : g.buttons)
-            if (b.sprite && s.display) s.display->remove_sprite(b.sprite);
-    it->second.groups.clear();
+    auto& panel = it->second;
+    if (preserve_picture && !panel.paint_only && !panel.groups.empty()) {
+        const auto painted_id = 0x80000000u | (panel.window & 0x7FFFFFFFu);
+        // Keep one noninteractive visual owner per window, bounded across restarts.
+        panel_stop(s, painted_id);
+        auto& painted = s.icon_controls[painted_id];
+        painted = {};
+        painted.window = panel.window;
+        painted.basic = panel.basic;
+        painted.paint_only = true;
+        painted.groups = std::move(panel.groups);
+        if (std::getenv("OBGI_TRACE_MENU")) std::fprintf(stderr, "MENU retain control=%u window=%X owner=%X\n", id, panel.window, painted_id);
+    } else {
+        for (auto& g : panel.groups)
+            for (auto& b : g.buttons)
+                if (b.sprite && s.display) s.display->remove_sprite(b.sprite);
+    }
+    panel.groups.clear();
+    panel.events.clear();
 }
 
 } // namespace obgi

@@ -16,6 +16,7 @@ struct SessionOptions {
     std::string driver;
     std::uint32_t width = 1280, height = 720;
     bool window = false, audio_output = true;
+    bool render_offscreen = false; // exercise presentation in deterministic headless replays
     // Offline runs execute jobs inline: worker completion timing cannot change a replay.
     bool deterministic = true;
     std::int64_t calendar_epoch = 1609459200; // fixed UTC epoch for replayed calendar-time queries

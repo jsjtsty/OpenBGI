@@ -234,7 +234,7 @@ Result<vm::FrameStatus> EngineSession::tick(std::int64_t now) {
 
 Result<void> EngineSession::present() {
     auto& m = *impl_;
-    if (!m.options.window || (!m.player->active() && !m.system.display_enabled)) return {};
+    if ((!m.options.window && !m.options.render_offscreen) || (!m.player->active() && !m.system.display_enabled)) return {};
     const auto interval = std::max(1u, m.system.frame_ms);
     if (interval != m.present_interval) { m.present_interval = interval; m.next_present = 0; }
     if (m.vm->now_ms < m.next_present) return {};

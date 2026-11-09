@@ -1388,7 +1388,7 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
                          it == s->icon_controls.end() ? 0u : it->second.window,
                          it == s->icon_controls.end() ? 0u : it->second.events.size());
         }
-        panel_stop(*s, id);
+        panel_stop(*s, id, true);
         c.push(s->icon_controls.erase(id) ? 1 : 0);
         return 0;
     });

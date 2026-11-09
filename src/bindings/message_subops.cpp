@@ -428,6 +428,7 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         rv.draw = [s, idx, text_slot, layout, style, face, snapshot, tw, th_, x0, y0, rich = rv.rich, char_delay = char_delay, fade_steps = fade_steps](std::size_t k) {
             Display* d = s->display;
             if (!d || !s->planes[idx]) return;
+            if (std::getenv("OBGI_TRACE_MENU")) std::fprintf(stderr, "REVEAL plane=%zu progress=%zu text_slot=%u\n", idx, k, text_slot);
             if (snapshot->size() == std::size_t{tw} * th_) (void)d->upload_slot(text_slot, tw, th_, SlotFormat::Bgra, *snapshot);
             std::vector<std::uint8_t> opacity;
             if (rich) { // k ms after the start: glyph i begins to fade in at i * delay and is solid fade_steps later

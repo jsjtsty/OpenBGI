@@ -23,7 +23,7 @@ void panel_set_group(SystemState& state, std::uint32_t id, int group);
 void panel_sync(SystemState& state);
 // Once per frame: pointer hover and left clicks on the current group's buttons become panel events (90:BF).
 void panel_input(SystemState& state);
-// Removes the button sprites of the panel.
-void panel_stop(SystemState& state, std::uint32_t id);
+// Stops a controller; preserve_picture leaves its buttons owned by the window without input.
+void panel_stop(SystemState& state, std::uint32_t id, bool preserve_picture = false);
 
 } // namespace obgi

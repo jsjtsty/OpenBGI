@@ -21,6 +21,7 @@
 #include "bindings/arc_program_provider.hpp"
 #include "bindings/system_subops.hpp"
 #include "render/display.hpp"
+#include "render/renderer.hpp"
 #include "vm/vm.hpp"
 
 namespace {
@@ -87,6 +88,7 @@ int main(int argc, char** argv) {
     long frames = 20000;
     std::string effects_path, shot_path, mouse_script;
     long shot_frame = -1;
+    bool render_headless = false;
     bool window = false, frames_set = false, show_threads = false, live_cli = false;
     long progress_every = 0, click_first = 0, click_period = 0;
     auto number = [](const char* text, long& value) {
@@ -101,6 +103,7 @@ int main(int argc, char** argv) {
             std::printf("Usage: obgi_run <game dir> [options]\n"
                         "  --frames N             stop after N frames (default 20000)\n"
                         "  --window               use a window and real time\n"
+                        "  --render-headless      render offscreen (GPU diagnostics)\n"
                         "  --data-dir DIR         isolate saved data\n"
                         "  --driver NAME          select GPU driver\n"
                         "  --entry ARC MEMBER     select startup script\n"
@@ -136,6 +139,7 @@ int main(int argc, char** argv) {
         }
         else if (a == "--shot" && i + 2 < argc) shot_frame = std::atol(argv[i + 1]), shot_path = argv[i + 2], i += 2;
         else if (a == "--window") window = true;
+        else if (a == "--render-headless") render_headless = true;
         else if (a == "--effects" && i + 1 < argc) effects_path = argv[++i];
         else if (a == "--survey" && i + 1 < argc) survey = argv[++i];
         else if (a == "--driver" && i + 1 < argc) driver_s = argv[++i];
@@ -160,6 +164,7 @@ int main(int argc, char** argv) {
     options.game_dir = std::filesystem::path(std::u8string(game.begin(), game.end()));
     if (!data_dir.empty()) options.data_dir = std::filesystem::path(data_dir);
     options.window = window;
+    options.render_offscreen = render_headless;
     options.deterministic = !window;
     options.driver = driver_s;
     auto created = EngineSession::create(std::move(options));
@@ -270,6 +275,13 @@ int main(int argc, char** argv) {
     }
     const bool progress = std::getenv("OBGI_PROGRESS") != nullptr; // one line per frame on stderr, for finding a stuck frame
     const bool perf = std::getenv("OBGI_PERF") != nullptr;
+    const bool trace_menu = std::getenv("OBGI_TRACE_MENU") != nullptr;
+    std::string last_menu;
+    int band_x = 0, band_y = 0, band_w = 0, band_h = 0;
+    if (const auto* band = std::getenv("OBGI_TRACE_BAND"))
+        if (std::sscanf(band, "%d,%d,%d,%d", &band_x, &band_y, &band_w, &band_h) != 4 ||
+            band_x < 0 || band_y < 0 || band_w <= 0 || band_h <= 0 || window || !render_headless)
+            return die("OBGI_TRACE_BAND needs x,y,w,h and --render-headless without --window");
     const auto started = std::chrono::steady_clock::now();
     for (long f = 0; f < frames; ++f) {
         if (progress || (progress_every && f % progress_every == 0)) {
@@ -330,6 +342,32 @@ int main(int argc, char** argv) {
         auto st = session->tick(now_ms);
         const auto perf_present = std::chrono::steady_clock::now();
         if (st) if (auto shown = session->present(); !shown) return die(shown.error().message);
+        if (trace_menu) {
+            std::ostringstream state;
+            state << "windows=" << display->windows_shown << " level=" << display->windows_level << " limit=" << display->draw_limit;
+            for (const auto& [id, sp] : display->scene().objects()) {
+                if ((id >> 24) != 0x7d && (id >> 24) != 0xb0) continue;
+                state << " [" << std::hex << id << std::dec << " slot=" << sp.slot << " x=" << sp.x << " y=" << sp.y << " shown=" << sp.is_shown()
+                      << " v=" << sp.visible << " en=" << sp.enabled << " hidden=" << sp.hidden << " a=" << sp.alpha
+                      << " fade=" << sp.fade << " opacity=" << sp.opacity << " prio=" << sp.priority
+                      << " bias=" << sp.sort_bias << " order=" << display->scene().creation_order(id) << "]";
+            }
+            const auto current = state.str();
+            if (current != last_menu) { std::fprintf(stderr, "MENU frame=%ld ms=%lld %s\n", f, static_cast<long long>(now_ms), current.c_str()); last_menu = current; }
+        }
+        if (band_w > 0 && band_h > 0) {
+            const auto width = session->renderer().logical_width(), height = session->renderer().logical_height();
+            if (std::uint64_t(band_x) + band_w > width || std::uint64_t(band_y) + band_h > height)
+                return die("OBGI_TRACE_BAND exceeds the logical canvas");
+            auto pixels = session->renderer().read_back();
+            if (pixels && pixels->size() == std::size_t(width) * height * 4) {
+                std::uint64_t hash = 14695981039346656037ull;
+                for (int y = band_y; y < band_y + band_h; ++y)
+                    for (std::size_t i = (std::size_t(y) * width + band_x) * 4, end = i + std::size_t(band_w) * 4; i < end; ++i)
+                        hash = (hash ^ (*pixels)[i]) * 1099511628211ull;
+                std::fprintf(stderr, "BAND frame=%ld ms=%lld hash=%016llx\n", f, static_cast<long long>(now_ms), static_cast<unsigned long long>(hash));
+            }
+        }
         if (perf) {
             const auto done = std::chrono::steady_clock::now();
             const auto tick_ms = std::chrono::duration_cast<std::chrono::milliseconds>(perf_present - perf_tick).count();

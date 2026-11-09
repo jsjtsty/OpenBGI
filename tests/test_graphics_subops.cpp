@@ -151,6 +151,62 @@ TEST_CASE("painting a panel replaces old window sprites" * doctest::test_suite("
     CHECK(d.find_sprite(other_sprite) != nullptr);
 }
 
+TEST_CASE("stopping menu input preserves its picture across controller restarts" * doctest::test_suite("gpu")) {
+    RendererOptions options; options.headless = true;
+    auto renderer = Renderer::create(options); REQUIRE(renderer);
+    auto display = Display::create(**renderer, 32, 32); REQUIRE(display);
+    auto& d = **display;
+    REQUIRE(d.create_slot(1, 3, 2, SlotFormat::Bgra));
+    REQUIRE(d.fill_slot(1, 0xff1020f0));
+    constexpr Word window = 0xB0000000u;
+    auto& win = d.sprite(window); win.slot = 0xffffffffu;
+    SystemState state; state.display = &d;
+    SubopRegistry registry; MemProvider provider; provider.set(Asm().ret());
+    Vm vm(provider, registry); ThreadConfig config; config.stack_size = 1024;
+    auto thread = vm.spawn(config, "test", "menu"); REQUIRE(thread);
+    Ctx c(vm, **thread);
+    c.write(0x200, 1, 4); c.write(0x204, 0x300, 4);
+    c.write(0x300, 1, 4); c.write(0x304, 1, 4); c.write(0x308, 0x400, 4);
+    c.write(0x30c, 0xffffffffu, 4);
+    c.write(0x400, 1, 4); c.write(0x404, 1, 4); c.write(0x408, 4, 4); c.write(0x40c, 5, 4);
+    c.write(0x420, 1, 4); c.write(0x424, 0xffffffffu, 4); c.write(0x428, 0xffffffffu, 4);
+    c.write(0x42c, 0xffffffffu, 4); c.write(0x430, 0xffffffffu, 4);
+    REQUIRE(c.ok());
+    std::vector<std::uint32_t> expected;
+    for (Word id = 1; id <= 6; ++id) {
+        auto& control = state.icon_controls[id]; control.window = window;
+        REQUIRE(panel_start(state, id, c, 0x200) == 0);
+        const auto button = control.groups[0].buttons[0].sprite;
+        REQUIRE(d.compose()); auto before = d.read_screen(); REQUIRE(before);
+        CHECK(((*before)[5 * 32 + 4] & 0xffffffu) == 0x0f1fee); // native 255/256 alpha
+        if (expected.empty()) expected = *before;
+        CHECK(*before == expected);
+        panel_stop(state, id, true);
+        state.icon_controls.erase(id);
+        REQUIRE(state.icon_controls.size() == 1);
+        REQUIRE(state.icon_controls.at(window).paint_only);
+        REQUIRE(d.find_sprite(button));
+        // A scheduler frame may occur before the replacement controller starts.
+        state.press_input(1); state.mouse_x = 4; state.mouse_y = 5;
+        panel_input(state); panel_sync(state);
+        CHECK(state.icon_controls.at(window).events.empty());
+        REQUIRE(d.compose()); auto after = d.read_screen(); REQUIRE(after);
+        CHECK(*after == expected);
+        win.visible = false; panel_sync(state);
+        CHECK_FALSE(d.find_sprite(button)->is_shown());
+        win.visible = true; panel_sync(state);
+        CHECK(d.find_sprite(button)->is_shown());
+        CHECK(d.sprites().size() == 2); // one window and one retained button
+    }
+    // An explicit new paint replaces the retained picture and owns its cleanup.
+    c.write(0x404, 0, 4);
+    REQUIRE(panel_paint(state, c, window, 0x200, false) == 0);
+    CHECK(d.sprites().size() == 1);
+    panel_stop(state, window);
+    state.icon_controls.erase(window);
+    CHECK(state.icon_controls.empty());
+}
+
 TEST_CASE("new panel buttons inherit hidden window state" * doctest::test_suite("gpu")) {
     RendererOptions options; options.headless = true;
     auto renderer = Renderer::create(options); REQUIRE(renderer);
