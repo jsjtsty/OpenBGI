@@ -9,7 +9,6 @@
 #include <string>
 #include <stdexcept>
 #include <string_view>
-#include <unordered_map>
 #include <vector>
 
 #include "core/bytes.hpp"
@@ -33,19 +32,22 @@ constexpr Word make_addr(Tag tag, Word offset) {
 // Return codes of a sub-opcode / slice, as consumed by the scheduler (FUN_0049be00).
 enum Rc : int { Continue = 0, NextThread = 1, StayThread = 2, SwitchThread = 3, ExitThread = 4, NextThread2 = 5, SkipFrame = 6 };
 
-// Sparse zero-filled 64 MiB segment used for global memory and the heap.
+// Demand-zero 64 MiB segment used for global memory and the heap. The mapping is
+// created on first write; physical pages are supplied by the OS on demand.
 class PagedSegment {
   public:
     bool read(Word off, std::size_t n, std::uint8_t* out) const;
     bool write(Word off, std::size_t n, const std::uint8_t* in);
-    void clear() { pages_.clear(); }
-    // Sets a byte range back to zero (whole pages are released).
+    void clear() { data_.reset(); }
+    // Sets a byte range back to zero; complete OS pages may be reclaimed.
     void zero(Word off, std::size_t n);
 
   private:
-    static constexpr std::size_t kPage = 4096;
-    using Page = std::array<std::uint8_t, kPage>;
-    std::unordered_map<Word, std::unique_ptr<Page>> pages_;
+    static constexpr std::size_t kSize = std::size_t{1} << kTagShift;
+    struct Unmap {
+        void operator()(std::uint8_t* data) const noexcept;
+    };
+    std::unique_ptr<std::uint8_t, Unmap> data_;
 };
 
 // Script-visible allocations (80:20 / 80:21) inside the heap segment. Addresses are opaque to scripts; blocks are

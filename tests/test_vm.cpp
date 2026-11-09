@@ -1,6 +1,8 @@
 #include <doctest/doctest.h>
 
 #include <cstring>
+#include <limits>
+#include <random>
 
 #include "bindings/arc_program_provider.hpp"
 #include "support.hpp"
@@ -73,6 +75,91 @@ struct Fixture {
 };
 
 } // namespace
+
+TEST_CASE("vm segment demand-zero, bounds and mapping ownership") {
+    constexpr Word size = Word{1} << kTagShift;
+    PagedSegment segment;
+    std::array<std::uint8_t, 8> bytes;
+    bytes.fill(0xff);
+    REQUIRE(segment.read(size - 8, bytes.size(), bytes.data()));
+    CHECK(bytes == std::array<std::uint8_t, 8>{});
+    CHECK(segment.read(size, 0, nullptr));
+    CHECK(segment.write(size, 0, nullptr));
+    CHECK_FALSE(segment.read(size, 1, bytes.data()));
+    CHECK_FALSE(segment.write(size - 1, 2, bytes.data()));
+    CHECK_FALSE(segment.read(1, std::numeric_limits<std::size_t>::max(), bytes.data()));
+    CHECK_FALSE(segment.write(1, std::numeric_limits<std::size_t>::max(), bytes.data()));
+    CHECK_FALSE(segment.read(std::numeric_limits<Word>::max(), 0, nullptr));
+    // Invalid zero ranges are harmless; oversized valid ones are clipped.
+    segment.zero(std::numeric_limits<Word>::max(), 100);
+    bytes.fill(0xa5);
+    REQUIRE(segment.write(size - 8, bytes.size(), bytes.data()));
+    REQUIRE(segment.read(0, bytes.size(), bytes.data()));
+    CHECK(bytes == std::array<std::uint8_t, 8>{});
+    PagedSegment moved = std::move(segment);
+    REQUIRE(moved.read(size - 8, bytes.size(), bytes.data()));
+    CHECK(bytes[0] == 0xa5);
+    REQUIRE(segment.read(size - 8, bytes.size(), bytes.data()));
+    CHECK(bytes[0] == 0);
+    REQUIRE(segment.write(0, 1, bytes.data()));
+    segment = std::move(moved); // also releases the destination's old mapping
+    segment.zero(size - 4, std::numeric_limits<std::size_t>::max());
+    REQUIRE(segment.read(size - 8, bytes.size(), bytes.data()));
+    CHECK(bytes[3] == 0xa5);
+    CHECK(bytes[4] == 0);
+    segment.clear();
+    segment.clear();
+    REQUIRE(segment.read(size - 8, bytes.size(), bytes.data()));
+    CHECK(bytes == std::array<std::uint8_t, 8>{});
+    bytes.fill(0x42);
+    REQUIRE(segment.write(4094, bytes.size(), bytes.data()));
+    segment.zero(0, size);
+    REQUIRE(segment.read(4094, bytes.size(), bytes.data()));
+    CHECK(bytes == std::array<std::uint8_t, 8>{});
+}
+
+TEST_CASE("vm segment partial zero preserves neighboring allocations across host pages") {
+    PagedSegment segment;
+    std::vector<std::uint8_t> expected(1024 * 1024, 0xa5), actual(expected.size());
+    REQUIRE(segment.write(0, expected.size(), expected.data()));
+    const auto check_zero = [&](Word off, std::size_t n) {
+        segment.zero(off, n);
+        std::fill_n(expected.begin() + off, n, std::uint8_t{0});
+        REQUIRE(segment.read(0, actual.size(), actual.data()));
+        CHECK(actual == expected);
+    };
+    check_zero(4095, 2);         // cross the former software page boundary
+    check_zero(16383, 2);        // cross an Apple Silicon page boundary
+    check_zero(32769, 65536);    // partial ends with complete host pages inside
+    check_zero(0, 32768);        // aligned complete pages
+    check_zero(32769, 655360);   // large range also exercises OS reclamation hints
+    // Write into discarded pages, then verify adjacent bytes again.
+    const std::uint8_t value = 0x78;
+    REQUIRE(segment.write(49152, 1, &value));
+    expected[49152] = value;
+    REQUIRE(segment.read(0, actual.size(), actual.data()));
+    CHECK(actual == expected);
+}
+
+TEST_CASE("vm segment mixed writes and frees match a flat memory model") {
+    PagedSegment segment;
+    std::vector<std::uint8_t> expected(128 * 1024), actual(expected.size());
+    std::mt19937 rng(0x50414745);
+    for (unsigned i = 0; i < 300; ++i) {
+        const auto off = static_cast<Word>(rng() % expected.size());
+        const std::size_t n = std::min<std::size_t>(rng() % 65537, expected.size() - off);
+        if (i % 3 == 0) {
+            segment.zero(off, n);
+            std::fill_n(expected.begin() + off, n, std::uint8_t{0});
+        } else {
+            std::vector<std::uint8_t> data(n, static_cast<std::uint8_t>(rng()));
+            REQUIRE(segment.write(off, n, data.data()));
+            std::copy(data.begin(), data.end(), expected.begin() + off);
+        }
+        REQUIRE(segment.read(0, actual.size(), actual.data()));
+        REQUIRE(actual == expected);
+    }
+}
 
 TEST_CASE("vm arithmetic and store") {
     Fixture f;

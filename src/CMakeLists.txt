@@ -9,9 +9,13 @@ add_library(obgi_formats STATIC
 target_link_libraries(obgi_formats PUBLIC obgi_core)
 obgi_target_defaults(obgi_formats)
 
-add_library(obgi_vm STATIC vm/ctx.cpp vm/interp.cpp vm/scheduler.cpp vm/core_subops.cpp)
+add_library(obgi_vm STATIC vm/paged_segment.cpp vm/ctx.cpp vm/interp.cpp vm/scheduler.cpp vm/core_subops.cpp)
 target_link_libraries(obgi_vm PUBLIC obgi_core)
 obgi_target_defaults(obgi_vm)
+
+add_executable(obgi_bench_memory EXCLUDE_FROM_ALL ../tools/bench_memory/main.cpp)
+target_link_libraries(obgi_bench_memory PRIVATE obgi_vm)
+obgi_target_defaults(obgi_bench_memory)
 
 add_library(obgi_vfs STATIC vfs/mapped_file.cpp vfs/arc.cpp)
 target_link_libraries(obgi_vfs PUBLIC obgi_core)

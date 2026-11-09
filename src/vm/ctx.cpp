@@ -22,48 +22,6 @@ void Ctx::suspend(WaitObject wait, std::uint8_t results) {
         vm.wait_input->begin(t.wait.input_priority);
 }
 
-bool PagedSegment::read(Word off, std::size_t n, std::uint8_t* out) const {
-    if (static_cast<std::uint64_t>(off) + n > (1ull << kTagShift)) return false;
-    while (n) {
-        Word page = off / kPage;
-        std::size_t in_page = off % kPage, chunk = std::min(n, kPage - in_page);
-        auto it = pages_.find(page);
-        if (it == pages_.end()) std::fill_n(out, chunk, std::uint8_t{0});
-        else std::copy_n(it->second->data() + in_page, chunk, out);
-        out += chunk;
-        off += static_cast<Word>(chunk);
-        n -= chunk;
-    }
-    return true;
-}
-
-bool PagedSegment::write(Word off, std::size_t n, const std::uint8_t* in) {
-    if (static_cast<std::uint64_t>(off) + n > (1ull << kTagShift)) return false;
-    while (n) {
-        Word page = off / kPage;
-        std::size_t in_page = off % kPage, chunk = std::min(n, kPage - in_page);
-        auto& p = pages_[page];
-        if (!p) p = std::make_unique<Page>(Page{});
-        std::copy_n(in, chunk, p->data() + in_page);
-        in += chunk;
-        off += static_cast<Word>(chunk);
-        n -= chunk;
-    }
-    return true;
-}
-
-void PagedSegment::zero(Word off, std::size_t n) {
-    if (static_cast<std::uint64_t>(off) + n > (1ull << kTagShift)) n = (1ull << kTagShift) - off;
-    while (n) {
-        const Word page = off / kPage;
-        const std::size_t in_page = off % kPage, chunk = std::min(n, kPage - in_page);
-        if (chunk == kPage) pages_.erase(page);
-        else if (auto it = pages_.find(page); it != pages_.end()) std::fill_n(it->second->data() + in_page, chunk, std::uint8_t{0});
-        off += static_cast<Word>(chunk);
-        n -= chunk;
-    }
-}
-
 Result<Word> HeapAllocator::allocate(PagedSegment&, Word size) {
     const std::uint64_t need = (std::uint64_t(size ? size : 1) + 15) & ~std::uint64_t(15);
     std::uint64_t at = 0x10; // keep offset 0 unused so no block looks like a null address
