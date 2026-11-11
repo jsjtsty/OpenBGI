@@ -91,7 +91,7 @@ struct WaitUpdate {
 
 // The VM owns result delivery. A service only reports completion, never a Thread* or an expression-stack write.
 struct WaitObject {
-    enum class Kind { None, Time, Frame, Poll, InputTime } kind = Kind::None;
+    enum class Kind { None, Time, Frame, Poll, InputTime, Resource } kind = Kind::None;
     std::int64_t until = 0;
     std::function<Result<WaitUpdate>(const WaitContext&)> poll;
     std::function<void()> cleanup; // release a service operation on completion, cancellation or shutdown
@@ -224,10 +224,13 @@ class Vm {
 
     // Runs every ready thread once (one scheduler frame) at virtual time `now_ms`.
     Result<FrameStatus> run_frame(std::int64_t now_ms);
+    // Resume resource waiters at a scheduler safe point without advancing a game frame.
+    Result<FrameStatus> resources_ready(std::int64_t now_ms);
 
     // Executes one instruction of `t`; returns a scheduler code or an error.
     Result<int> step(Thread& t);
     void cancel_wait(Thread& t);
+    void notify_resource_wait() { resource_signal_pending_ = true; }
     // Safe point after a successful scheduler pass; releases dead threads and their service operations.
     void collect_dead();
 
@@ -258,6 +261,11 @@ class Vm {
   private:
     Result<int> run_slice(Thread& t);
     Result<WaitUpdate> update_wait(Thread& t);
+    Result<void> deliver_wait(Thread& t, const WaitUpdate& result);
+    Result<FrameStatus> dispatch(bool resources_only);
+    bool resource_pass_suppressed_ = false;
+    bool resource_signal_pending_ = false;
+    bool resource_signal_active_ = false;
     Word next_id_ = 1; // the real game's root thread takes id 0, scripts start at 1
     std::vector<std::unique_ptr<Thread>> threads_;
 };

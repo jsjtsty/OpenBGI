@@ -46,6 +46,7 @@ struct Renderer::Impl {
     SDL_GPUTexture* offscreen = nullptr; // headless target
     SDL_GPUTextureFormat target_format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
     bool video_inited = false;
+    Uint32 completion_event = 0;
     std::optional<ShaderLibrary> library;
 
     SDL_GPUCommandBuffer* cmd = nullptr;
@@ -144,6 +145,10 @@ Result<std::unique_ptr<Renderer>> Renderer::create(const RendererOptions& option
 
     if (!SDL_InitSubSystem(SDL_INIT_VIDEO)) return std::unexpected(sdl_error("SDL_Init"));
     m.video_inited = true;
+    if (!options.headless) {
+        m.completion_event = SDL_RegisterEvents(1);
+        if (!m.completion_event) return std::unexpected(sdl_error("register resource completion event"));
+    }
     constexpr SDL_GPUShaderFormat kFormats = SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL |
                                              SDL_GPU_SHADERFORMAT_MSL | SDL_GPU_SHADERFORMAT_METALLIB;
     m.device = SDL_CreateGPUDevice(kFormats, false, options.driver);
@@ -372,6 +377,18 @@ std::uint32_t mouse_virtual_key(std::uint8_t button) {
 }
 
 } // namespace
+
+void Renderer::wait_for_event(std::chrono::steady_clock::time_point deadline) {
+    const auto remaining = deadline - std::chrono::steady_clock::now();
+    const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(remaining + std::chrono::microseconds(999)).count();
+    (void)SDL_WaitEventTimeout(nullptr, static_cast<Sint32>(std::clamp<std::int64_t>(ms, 0, 1000)));
+}
+
+std::function<void()> Renderer::completion_notifier() const {
+    const Uint32 type = impl_->completion_event;
+    if (!type) return {};
+    return [type] { SDL_Event event{}; event.type = type; (void)SDL_PushEvent(&event); };
+}
 
 bool Renderer::poll_events() {
     bool alive = true;

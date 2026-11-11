@@ -165,7 +165,10 @@ void register_core_subops(SubopRegistry& r) {
         Thread* target = c.ok() ? c.vm.find(id) : nullptr;
         const bool waiting = target && target->wait.kind != WaitObject::Kind::None;
         // Message 0 terminates the wait in the original wait-object queue.
-        if (waiting && (message == 0 || message == 1)) target->wait.notified = true;
+        if (waiting && (message == 0 || (message == 1 && target->wait.kind != WaitObject::Kind::Resource))) {
+            target->wait.notified = true;
+            if (target->wait.kind == WaitObject::Kind::Resource) c.vm.notify_resource_wait();
+        }
         c.push(waiting ? 1 : 0);
         return 0;
     });

@@ -152,6 +152,85 @@ TEST_CASE("80 4C message zero notifies the target wait") {
     CHECK(target.expr[0] == 0);
 }
 
+TEST_CASE("resource completion resumes without advancing the logical frame") {
+    Rig rig;
+    bool ready = false;
+    int hooks = 0, deliveries = 0;
+    rig.machine.frame_hook = [&](auto) { ++hooks; };
+    rig.machine.trace_completion = [&](const auto&, auto, const auto&) { ++deliveries; };
+    rig.registry.add({0x9000, "resource", 0, 1, [&](vm::Ctx& c) {
+        vm::WaitObject wait; wait.kind = vm::WaitObject::Kind::Resource;
+        wait.poll = [&](const auto&) -> Result<vm::WaitUpdate> {
+            return ready ? vm::WaitUpdate::complete({42}) : vm::WaitUpdate::pending();
+        };
+        c.suspend(std::move(wait), 1); return vm::StayThread;
+    }, 1});
+    auto& thread = rig.spawn({0x90, 0, 0x80, 0x5F, 0x17});
+    REQUIRE(rig.machine.run_frame(0));
+    CHECK(thread.wait.kind == vm::WaitObject::Kind::Resource);
+    CHECK(rig.machine.frame == 1); CHECK(hooks == 1);
+    REQUIRE(rig.machine.resources_ready(1));
+    CHECK(thread.depth == 0); CHECK(deliveries == 0);
+    ready = true;
+    REQUIRE(rig.machine.resources_ready(1));
+    CHECK(thread.expr[0] == 42); CHECK(deliveries == 1);
+    CHECK(rig.machine.frame == 1); CHECK(hooks == 1);
+    REQUIRE(rig.machine.resources_ready(1)); CHECK(deliveries == 1);
+}
+
+TEST_CASE("resource completion respects a suppressed frame") {
+    Rig rig;
+    bool ready = false;
+    rig.registry.add({0x9000, "resource", 0, 0, [&](vm::Ctx& c) {
+        vm::WaitObject wait; wait.kind = vm::WaitObject::Kind::Resource;
+        wait.poll = [&](const auto&) -> Result<vm::WaitUpdate> {
+            return ready ? vm::WaitUpdate::complete() : vm::WaitUpdate::pending();
+        };
+        c.suspend(std::move(wait), 0); return vm::StayThread;
+    }});
+    auto& thread = rig.spawn({0x90, 0, 0x80, 0x5F, 0x17}, "waiter");
+    rig.spawn({0x80, 0x6A, 0x17}, "suppressor");
+    REQUIRE(rig.machine.run_frame(0));
+    ready = true;
+    REQUIRE(rig.machine.resources_ready(1));
+    CHECK(thread.wait.kind == vm::WaitObject::Kind::Resource);
+    REQUIRE(rig.machine.run_frame(2));
+    CHECK(thread.wait.kind == vm::WaitObject::Kind::None);
+}
+
+TEST_CASE("resource continuation honors an explicit thread switch") {
+    Rig rig;
+    bool ready = false;
+    rig.registry.add({0x9000, "resource", 0, 0, [&](vm::Ctx& c) {
+        vm::WaitObject wait; wait.kind = vm::WaitObject::Kind::Resource;
+        wait.poll = [&](const auto&) -> Result<vm::WaitUpdate> { return ready ? vm::WaitUpdate::complete() : vm::WaitUpdate::pending(); };
+        c.suspend(std::move(wait), 0); return vm::StayThread;
+    }});
+    rig.spawn({0x90, 0, 0, 2, 0x80, 0x5E, 0x80, 0x5F, 0x17}, "waiter");
+    rig.spawn({0x80, 0x5F, 0, 42, 2, 0, 1, 0, 0, 0x0A, 2, 0x80, 0x5F, 0x17}, "target");
+    REQUIRE(rig.machine.run_frame(0));
+    ready = true;
+    REQUIRE(rig.machine.resources_ready(1));
+    std::uint8_t result[4]{}; REQUIRE(rig.machine.global.read(0x100, 4, result));
+    CHECK(load_u32le(result) == 42);
+    CHECK(rig.machine.frame == 1);
+}
+
+TEST_CASE("resource wait can be cancelled by a thread notification") {
+    Rig rig;
+    rig.registry.add({0x9000, "resource", 0, 0, [](vm::Ctx& c) {
+        vm::WaitObject wait; wait.kind = vm::WaitObject::Kind::Resource;
+        wait.poll = [](const auto&) -> Result<vm::WaitUpdate> { return vm::WaitUpdate::pending(); };
+        c.suspend(std::move(wait), 0); return vm::StayThread;
+    }});
+    auto& thread = rig.spawn({0x90, 0, 0x80, 0x5F, 0x17}, "waiter");
+    rig.spawn({0, 1, 0, 0, 0, 0, 0, 0, 0x80, 0x4C, 0x80, 0x5F, 0x17}, "notifier");
+    REQUIRE(rig.machine.run_frame(0));
+    CHECK(thread.wait.kind == vm::WaitObject::Kind::Resource);
+    REQUIRE(rig.machine.run_frame(1));
+    CHECK(thread.wait.kind == vm::WaitObject::Kind::None);
+}
+
 TEST_CASE("switching to a missing thread ends the scheduler pass") {
     Rig rig;
     auto& first = rig.spawn({0, 99, 0x80, 0x5E, 0x17});

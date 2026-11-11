@@ -92,7 +92,7 @@ int load_sound(Ctx& c, const std::shared_ptr<SoundCache>& cache, Mixer& mixer, B
     auto result = complete();
     if (!result) { c.fail(result.error().code, result.error().message); return 0; }
     if (result->status == vm::WaitUpdate::Status::Complete) return 0;
-    vm::WaitObject wait; wait.kind = vm::WaitObject::Kind::Poll;
+    vm::WaitObject wait; wait.kind = vm::WaitObject::Kind::Resource;
     wait.poll = [complete = std::move(complete)](const vm::WaitContext&) { return complete(); };
     c.suspend(std::move(wait), 0);
     return static_cast<int>(vm::StayThread);

@@ -8,6 +8,7 @@
 #include <ctime>
 #include <sstream>
 #include <string_view>
+#include <thread>
 #include "audio/device.hpp"
 #include "audio/timeline.hpp"
 #include "bindings/arc_image_source.hpp"
@@ -83,6 +84,7 @@ struct EngineSession::Impl {
     ArcResourceFinder resources;
     ArcProgramProvider programs;
     std::unique_ptr<DecodeQueue> resource_jobs;
+    std::uint64_t resource_generation = 0;
     ArcImageSource images;
     Mixer mixer;
     AudioTimeline audio_time{mixer};
@@ -133,6 +135,7 @@ Result<std::unique_ptr<EngineSession>> EngineSession::create(SessionOptions opti
     auto renderer = Renderer::create(ro);
     if (!renderer) return std::unexpected(renderer.error());
     m.renderer = std::move(*renderer);
+    if (m.options.window && m.resource_jobs) m.resource_jobs->set_completion_notifier(m.renderer->completion_notifier());
     auto display = Display::create(*m.renderer, m.options.width, m.options.height);
     if (!display) return std::unexpected(display.error());
     m.display = std::move(*display);
@@ -246,11 +249,38 @@ Result<vm::FrameStatus> EngineSession::tick(std::int64_t now) {
     }
     if (!m.device) m.audio_time.advance(now);
     if (auto movie = m.player->update(now); !movie) return std::unexpected(movie.error());
+    // Drain events at frame boundaries as well: a continuously busy renderer
+    // may never enter the host's blocking resource wait.
+    if (m.resource_jobs && m.resource_jobs->take_completion(m.resource_generation)) m.vm->notify_resource_wait();
     auto status = m.vm->run_frame(now);
     if (m.system.shutdown_message_thread && !m.vm->find(*m.system.shutdown_message_thread))
         m.system.quit_requested = true;
     m.display->resolve_masters();
     // Scripts may change window visibility after the frame hook ran.
+    panel_sync(m.system);
+    return status;
+}
+
+bool EngineSession::wait_for_resources(std::chrono::steady_clock::time_point deadline) {
+    auto& m = *impl_;
+    if (m.resource_jobs && m.resource_jobs->take_completion(m.resource_generation)) return true;
+    if (m.options.window) {
+        // If an SDL event is filtered or the queue is full, periodically recheck
+        // the generation so a completed decode cannot remain stranded.
+        m.renderer->wait_for_event(std::min(deadline, std::chrono::steady_clock::now() + std::chrono::milliseconds(16)));
+        return m.resource_jobs && m.resource_jobs->take_completion(m.resource_generation);
+    }
+    if (m.resource_jobs) return m.resource_jobs->wait_for_completion(m.resource_generation, deadline);
+    std::this_thread::sleep_until(deadline);
+    return false;
+}
+
+Result<vm::FrameStatus> EngineSession::resume_resources(std::int64_t now) {
+    auto& m = *impl_;
+    if (now < m.last_ms) return fail(Errc::Range, "session clock moved backwards");
+    m.last_ms = now;
+    auto status = m.vm->resources_ready(now);
+    m.display->resolve_masters();
     panel_sync(m.system);
     return status;
 }

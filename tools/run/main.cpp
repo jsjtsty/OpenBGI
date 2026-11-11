@@ -2,6 +2,7 @@
 //   obgi_run <game dir> [--frames N] [--driver d] [--entry arc member]
 // Headless time is virtual (16 ms per pass); windowed time follows the monotonic host clock. The first script error, usually a
 // sub-opcode that is not implemented yet, is printed with the frame it happened in.
+#include <algorithm>
 #include <cstdio>
 #include <chrono>
 #include <thread>
@@ -449,8 +450,25 @@ int main(int argc, char** argv) {
             report_hits();
             return 0;
         }
-        if (window) std::this_thread::sleep_until(started + std::chrono::milliseconds(vm.now_ms + std::max(system.frame_ms, 1u)));
-        else if (pace_headless) std::this_thread::sleep_until(started + std::chrono::milliseconds((f + 1) * 16));
+        if (window || pace_headless) {
+            const auto deadline = window ? started + std::chrono::milliseconds(vm.now_ms + std::max(system.frame_ms, 1u))
+                                         : started + std::chrono::milliseconds((f + 1) * 16);
+            while (std::chrono::steady_clock::now() < deadline) {
+                if (session->wait_for_resources(deadline)) {
+                    const auto wake_ms = window ? std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - started).count()
+                                                : now_ms;
+                    auto resumed = session->resume_resources(wake_ms);
+                    if (!resumed) return die(resumed.error().message);
+                    if (*resumed == vm::FrameStatus::AllThreadsDead || system.quit_requested) break;
+                    if (auto shown = session->present(); !shown) return die(shown.error().message);
+                } else if (window && std::chrono::steady_clock::now() < deadline) {
+                    if (!session->pump_events()) break;
+                    if (std::any_of(system.input_pending.begin(), system.input_pending.end(), [](auto v) { return v != 0; }) || !system.wheel_events.empty()) break;
+                }
+            }
+        } else if (async_resources && session->wait_for_resources(std::chrono::steady_clock::now())) {
+            if (auto resumed = session->resume_resources(now_ms); !resumed) return die(resumed.error().message);
+        }
     }
     std::printf("ran %ld frames without stopping\n", frames);
     report_hits();

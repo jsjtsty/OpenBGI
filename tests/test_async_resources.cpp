@@ -130,11 +130,25 @@ TEST_CASE("raw mapping defers DSC errors to the decoder and cache clear rejects 
     auto ready = clean.poll(*old); REQUIRE(ready); REQUIRE(*ready); CHECK(clean.count() == 0);
 }
 
+TEST_CASE("decode completion wakes the consumer after releasing admission") {
+    DecodeQueue queue(0, 1);
+    std::uint64_t generation = 0;
+    CHECK_FALSE(queue.take_completion(generation));
+    REQUIRE(queue.try_submit(32, [] {}));
+    CHECK_FALSE(queue.try_submit(32, [] {}));
+    REQUIRE(queue.run_one());
+    CHECK(queue.stats().admitted == 0);
+    CHECK(queue.wait_for_completion(generation, std::chrono::steady_clock::now()));
+    CHECK_FALSE(queue.take_completion(generation));
+    REQUIRE(queue.try_submit(32, [] {}));
+    REQUIRE(queue.run_one());
+    CHECK(queue.take_completion(generation));
+}
+
 TEST_CASE("decode shutdown discards queued jobs while detached consumers remain safe") {
     unsigned calls = 0;
-    std::shared_ptr<DecodeQueue::Permit> permit;
-    { DecodeQueue queue(0); permit = queue.try_submit(64, [&] { ++calls; }); REQUIRE(permit); }
-    CHECK(calls == 0); permit.reset();
+    { DecodeQueue queue(0); REQUIRE(queue.try_submit(64, [&] { ++calls; })); }
+    CHECK(calls == 0);
 }
 
 TEST_CASE("async bitmap loading suspends only its caller and rejects replaced targets" * doctest::test_suite("gpu")) {
@@ -149,11 +163,11 @@ TEST_CASE("async bitmap loading suspends only its caller and rejects replaced ta
         auto loading = machine.spawn({}, "x", "load"); REQUIRE(loading);
         programs.set(Code().store(0x204, 456).ret()); REQUIRE(machine.spawn({}, "x", "other"));
         REQUIRE(machine.run_frame(0)); CHECK(word(machine, 0x200) == 0); CHECK(word(machine, 0x204) == 456);
-        CHECK((*loading)->wait.kind == vm::WaitObject::Kind::Poll); CHECK(d.slot(7) == nullptr);
+        CHECK((*loading)->wait.kind == vm::WaitObject::Kind::Resource); CHECK(d.slot(7) == nullptr);
         if (action == 1) { REQUIRE(d.create_slot(7, 1, 1, SlotFormat::Bgra)); REQUIRE(d.fill_slot(7, 0xffaabbcc)); }
         if (action == 2) CHECK_FALSE(d.free_slot(7)); // even an unallocated slot invalidates its pending load
         if (action == 3) { (*loading)->dead = true; REQUIRE(machine.run_frame(1)); }
-        REQUIRE(queue.run_one()); REQUIRE(machine.run_frame(2));
+        REQUIRE(queue.run_one()); REQUIRE(machine.resources_ready(2));
         CHECK(word(machine, 0x200) == (action == 3 ? 0u : 123u));
         if (action >= 2) CHECK(d.slot(7) == nullptr);
         else { auto pixels = d.read_slot(7); REQUIRE(pixels); CHECK((*pixels)[0] == (action == 1 ? 0xffaabbccu : 0xff123456u)); }
@@ -169,7 +183,7 @@ TEST_CASE("async audio preserves pause and stop invalidates pending loads") {
         vm::Vm machine(programs, registry); strings(machine); REQUIRE(machine.spawn({}, "x", "sound"));
         REQUIRE(machine.run_frame(0)); CHECK(word(machine, 0x200) == 0);
         if (stop) REQUIRE(mixer.stop(Bank::Stream, 2));
-        REQUIRE(queue.run_one()); REQUIRE(machine.run_frame(1)); CHECK(word(machine, 0x200) == 1);
+        REQUIRE(queue.run_one()); REQUIRE(machine.resources_ready(1)); CHECK(word(machine, 0x200) == 1);
         CHECK(mixer.state(Bank::Stream, 2) == (stop ? ChannelState::Empty : ChannelState::Paused));
         if (!stop) {
             REQUIRE(mixer.start(Bank::Stream, 2)); REQUIRE(mixer.set_paused(Bank::Stream, 2, false));
@@ -195,7 +209,7 @@ TEST_CASE("intro and loop joining completes on a saturated single-job queue") {
     vm::Vm machine(programs, registry); strings(machine);
     const std::uint8_t body[] = "body"; REQUIRE(machine.global.write(0x120, sizeof body, body));
     REQUIRE(machine.spawn({}, "x", "intro")); REQUIRE(machine.run_frame(0));
-    for (unsigned step = 1; step <= 3; ++step) { REQUIRE(queue.run_one()); REQUIRE(machine.run_frame(step)); }
+    for (unsigned step = 1; step <= 3; ++step) { REQUIRE(queue.run_one()); REQUIRE(machine.resources_ready(step)); }
     CHECK(word(machine, 0x200) == 9); CHECK(queue.stats().admitted == 0);
     CHECK(mixer.state(Bank::Stream, 2) == ChannelState::Playing);
     std::int16_t output[400]{}; mixer.mix(output, 200);
@@ -227,7 +241,7 @@ TEST_CASE("failed async bitmap decode reports its opcode and preserves the previ
     GraphicsHost host{display->get(), &images}; vm::SubopRegistry registry; register_graphics_subops(registry, host);
     Programs programs; programs.set(Code().i(7).i(0x100).i(0x105).op(0x90, 0x10).ret());
     vm::Vm machine(programs, registry); strings(machine); REQUIRE(machine.spawn({}, "x", "broken"));
-    REQUIRE(machine.run_frame(0)); REQUIRE(queue.run_one()); auto error = machine.run_frame(1);
+    REQUIRE(machine.run_frame(0)); REQUIRE(queue.run_one()); auto error = machine.resources_ready(1);
     REQUIRE_FALSE(error); CHECK(error.error().message.find("90:10") != std::string::npos);
     CHECK(error.error().message.find("data/item") != std::string::npos);
     auto pixels = (*display)->read_slot(7); REQUIRE(pixels); CHECK((*pixels)[0] == 0xffaabbcc);

@@ -1,5 +1,6 @@
 #pragma once
 #include <filesystem>
+#include <chrono>
 #include <memory>
 #include <string>
 #include "core/error.hpp"
@@ -33,6 +34,9 @@ class EngineSession {
     Result<void> restart(std::string_view arc = "autoload.arc", std::string_view name = "ipl._bp");
     bool pump_events();
     Result<vm::FrameStatus> tick(std::int64_t now_ms);
+    // Wait until a decoder completion or the next logical-frame deadline.
+    bool wait_for_resources(std::chrono::steady_clock::time_point deadline);
+    Result<vm::FrameStatus> resume_resources(std::int64_t now_ms);
     Result<void> present();
     Result<std::vector<std::uint32_t>> capture();
     vm::Vm& machine();

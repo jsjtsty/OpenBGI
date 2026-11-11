@@ -1,4 +1,6 @@
 #pragma once
+#include <chrono>
+#include <functional>
 #include <array>
 #include <cstdint>
 #include <memory>
@@ -82,6 +84,9 @@ class Renderer {
 
     // Returns false when the window was closed (or asked to quit); pumps SDL events.
     bool poll_events();
+    // Wait without removing the next SDL event, so poll_events owns dispatch.
+    void wait_for_event(std::chrono::steady_clock::time_point deadline);
+    std::function<void()> completion_notifier() const;
     // Last key pressed since the previous call, as an SDL keycode (0 = none).
     std::uint32_t take_key();
     // Key and mouse-button presses since the previous call as Windows virtual-key codes (mouse: 1 left, 2 right, 4 middle,

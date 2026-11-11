@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cstdio>
+#include <utility>
 
 #include "vm/vm.hpp"
 
@@ -95,6 +96,11 @@ Result<WaitUpdate> Vm::update_wait(Thread& t) {
         if (now_ms >= w.until || w.notified) return WaitUpdate::complete({0});
         if (w.interrupt_input && wait_input && wait_input->triggered(w.input_priority)) return WaitUpdate::complete({1});
         return WaitUpdate::pending();
+    case WaitObject::Kind::Resource:
+        if (!resource_signal_active_) return WaitUpdate::pending();
+        if (w.notified) return WaitUpdate::complete(std::vector<Word>(w.result_count, 0));
+        if (!w.poll) return fail(Errc::Format, "resource wait has no completion handler");
+        return w.poll({now_ms, frame, w.notified});
     case WaitObject::Kind::Poll:
         if (!w.poll) return fail(Errc::Format, "wait has no update function");
         return w.poll({now_ms, frame, w.notified});
@@ -102,18 +108,31 @@ Result<WaitUpdate> Vm::update_wait(Thread& t) {
     return fail(Errc::Format, "unknown wait kind");
 }
 
-Result<FrameStatus> Vm::run_frame(std::int64_t now) {
-    now_ms = now;
-    if (frame_hook) frame_hook(now);
+Result<void> Vm::deliver_wait(Thread& t, const WaitUpdate& result) {
+    if (result.values.size() != t.wait.result_count || t.depth != t.wait.resume_depth)
+        return fail(Errc::Format, "completion stack mismatch for " + subop_name(t.wait.opcode));
+    const auto opcode = t.wait.opcode;
+    Ctx context(*this, t);
+    for (Word value : result.values) context.push(value);
+    if (trace_completion) trace_completion(t, opcode, result.values);
+    cancel_wait(t);
+    return {};
+}
+
+Result<FrameStatus> Vm::dispatch(bool resources_only) {
     bool skip_rest = false;
+    bool retain_resource_signal = false;
+    const bool event_dispatch = resources_only;
+    std::size_t slices = 0;
     std::size_t i = 0;
     while (i < threads_.size()) {
         Thread& t = *threads_[i];
-        if (t.dead) {
-            ++i;
-            continue;
+        if (t.dead) { ++i; continue; }
+        if (exclusive_thread && t.id != exclusive_thread) {
+            if (resource_signal_active_ && t.wait.kind == WaitObject::Kind::Resource) retain_resource_signal = true;
+            ++i; continue;
         }
-        if (exclusive_thread && t.id != exclusive_thread) { ++i; continue; }
+        if (resources_only && t.wait.kind != WaitObject::Kind::Resource) { ++i; continue; }
         if (t.wait.kind != WaitObject::Kind::None) {
             auto update = update_wait(t);
             if (!update) {
@@ -121,18 +140,14 @@ Result<FrameStatus> Vm::run_frame(std::int64_t now) {
                 return std::unexpected(update.error());
             }
             if (update->status == WaitUpdate::Status::Pending) { ++i; continue; }
-            if (update->values.size() != t.wait.result_count || t.depth != t.wait.resume_depth)
-                return fail(Errc::Format, "completion stack mismatch for " + subop_name(t.wait.opcode));
-            const auto opcode = t.wait.opcode;
-            Ctx context(*this, t);
-            for (Word value : update->values) context.push(value);
-            if (trace_completion) trace_completion(t, opcode, update->values);
             if (update->status == WaitUpdate::Status::SuppressFrame) skip_rest = true;
-            cancel_wait(t);
+            if (auto delivered = deliver_wait(t, *update); !delivered) return std::unexpected(delivered.error());
         }
-        if (skip_rest) {
-            ++i;
-            continue;
+        if (skip_rest) { ++i; continue; }
+        if (event_dispatch && slices++ >= 256) {
+            // Preserve responsiveness; the next frame will continue remaining work.
+            retain_resource_signal = true;
+            break;
         }
         auto rc = run_slice(t);
         if (!rc) {
@@ -146,17 +161,17 @@ Result<FrameStatus> Vm::run_frame(std::int64_t now) {
             ++i;
             break;
         case StayThread:
-            // Recheck this thread, including a newly installed wait, in this pass.
+            // Recheck a newly installed wait in this pass, just as in a frame.
             break;
         case SwitchThread: {
-            if (switch_target == 0) { // the real game's native root thread: control goes back to its main loop (end of frame)
-                skip_rest = true;
-                ++i;
-                break;
-            }
+            if (switch_target == 0) { skip_rest = true; ++i; break; }
             auto it = std::find_if(threads_.begin(), threads_.end(),
                                    [&](auto& p) { return p->id == switch_target && !p->dead; });
             if (it == threads_.end()) { i = threads_.size(); break; }
+            // The explicit switch takes precedence over the event-only filter.
+            // Retain the event for waiters earlier than the target.
+            if (resources_only && resource_signal_active_) retain_resource_signal = true;
+            resources_only = false;
             i = static_cast<std::size_t>(it - threads_.begin());
             break;
         }
@@ -167,10 +182,32 @@ Result<FrameStatus> Vm::run_frame(std::int64_t now) {
         default: ++i; break;
         }
     }
-    ++frame;
-    collect_dead();
-    if (threads_.empty()) return FrameStatus::AllThreadsDead;
-    return FrameStatus::Ok;
+    resource_signal_pending_ = resource_signal_pending_ || retain_resource_signal || (resource_signal_active_ && skip_rest);
+    if (skip_rest) resource_pass_suppressed_ = true;
+    const bool all_dead = std::none_of(threads_.begin(), threads_.end(), [](const auto& thread) { return !thread->dead; });
+    return all_dead ? FrameStatus::AllThreadsDead : FrameStatus::Ok;
+}
+
+Result<FrameStatus> Vm::run_frame(std::int64_t now) {
+    now_ms = now;
+    resource_pass_suppressed_ = false;
+    resource_signal_active_ = std::exchange(resource_signal_pending_, false);
+    if (frame_hook) frame_hook(now);
+    auto result = dispatch(false);
+    resource_signal_active_ = false;
+    if (result) { ++frame; collect_dead(); }
+    return result;
+}
+
+Result<FrameStatus> Vm::resources_ready(std::int64_t now) {
+    now_ms = std::max(now_ms, now);
+    if (resource_pass_suppressed_) { resource_signal_pending_ = true; return FrameStatus::Ok; }
+    resource_signal_pending_ = false;
+    resource_signal_active_ = true;
+    auto result = dispatch(true);
+    resource_signal_active_ = false;
+    if (result) collect_dead();
+    return result;
 }
 
 } // namespace obgi::vm
