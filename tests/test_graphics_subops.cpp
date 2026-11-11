@@ -826,6 +826,35 @@ TEST_CASE("92:91 draws styled window text immediately without a result or input 
     CHECK_FALSE(old_text_remains);
 }
 
+TEST_CASE("cropping a projected sprite preserves its position when its origin changes" * doctest::test_suite("gpu")) {
+    RendererOptions options; options.headless = true;
+    auto renderer = Renderer::create(options); REQUIRE(renderer);
+    auto display = Display::create(**renderer, 32, 32); REQUIRE(display);
+    auto& d = **display;
+    std::vector<std::uint32_t> pixels(64, 0);
+    for (int y = 1; y < 8; ++y) for (int x = 2; x < 8; ++x) pixels[y * 8 + x] = 0xff6495edu;
+    REQUIRE(d.upload_slot(1, 8, 8, SlotFormat::Bgra, pixels));
+    constexpr Word object = 0x80000003;
+    auto& sp = d.sprite(object); sp.projected = true; sp.visible = true; sp.slot = 1;
+    sp.origin_x = 4; sp.origin_y = 4; sp.blend = 1;
+    REQUIRE(d.present()); REQUIRE(d.snapshot(9));
+    auto before = d.read_slot(9); REQUIRE(before);
+
+    GraphicsHost host{&d, nullptr}; SubopRegistry registry;
+    register_core_subops(registry); register_graphics_subops(registry, host);
+    Asm code;
+    code.i32(2).i32(1).i32(2).i32(1).i32(6).i32(7).sub(0x90, 0x1F);
+    code.i32(object).i32(0x40).i32(2).i32(3).sub(0x90, 0x38);
+    code.i32(object).i32(2).sub(0x90, 0x57).ret();
+    MemProvider provider; provider.set(code);
+    Vm vm(provider, registry); ThreadConfig cfg; cfg.stack_size = 1024;
+    REQUIRE(vm.spawn(cfg, "test", "crop origin")); REQUIRE(vm.run_frame(0));
+    CHECK(sp.origin_x == 2); CHECK(sp.origin_y == 3);
+    REQUIRE(d.present()); REQUIRE(d.snapshot(10));
+    auto after = d.read_slot(10); REQUIRE(after);
+    CHECK(*after == *before);
+}
+
 TEST_CASE("90:29 keeps fractional path coordinates through a small character movement" * doctest::test_suite("gpu")) {
     RendererOptions options; options.headless = true;
     auto renderer = Renderer::create(options); REQUIRE(renderer);

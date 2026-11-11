@@ -976,10 +976,16 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
                 }
             }
             break;
-        // 0x40 origin (x, y), 0x41 rotation, 0x42 scale (x, y; 16.16, 0 = 1) of the picture types: only the identity is drawn so far
-        case 0x40: case 0x42: case 0x43: case 0x60: {
+        // Picture modes 2, 5 and 6 store the pivot in 16.16 units in the
+        // original. The script parameters are whole pixels.
+        case 0x40:
+            if (s->xform || s->projected || s->ripple_map != -1)
+                s->origin_x = static_cast<std::int32_t>(a), s->origin_y = static_cast<std::int32_t>(b);
+            break;
+        // 0x42 scale (x, y; 16.16, 0 = 1) of the picture types: only the identity is drawn so far
+        case 0x42: case 0x43: case 0x60: {
             static std::set<Word> shown;
-            const bool identity = prop == 0x42 ? (a == 0x10000 || a == 0) && (b == 0x10000 || b == 0) : prop == 0x40 || prop == 0x43 || prop == 0x60;
+            const bool identity = prop == 0x42 ? (a == 0x10000 || a == 0) && (b == 0x10000 || b == 0) : prop == 0x43 || prop == 0x60;
             if (!identity && shown.insert(prop).second) std::fprintf(stderr, "90:38: property 0x%X (a=%u b=%u) is stored but not drawn\n", prop, a, b);
             break;
         }
