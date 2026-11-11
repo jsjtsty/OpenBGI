@@ -164,7 +164,8 @@ void register_core_subops(SubopRegistry& r) {
         const Word message = c.pop(), id = c.pop();
         Thread* target = c.ok() ? c.vm.find(id) : nullptr;
         const bool waiting = target && target->wait.kind != WaitObject::Kind::None;
-        if (waiting && message == 1) target->wait.notified = true;
+        // Message 0 terminates the wait in the original wait-object queue.
+        if (waiting && (message == 0 || message == 1)) target->wait.notified = true;
         c.push(waiting ? 1 : 0);
         return 0;
     });

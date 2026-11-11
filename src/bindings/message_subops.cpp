@@ -480,6 +480,8 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         vm::WaitObject wait;
         wait.kind = vm::WaitObject::Kind::Poll;
         wait.poll = [operation = std::move(operation), state, input](const vm::WaitContext& context) mutable -> Result<vm::WaitUpdate> {
+            // 80:4C message 0 interrupts the active wait (e.g. a backlog jump).
+            if (context.notified) return vm::WaitUpdate::complete({0});
             auto result = operation.update(context.now_ms, input.poll(*state));
             return result ? vm::WaitUpdate::complete({*result}) : vm::WaitUpdate::pending();
         };

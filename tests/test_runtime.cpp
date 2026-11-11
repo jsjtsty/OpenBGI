@@ -126,6 +126,32 @@ TEST_CASE("80 5C uses milliseconds and notifications complete with zero") {
     CHECK(notified.expr[0] == 0);
 }
 
+TEST_CASE("80 4C message zero notifies the target wait") {
+    Rig rig;
+    bool notified = false;
+    rig.registry.add({0x9000, "interruptible", 0, 1, [&](vm::Ctx& c) {
+        vm::WaitObject wait;
+        wait.kind = vm::WaitObject::Kind::Poll;
+        wait.poll = [&](const vm::WaitContext& context) -> Result<vm::WaitUpdate> {
+            notified = context.notified;
+            return notified ? vm::WaitUpdate::complete({0}) : vm::WaitUpdate::pending();
+        };
+        c.suspend(std::move(wait), 1);
+        return vm::StayThread;
+    }, 1});
+    auto& target = rig.spawn({0x90, 0, 0x80, 0x5F, 0x17}, "target");
+    const auto target_id = target.id;
+    REQUIRE(rig.machine.run_frame(0));
+    REQUIRE(target.wait.kind == vm::WaitObject::Kind::Poll);
+    auto& sender = rig.spawn({0, static_cast<std::uint8_t>(target_id), 0, 0, 0, 0, 0, 0,
+                              0x80, 0x4C, 0x80, 0x5F, 0x17}, "sender");
+    REQUIRE(rig.machine.run_frame(1));
+    CHECK(sender.expr[0] == 1);
+    REQUIRE(rig.machine.run_frame(2));
+    CHECK(notified);
+    CHECK(target.expr[0] == 0);
+}
+
 TEST_CASE("switching to a missing thread ends the scheduler pass") {
     Rig rig;
     auto& first = rig.spawn({0, 99, 0x80, 0x5E, 0x17});
