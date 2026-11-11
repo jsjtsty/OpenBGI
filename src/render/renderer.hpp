@@ -65,6 +65,7 @@ class Renderer {
     const char* driver_name() const;
     std::uint32_t logical_width() const;
     std::uint32_t logical_height() const;
+    std::uint32_t presentation_interval_us() const;
     // Request activation once the interactive session is ready.
     void raise_window();
     Result<void> resize_canvas(std::uint32_t width, std::uint32_t height);
@@ -95,6 +96,8 @@ class Renderer {
     std::vector<int> take_wheel_events(); // each event as +1 away / -1 toward, preserving order
 
     Result<void> begin_frame(const float clear_rgba[4]);
+    // Returns false without blocking when the window swapchain has no free image.
+    Result<bool> try_begin_frame(const float clear_rgba[4]);
     void draw(const Texture& tex, const DrawParams& p);
     Result<void> end_frame();
 
@@ -102,6 +105,7 @@ class Renderer {
     Result<std::vector<std::uint8_t>> read_back();
 
   private:
+    Result<bool> begin_frame_impl(const float clear_rgba[4], bool wait);
     Renderer();
     struct Impl;
     std::unique_ptr<Impl> impl_;

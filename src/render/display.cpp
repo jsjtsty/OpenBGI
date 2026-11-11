@@ -1080,15 +1080,25 @@ std::uint32_t Display::screen_height() const { return impl_->screen.info.height;
 Result<std::vector<std::uint32_t>> Display::read_screen() { return impl_->download(impl_->screen); }
 
 Result<void> Display::present() {
-    Impl& m = *impl_;
+    auto& m = *impl_;
+    const float black[4] = {0, 0, 0, 1};
+    auto frame = m.renderer->try_begin_frame(black);
+    if (!frame) return std::unexpected(frame.error());
+    if (!*frame) return m.flush(false); // still submit pending slot uploads while minimized or busy
+
+    const auto finish_error = [&](const Error& error) -> Result<void> {
+        // An acquired swapchain must be submitted, even on an intermediate error.
+        (void)m.renderer->end_frame();
+        return std::unexpected(error);
+    };
     const bool perf = std::getenv("OBGI_PERF") != nullptr;
     const auto perf_start = std::chrono::steady_clock::now();
-    if (auto r = compose(); !r) return r;
+    if (auto r = compose(); !r) return finish_error(r.error());
     const auto compose_ms = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - perf_start).count();
     if (perf && compose_ms >= 20) std::fprintf(stderr, "PERF compose ms=%lld\n", static_cast<long long>(compose_ms));
 
     auto c = m.ensure_cmd();
-    if (!c) return std::unexpected(c.error());
+    if (!c) return finish_error(c.error());
     SDL_GPUStorageTextureReadWriteBinding tex{m.screen_tex->native(), 0, 0, false};
     SDL_GPUComputePass* pass = SDL_BeginGPUComputePass(*c, &tex, 1, nullptr, 0);
     SDL_BindGPUComputePipeline(pass, m.present_pipeline);
@@ -1098,10 +1108,8 @@ Result<void> Display::present() {
     SDL_PushGPUComputeUniformData(*c, 0, &pp, sizeof pp);
     SDL_DispatchGPUCompute(pass, (pp.info[0] + 7) / 8, (pp.info[1] + 7) / 8, 1);
     SDL_EndGPUComputePass(pass);
-    if (auto f = m.flush(false); !f) return f;
+    if (auto f = m.flush(false); !f) return finish_error(f.error());
 
-    const float black[4] = {0, 0, 0, 1};
-    if (auto r = m.renderer->begin_frame(black); !r) return r;
     DrawParams dp;
     dp.x = static_cast<float>(present_dx), dp.y = static_cast<float>(present_dy);
     dp.w = static_cast<float>(m.screen.info.width);

@@ -258,10 +258,15 @@ Result<vm::FrameStatus> EngineSession::tick(std::int64_t now) {
 Result<void> EngineSession::present() {
     auto& m = *impl_;
     if ((!m.options.window && !m.options.render_offscreen) || (!m.player->active() && !m.system.display_enabled)) return {};
-    const auto interval = std::max(1u, m.system.frame_ms);
+    const auto interval = std::max(std::max(1u, m.system.frame_ms) * 1000u,
+                                   m.options.window ? m.renderer->presentation_interval_us() : 1000u);
     if (interval != m.present_interval) { m.present_interval = interval; m.next_present = 0; }
-    if (m.vm->now_ms < m.next_present) return {};
-    m.next_present = m.vm->now_ms + interval;
+    const auto now_us = m.vm->now_ms * 1000;
+    if (now_us < m.next_present) return {};
+    // Accumulate fractional refresh periods rather than rounding every frame to
+    // milliseconds; after a long stall, drop missed frames instead of catching up.
+    if (!m.next_present || now_us - m.next_present >= interval) m.next_present = now_us + interval;
+    else m.next_present += interval;
     return m.player->active() ? m.player->present() : m.display->present();
 }
 

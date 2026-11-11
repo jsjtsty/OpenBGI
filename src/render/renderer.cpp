@@ -5,6 +5,7 @@
 #include <SDL3/SDL.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstring>
 #include <optional>
 #include <string>
@@ -80,6 +81,13 @@ const ShaderPack& Renderer::shaders() const { return impl_->library->pack(); }
 const char* Renderer::driver_name() const { return SDL_GetGPUDeviceDriver(impl_->device); }
 std::uint32_t Renderer::logical_width() const { return impl_->opt.logical_width; }
 std::uint32_t Renderer::logical_height() const { return impl_->opt.logical_height; }
+std::uint32_t Renderer::presentation_interval_us() const {
+    if (!impl_->window) return 1000;
+    const auto id = SDL_GetDisplayForWindow(impl_->window);
+    const auto* mode = id ? SDL_GetCurrentDisplayMode(id) : nullptr;
+    const float hz = mode && mode->refresh_rate > 1.0f ? mode->refresh_rate : 60.0f;
+    return std::max(1u, static_cast<std::uint32_t>(std::ceil(1000000.0f / hz)));
+}
 void Renderer::raise_window() { if (impl_->window) SDL_RaiseWindow(impl_->window); }
 
 Result<void> Renderer::resize_canvas(std::uint32_t width, std::uint32_t height) {
@@ -437,6 +445,14 @@ std::vector<int> Renderer::take_wheel_events() { return std::exchange(impl_->whe
 std::uint32_t Renderer::take_key() { return std::exchange(impl_->key, 0u); }
 
 Result<void> Renderer::begin_frame(const float clear[4]) {
+    auto result = begin_frame_impl(clear, true);
+    if (!result) return std::unexpected(result.error());
+    return {};
+}
+
+Result<bool> Renderer::try_begin_frame(const float clear[4]) { return begin_frame_impl(clear, false); }
+
+Result<bool> Renderer::begin_frame_impl(const float clear[4], bool wait) {
     Impl& m = *impl_;
     m.cmd = SDL_AcquireGPUCommandBuffer(m.device);
     if (!m.cmd) return std::unexpected(sdl_error("acquire command buffer"));
@@ -445,11 +461,17 @@ Result<void> Renderer::begin_frame(const float clear[4]) {
     SDL_GPUTexture* target = m.offscreen;
     Uint32 tw = m.opt.logical_width, th = m.opt.logical_height;
     if (m.window) {
-        if (!SDL_WaitAndAcquireGPUSwapchainTexture(m.cmd, m.window, &target, &tw, &th))
-            return std::unexpected(sdl_error("acquire swapchain"));
-        if (!target) { // minimized: nothing to draw this frame
+        const bool ok = wait ? SDL_WaitAndAcquireGPUSwapchainTexture(m.cmd, m.window, &target, &tw, &th)
+                             : SDL_AcquireGPUSwapchainTexture(m.cmd, m.window, &target, &tw, &th);
+        if (!ok) {
+            auto error = sdl_error("acquire swapchain");
+            SDL_CancelGPUCommandBuffer(m.cmd); m.cmd = nullptr;
+            return std::unexpected(std::move(error));
+        }
+        if (!target) {
+            if (!wait) { SDL_CancelGPUCommandBuffer(m.cmd); m.cmd = nullptr; return false; }
             m.frame_skipped = true;
-            return {};
+            return true;
         }
     }
 
@@ -466,7 +488,7 @@ Result<void> Renderer::begin_frame(const float clear[4]) {
     const float vw = m.opt.logical_width * scale, vh = m.opt.logical_height * scale;
     SDL_GPUViewport vp{(tw - vw) * 0.5f, (th - vh) * 0.5f, vw, vh, 0.0f, 1.0f};
     SDL_SetGPUViewport(m.pass, &vp);
-    return {};
+    return true;
 }
 
 void Renderer::draw(const Texture& tex, const DrawParams& p) {
