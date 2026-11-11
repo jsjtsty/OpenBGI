@@ -454,13 +454,6 @@ void panel_input(SystemState& s) {
                 if (!ic.basic) ic.events.push_back({0x10000007u, 0xFFFFFFFFu, static_cast<std::uint32_t>(mouse_y - (win ? win->y : 0)) << 16 | (static_cast<std::uint32_t>(mouse_x - (win ? win->x : 0)) & 0xFFFF)});
                 break;
             }
-            // Confirming a modal over a pending in-game message is also the user's
-            // explicit resume action. Replay only the affirmative second button of
-            // the two-choice modal; the panel still owns and consumes the physical click.
-            if (ic.modal && hi == 1 && ic.groups[std::size_t(hg)].buttons.size() == 2 && s.message_wait_clicks) {
-                ++s.message_input_replay_serial;
-                if (trace_panel) std::fprintf(stderr, "PANEL replay modal-confirm click to pending message id=%u group=%d button=%d\n", id, hg, hi);
-            }
             decide(ic, hg, hi, 1, lx, ly);
             if (ic.select_on_decide) select_button(s, ic, id, hg, hi);
             if (!ic.basic && ic.groups[std::size_t(hg)].selectable) ic.current_group = hg;

@@ -60,7 +60,6 @@ namespace { constexpr std::array<std::uint32_t, 3> kMessageKeys{0x0D, 0x20, 0x01
 
 MessageInput::MessageInput(const InputState& state) {
     for (std::size_t i = 0; i < kMessageKeys.size(); ++i) seen_[i] = state.input_counts[kMessageKeys[i]];
-    seen_replay_serial_ = state.message_input_replay_serial;
 }
 
 std::uint32_t MessageInput::poll(InputState& state) {
@@ -68,10 +67,6 @@ std::uint32_t MessageInput::poll(InputState& state) {
         const auto count = state.input_counts[kMessageKeys[i]];
         if (count != seen_[i] && state.input_enabled && consume_input_trigger(state, kMessageKeys[i])) ++delivered_;
         seen_[i] = count;
-    }
-    if (state.message_input_replay_serial != seen_replay_serial_ && state.input_enabled) {
-        ++delivered_;
-        seen_replay_serial_ = state.message_input_replay_serial;
     }
     return delivered_;
 }

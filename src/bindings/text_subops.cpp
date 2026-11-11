@@ -1,6 +1,8 @@
 #include "bindings/text_subops.hpp"
 #include "bindings/system_subops.hpp"
 
+#include <algorithm>
+#include <climits>
 #include <cstdio>
 #include <cstdlib>
 
@@ -112,7 +114,27 @@ void register_text_subops(vm::SubopRegistry& r, TextHost& host) {
                    y += static_cast<std::int32_t>(std::int64_t{size} * ruby_percent / 100);
                }
                const std::int64_t room = std::int64_t{info->width} - draw_x;
-               auto img = render_text(**font, script_to_utf32(text, host.code_page ? *host.code_page : 932), style, room > 0 ? static_cast<std::uint32_t>(room) : 1);
+               const auto decoded = script_to_utf32(text, host.code_page ? *host.code_page : 932);
+               const auto max_width = room > 0 ? static_cast<std::uint32_t>(room) : 1;
+               // A replacement font can have taller metrics than the Windows font
+               // used to size the script's bitmap. Fit a single line's ink into
+               // the available height when the whole line can fit by moving up.
+               const auto layout = layout_text(**font, decoded, style, max_width);
+               if (layout.lines == 1 && !layout.glyphs.empty()) {
+                   int top = INT_MAX, bottom = INT_MIN;
+                   for (const auto& placed : layout.glyphs) {
+                       if (!placed.glyph.width || !placed.glyph.height) continue;
+                       const int glyph_top = style.baseline - placed.glyph.top;
+                       top = std::min(top, glyph_top);
+                       bottom = std::max(bottom, glyph_top + placed.glyph.height);
+                   }
+                   if (top != INT_MAX) {
+                       // Keep room for the one-pixel offset used by script-side shadows.
+                       const auto overflow = std::int64_t{bottom} - (std::int64_t{info->height} - std::max(y, 2));
+                       if (overflow > 0 && overflow <= top) style.baseline -= static_cast<int>(overflow);
+                   }
+               }
+               auto img = render_text(**font, decoded, style, max_width);
                if (!img) {
                    c.fail(img.error().code, img.error().message);
                    return 0;

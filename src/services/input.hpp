@@ -13,10 +13,6 @@ struct InputState {
     // current held state. 80:12 / 80:1C sum the counters; 80:11 reads held state. The host updates these from input events.
     std::array<std::uint32_t, 256> input_counts{};
     std::array<std::uint32_t, 256> input_pending{};
-    // A modal decision may also be the user's explicit action to resume the game.
-    // Keep this separate from physical input so the panel can consume its click while
-    // a pending message wait still observes the resume action.
-    std::uint32_t message_input_replay_serial = 0;
     std::uint32_t message_wait_clicks = 0;
     std::array<bool, 256> input_physical_held{};
     std::array<bool, 256> input_held{};
@@ -76,7 +72,6 @@ class MessageInput {
     std::uint32_t poll(InputState& state);
   private:
     std::array<std::uint32_t, 3> seen_{};
-    std::uint32_t seen_replay_serial_ = 0;
     std::uint32_t delivered_ = 0;
 };
 std::uint32_t input_skip_state(InputState& state);

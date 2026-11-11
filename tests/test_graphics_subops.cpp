@@ -302,6 +302,28 @@ TEST_CASE("mouse clicks reach buttons outside the keyboard's current group" * do
     CHECK(s.input_pending[1] == 0);
 }
 
+TEST_CASE("confirming a modal does not advance the message behind it" * doctest::test_suite("gpu")) {
+    RendererOptions options; options.headless = true;
+    auto renderer = Renderer::create(options); REQUIRE(renderer);
+    auto display = Display::create(**renderer, 32, 32); REQUIRE(display);
+    auto& d = **display;
+    REQUIRE(d.create_slot(1, 4, 4, SlotFormat::Bgra));
+    constexpr Word window = 0xB0000000u, button = 0x7D000001u;
+    auto& win = d.sprite(window); win.visible = true;
+    auto& sp = d.sprite(button); sp.slot = 1; sp.x = 4; sp.y = 5; sp.visible = true;
+    SystemState s; s.display = &d; s.message_wait_clicks = 1;
+    auto& panel = s.icon_controls[1]; panel.window = window; panel.modal = true;
+    panel.groups.emplace_back(); panel.groups.back().buttons.resize(2);
+    auto& b = panel.groups.back().buttons[1]; b.enabled = b.shown = true; b.sprite = button; b.bmp_normal = 1;
+    MessageInput message(s);
+    s.mouse_x = 5; s.mouse_y = 6; s.press_input(1);
+    panel_input(s);
+    CHECK(panel.info[2] == 1);
+    CHECK(message.poll(s) == 0);
+    s.press_input(1);
+    CHECK(message.poll(s) == 1);
+}
+
 TEST_CASE("plain panel buttons use the window text area's origin" * doctest::test_suite("gpu")) {
     RendererOptions options; options.headless = true;
     auto renderer = Renderer::create(options); REQUIRE(renderer);
