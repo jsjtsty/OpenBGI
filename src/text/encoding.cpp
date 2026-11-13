@@ -115,7 +115,10 @@ std::u32string utf8_to_utf32(std::string_view s) {
 }
 
 std::u32string script_to_utf32(std::string_view bytes, std::uint32_t code_page) {
-    if (code_page == 65001) return utf8_to_utf32(bytes);
+    // BGI scripts can mix CP932 strings with UTF-8 strings even after 81:00 selects UTF-8.
+    // The original text layout path auto-detects those strings; don't force CP932 game
+    // resources through UTF-8 just because the script selected the UTF-8 mode.
+    if (code_page == 65001) return valid_utf8(bytes) ? utf8_to_utf32(bytes) : cp932_to_utf32(bytes);
     if (code_page == 936) return valid_utf8(bytes) ? utf8_to_utf32(bytes) : cp936_to_utf32(bytes);
     return cp932_to_utf32(bytes);
 }

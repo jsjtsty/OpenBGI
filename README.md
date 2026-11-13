@@ -1,6 +1,6 @@
 # OpenBGI
 
-C++23 的 BGI 兼容运行时。当前主要回归数据来自《巧可甜恋 2》；其他游戏和引擎代际尚未完整验证。
+C++23 的 BGI 兼容运行时。主要开发和验证使用《巧可甜恋 2》和《巧可甜恋 3》；其他游戏和引擎代际尚未完整验证。
 
 ## 构建与运行
 
@@ -14,13 +14,24 @@ ctest --preset windows-debug
 build/windows/src/Debug/obgi_run.exe "E:/Games/Amairo Chocolate 2" --window
 ```
 
+macOS 和 Linux 分别提供 `macos`、`linux` preset，使用 Ninja Multi-Config。例如在 macOS 上：
+
+```sh
+cmake --preset macos -DOPENBGI_GAME_DIR="/path/to/game"
+cmake --build --preset macos-debug
+ctest --preset macos-debug
+build/macos/src/Debug/obgi_run "/path/to/game" --window
+```
+
 无窗口回归可指定帧数、独立数据目录和截图：
 
 ```powershell
-build/windows/src/Debug/obgi_run.exe "E:/Games/Amairo Chocolate 2" --frames 3000 --data-dir build/run-data --shot 2999 build/title.png
+build/windows/src/Debug/obgi_run.exe "E:/Games/Amairo Chocolate 2" --frames 3000 --render-headless --data-dir build/run-data --shot 2999 build/title.png
 ```
 
-交互模式使用单调真实时间和音频设备；离线模式使用虚拟毫秒时间、同步执行的解码任务和离线音频推进。默认持久数据写入用户数据目录中按游戏路径隔离的 OpenBGI 子目录。测试可用 `--data-dir` 单独隔离。
+交互模式使用单调真实时间、后台资源解码和音频设备；无窗口模式默认使用虚拟毫秒时间、同步执行的解码任务和离线音频推进。`--render-headless` 启用离屏 GPU 渲染，`--async-resources` 在无窗口模式启用后台解码，`--pace-headless` 按真实时间推进虚拟帧，便于诊断异步加载。默认持久数据写入用户数据目录中按游戏路径隔离的 OpenBGI 子目录。测试可用 `--data-dir` 单独隔离。
+
+VM 等待异步图片或音频资源时，由解码完成事件唤醒并继续执行，无需等待下一逻辑帧；普通帧更新仍按原有时钟推进。启用 `OBGI_PERF` 可输出性能诊断，启用 `OBGI_PERF_RESOURCE` 可查看资源加载和提交信息。
 
 使用 `obgi_run --help` 查看选项。长时间无头调试可用 `--mouse 0:735:645,1000:640:400` 在指定帧移动鼠标，`--click-every 300 30` 从第 300 帧起每 30 帧点击一次，`--progress-every 1000` 定期报告进度，`--threads` 在到达帧数上限时打印存活线程，`--trace` 输出执行的子指令。帧编号从 0 开始；自动点击不能处理所有游戏分支。`--window --frames N` 也可限制窗口模式运行帧数。
 
@@ -44,7 +55,7 @@ ctest --preset windows-core-debug
 
 ## 结构
 
-- `vm/`：解释器、地址空间、调度和经过签名校验的等待完成。
+- `vm/`：解释器、地址空间、调度、等待完成校验和资源事件唤醒。
 - `runtime/`：`EngineSession`，统一生命周期、时钟、输入、服务装配、播放与呈现。
 - `services/`：独立输入状态、逻辑场景、消息渐显和序列解码。
 - `resources/`：共享归档映射与资源查找。
