@@ -853,6 +853,8 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         const auto no = static_cast<std::int32_t>(c.pop());
         const Word id = c.pop(), out = c.pop();
         if (!c.ok()) return 0;
+        // Resolve slave positions before scripts query them, even between frames.
+        d.resolve_masters();
         Sprite* s = object(c, d, id);
         if (!s) return 0;
         switch (no) {

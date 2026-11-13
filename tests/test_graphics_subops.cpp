@@ -123,6 +123,29 @@ TEST_CASE("discrete slider values map to positions and dragging returns step ind
     CHECK(d.find_sprite(thumb)->x == 90);
 }
 
+TEST_CASE("object position queries follow a moved master before rendering" * doctest::test_suite("gpu")) {
+    RendererOptions options; options.headless = true;
+    auto renderer = Renderer::create(options); REQUIRE(renderer);
+    auto display = Display::create(**renderer, 320, 80); REQUIRE(display);
+    auto& d = **display;
+    constexpr Word master = 0xF0000000u, thumb = 0x80000005u;
+    d.sprite(master);
+    auto& child = d.sprite(thumb);
+    child.has_master = true; child.master = master; child.master_dx = 27; child.master_dy = 0;
+    GraphicsHost host{&d, nullptr};
+    SubopRegistry registry; register_core_subops(registry); register_graphics_subops(registry, host);
+    Asm a;
+    a.i32(master).i32(271).i32(241).sub(0x90, 0x33);
+    a.i32(0x100).i32(thumb).i32(0).sub(0x91, 0x38).ret();
+    MemProvider provider; provider.set(a);
+    Vm vm(provider, registry); ThreadConfig config; config.stack_size = 1024;
+    auto thread = vm.spawn(config, "test", "position"); REQUIRE(thread);
+    REQUIRE(vm.run_frame(0));
+    Ctx c(vm, **thread);
+    CHECK(c.read(0x100, 4, false) == 298);
+    CHECK(c.read(0x104, 4, false) == 241);
+}
+
 TEST_CASE("window snapshots include painted panel buttons" * doctest::test_suite("gpu")) {
     RendererOptions options; options.headless = true;
     auto renderer = Renderer::create(options); REQUIRE(renderer);
