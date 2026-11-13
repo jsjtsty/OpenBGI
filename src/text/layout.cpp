@@ -22,7 +22,10 @@ TextLayout layout_text(Font& font, const std::u32string& text, const TextStyle& 
         if (!g) g = font.glyph(U'?'); // missing glyph: the original shows a placeholder as well
         if (!g) continue;
         const bool half = cp < 0x80 || (cp >= 0xFF61 && cp <= 0xFF9F);
-        const int advance = style.fixed_advance > 0 ? (half ? style.fixed_advance / 2 : style.fixed_advance) : g->advance;
+        // Latin and other half-width glyphs need their font advances: a
+        // fixed half-em leaves wide gaps around narrow letters and can make
+        // wider letters overlap. Keep the script's CJK advance for wide text.
+        const int advance = half ? std::max(g->advance, 1) : (style.fixed_advance > 0 ? style.fixed_advance : g->advance);
         if (style.wrap && max_width && pen > style.continuation_indent && pen + advance > static_cast<int>(max_width) - style.right_margin) end_line();
         out.glyphs.push_back({*g, pen, line});
         pen += advance;

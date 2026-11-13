@@ -800,7 +800,9 @@ TEST_CASE("92:91 draws styled window text immediately without a result or input 
     auto renderer = Renderer::create(options); REQUIRE(renderer);
     auto display = Display::create(**renderer, 160, 80); REQUIRE(display);
     auto library = FontLibrary::create(); REQUIRE(library);
-    REQUIRE((*library)->open("", 24));
+    auto face = (*library)->open("", 24); REQUIRE(face);
+    const int a_advance = (*face)->glyph(U'A')->advance;
+    const int b_advance = (*face)->glyph(U'B')->advance;
     auto& d = **display;
     SystemState state; state.display = &d; state.code_page = 65001;
     state.planes[0] = SystemState::Plane{};
@@ -826,7 +828,7 @@ TEST_CASE("92:91 draws styled window text immediately without a result or input 
     std::uint8_t value[4]; REQUIRE(vm.global.read(0x300, 4, value));
     CHECK(load_u32le(value) == 7);
     CHECK(state.message_wait_clicks == 0);
-    CHECK(text.messages->cursors[0].x == 24);
+    CHECK(text.messages->cursors[0].x == a_advance + b_advance);
     auto pixels = d.read_slot(0x20000); REQUIRE(pixels);
     bool first = false, second = false, shadow = false;
     for (unsigned y = 0; y < 80; ++y) for (unsigned x = 0; x < 160; ++x) {
@@ -841,7 +843,7 @@ TEST_CASE("92:91 draws styled window text immediately without a result or input 
     Asm clear; draw(clear, 0x100); clear.ret(); provider.set(clear);
     Vm next(provider, registry); put_string(next, 0x100, "\x0C" "A");
     REQUIRE(next.spawn(config, "test", "clear page")); REQUIRE(next.run_frame(0));
-    CHECK(text.messages->cursors[0].x == 12);
+    CHECK(text.messages->cursors[0].x == a_advance);
     auto cleared = d.read_slot(0x20000); REQUIRE(cleared);
     bool old_text_remains = false;
     for (unsigned y = 0; y < 80; ++y) for (unsigned x = 32; x < 160; ++x)

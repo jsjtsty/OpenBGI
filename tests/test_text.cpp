@@ -290,3 +290,15 @@ TEST_CASE("92:9C draws text into an image slot" * doctest::test_suite("gpu")) {
     for (std::uint32_t p : *px) lit += (p & 0xFFFFFF) != 0;
     CHECK(lit > 100);
 }
+
+TEST_CASE("dialogue uses natural advances for Latin within CJK text" * doctest::test_suite("host")) {
+    auto lib = FontLibrary::create(); REQUIRE(lib);
+    auto font = open_font(**lib, 28); REQUIRE(font);
+    TextStyle style; style.fixed_advance = 28;
+    const auto layout = layout_text(*font, U"中Setaria文", style, 0);
+    REQUIRE(layout.glyphs.size() == 9);
+    CHECK(layout.glyphs[1].x == 28);
+    for (std::size_t i = 1; i < 8; ++i)
+        CHECK(layout.glyphs[i + 1].x - layout.glyphs[i].x == layout.glyphs[i].glyph.advance);
+    CHECK(layout.last_width == layout.glyphs[8].x + 28);
+}
