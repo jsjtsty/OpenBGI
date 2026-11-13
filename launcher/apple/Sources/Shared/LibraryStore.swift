@@ -18,6 +18,7 @@ final class LibraryStore: ObservableObject {
     #if os(macOS)
     @Published var sources: [String] = []
     var player: Process?
+    private var hiddenWindows: [NSWindow] = []
     #endif
 
     private let root: URL
@@ -423,9 +424,10 @@ final class LibraryStore: ObservableObject {
             if let error { self.lastError = error }
         }
         #else
-        guard let helper = Bundle.main.bundleURL.appendingPathComponent("Contents/Helpers/obgi_run") as URL?,
-              FileManager.default.isExecutableFile(atPath: helper.path) else {
-            lastError = "Missing helper binary: Contents/Helpers/obgi_run"
+        let helper = Bundle.main.bundleURL
+            .appendingPathComponent("Contents/Helpers/OpenBGI Player.app/Contents/MacOS/obgi_run")
+        guard FileManager.default.isExecutableFile(atPath: helper.path) else {
+            lastError = "Missing helper app: Contents/Helpers/OpenBGI Player.app"
             return
         }
         let proc = Process()
@@ -442,7 +444,8 @@ final class LibraryStore: ObservableObject {
         FileManager.default.createFile(atPath: flagURL(i).path, contents: nil)
         let started = Date()
         player = proc
-        NSApp.windows.forEach { $0.orderOut(nil) }
+        hiddenWindows = NSApp.windows.filter { $0.isVisible && $0.canBecomeMain }
+        hiddenWindows.forEach { $0.orderOut(nil) }
         proc.terminationHandler = { [weak self] p in
             let errData = pipe.fileHandleForReading.readDataToEndOfFile()
             Task { @MainActor [weak self] in
@@ -451,8 +454,7 @@ final class LibraryStore: ObservableObject {
                 self.player = nil
                 self.playing = nil
                 self.update(i.id) { $0.playSeconds += Date().timeIntervalSince(started) }
-                NSApp.activate(ignoringOtherApps: true)
-                NSApp.windows.forEach { $0.makeKeyAndOrderFront(nil) }
+                self.restoreLauncherWindows()
                 if p.terminationStatus != 0 && p.terminationStatus != 15 {
                     let msg = String(decoding: errData, as: UTF8.self).trimmingCharacters(in: .whitespacesAndNewlines)
                     self.lastError = msg.isEmpty ? "Engine exited with code \(p.terminationStatus)" : msg
@@ -465,11 +467,22 @@ final class LibraryStore: ObservableObject {
             try? FileManager.default.removeItem(at: flagURL(i))
             player = nil
             playing = nil
-            NSApp.windows.forEach { $0.makeKeyAndOrderFront(nil) }
+            restoreLauncherWindows()
             lastError = error.localizedDescription
         }
         #endif
     }
+
+    #if os(macOS)
+    private func restoreLauncherWindows() {
+        let toRestore = hiddenWindows.filter { $0.canBecomeMain }
+        hiddenWindows.removeAll()
+        if !toRestore.isEmpty {
+            toRestore.forEach { $0.makeKeyAndOrderFront(nil) }
+        }
+        NSApp.activate(ignoringOtherApps: true)
+    }
+    #endif
 
     #if os(macOS)
     func stop() {

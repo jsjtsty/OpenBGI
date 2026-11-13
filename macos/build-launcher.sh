@@ -39,13 +39,48 @@ xcodebuild -project "$APPLE/OpenBGI.xcodeproj" -scheme OpenBGI-macOS -configurat
 
 # 3. Assemble and ad-hoc sign.
 APP="$OUT/OpenBGI.app"
+HELPER_APP="$APP/Contents/Helpers/OpenBGI Player.app"
 rm -rf "$APP" && cp -R "$OUT/derived/Build/Products/Release/OpenBGI.app" "$APP"
-mkdir -p "$APP/Contents/Helpers" "$APP/Contents/Resources/shaders" "$APP/Contents/Frameworks"
-cp "$OBGI_RUN" "$APP/Contents/Helpers/obgi_run"
+mkdir -p "$HELPER_APP/Contents/MacOS" "$HELPER_APP/Contents/Resources" "$APP/Contents/Resources/shaders" "$APP/Contents/Frameworks"
+cp "$OBGI_RUN" "$HELPER_APP/Contents/MacOS/obgi_run"
+cp "$ROOT/packaging/icons/OpenBGI.icns" "$HELPER_APP/Contents/Resources/OpenBGI.icns"
+printf 'APPL????' > "$HELPER_APP/Contents/PkgInfo"
+cat > "$HELPER_APP/Contents/Info.plist" <<EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleDisplayName</key>
+    <string>OpenBGI</string>
+    <key>CFBundleExecutable</key>
+    <string>obgi_run</string>
+    <key>CFBundleIconFile</key>
+    <string>OpenBGI</string>
+    <key>CFBundleIdentifier</key>
+    <string>${OPENBGI_BUNDLE_ID}.player</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>OpenBGI</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>${VERSION}</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSSupportsAutomaticGraphicsSwitching</key>
+    <true/>
+</dict>
+</plist>
+EOF
 cp "$SHADER_PACK" "$APP/Contents/Resources/shaders/"
 cp "$OBGI_PROBE" "$APP/Contents/Frameworks/"
 
-codesign --force --sign - "$APP/Contents/Helpers/obgi_run"
+codesign --force --sign - "$HELPER_APP"
 codesign --force --sign - "$APP/Contents/Frameworks/libobgi_probe.dylib"
 codesign --force --sign - "$APP"
 codesign --verify --deep --strict "$APP"
