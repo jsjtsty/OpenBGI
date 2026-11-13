@@ -20,6 +20,7 @@ struct MessagePacing {
     int character_ms = 32;
     std::int64_t auto_ms = 0, delay_ms = 0;
     bool automatic = false, instant = false, allow_skip = false, wait_click = false;
+    std::uint32_t visual_interval_us = 1000; // current presentation interval
 };
 
 struct MessageProgress {
@@ -27,6 +28,7 @@ struct MessageProgress {
     std::uint32_t input_base = 0;
     std::size_t shown = 0;
     bool page_done = false;
+    int last_pre_frame = -1;
 };
 
 // Logical message progress is explicit. Visual callbacks only paint a requested position.

@@ -263,6 +263,38 @@ TEST_CASE("message progress follows elapsed time independently of update frequen
     CHECK(sparse.update(250, 0) == 0);
 }
 
+TEST_CASE("rich message repaints at most once per visual frame and completes on time") {
+    MessageService service;
+    std::vector<std::size_t> draws;
+    std::vector<int> pre;
+    MessageVisual visual; visual.rich = true; visual.total = 51; visual.pre_frames = 2;
+    visual.draw = [&](std::size_t n) { draws.push_back(n); };
+    visual.pre = [&](int n, int) { pre.push_back(n); };
+    MessagePacing pacing; pacing.visual_interval_us = 16000;
+    auto op = service.start(visual, pacing, 0, 0);
+    for (int ms = 0; ms < 83; ++ms) CHECK_FALSE(op.update(ms, 0));
+    CHECK(op.update(83, 0) == 0);
+    CHECK(pre == std::vector<int>{0, 1});
+    CHECK(draws == std::vector<std::size_t>{16, 32, 48, 51});
+}
+
+TEST_CASE("rich message adapts when the presentation interval changes") {
+    MessageService service;
+    std::vector<std::size_t> draws;
+    MessageVisual visual; visual.rich = true; visual.total = 100;
+    visual.draw = [&](std::size_t n) { draws.push_back(n); };
+    MessagePacing pacing; pacing.visual_interval_us = 8334;
+    auto op = service.start(visual, pacing, 0, 0);
+    CHECK_FALSE(op.update(10, 0));
+    CHECK_FALSE(op.update(20, 0));
+    op.pacing.visual_interval_us = 16667;
+    CHECK_FALSE(op.update(25, 0));
+    CHECK_FALSE(op.update(34, 0));
+    CHECK(draws == std::vector<std::size_t>{8, 16, 33});
+    CHECK(op.update(100, 0) == 0);
+    CHECK(draws.back() == 100);
+}
+
 TEST_CASE("a reveal click cannot also dismiss the message") {
     MessageService service;
     MessagePacing pacing;

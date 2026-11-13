@@ -482,6 +482,7 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         wait.poll = [operation = std::move(operation), state, input](const vm::WaitContext& context) mutable -> Result<vm::WaitUpdate> {
             // 80:4C message 0 interrupts the active wait (e.g. a backlog jump).
             if (context.notified) return vm::WaitUpdate::complete({0});
+            operation.pacing.visual_interval_us = std::max(std::max(1u, state->frame_ms) * 1000u, state->presentation_interval_us);
             auto result = operation.update(context.now_ms, input.poll(*state));
             return result ? vm::WaitUpdate::complete({*result}) : vm::WaitUpdate::pending();
         };

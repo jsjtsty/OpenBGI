@@ -16,7 +16,10 @@ std::optional<std::uint32_t> MessageService::Operation::update(std::int64_t now,
         const auto frame = age / 16;
         const bool hurry = pacing.allow_skip && input != p.input_base;
         if (visual.pre_frames > 0 && frame < visual.pre_frames && !hurry) {
-            if (visual.pre) visual.pre(static_cast<int>(frame), visual.pre_frames);
+            if (visual.pre && p.last_pre_frame != frame) {
+                p.last_pre_frame = static_cast<int>(frame);
+                visual.pre(p.last_pre_frame, visual.pre_frames);
+            }
             return std::nullopt;
         }
         if (hurry) p.input_base = input;
@@ -32,7 +35,14 @@ std::optional<std::uint32_t> MessageService::Operation::update(std::int64_t now,
             p.input_base = input; // this press reveals text; it does not also dismiss it
             p.completed_ms = now;
         } else {
+            // Rich progress is in milliseconds. Do not repaint more often than
+            // the current presentation interval; the original deadline still wins.
             next = std::min(visual.total, static_cast<std::size_t>(visual.rich ? age : age / pacing.character_ms));
+            if (visual.rich && next < visual.total) {
+                const auto interval = std::max(pacing.visual_interval_us, 1000u);
+                const auto us = static_cast<std::uint64_t>(next) * 1000;
+                next = std::max(p.shown, static_cast<std::size_t>((us / interval) * interval / 1000));
+            }
         }
         if (next != p.shown) {
             p.shown = next;

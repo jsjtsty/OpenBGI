@@ -26,6 +26,7 @@ struct SystemState : InputState {
     bool launcher = false;                 // 80:FD: started with "Execute as a launcher."
     std::string game_name = "AmairoChocolate2ML"; // 80:E8
     std::uint32_t frame_ms = 4;            // 90:02: present interval in ms; the original scheduler starts at 250 fps
+    std::uint32_t presentation_interval_us = 1000; // current display refresh interval
     bool display_enabled = true;           // 90:01: whether the runner presents the composed display
     std::uint32_t code_page = 932;         // 81:00: 932 (CP932), 936 (GBK), or 65001 (UTF-8)
     bool code_page_locked = false;          // an identified translated script set has a fixed source encoding

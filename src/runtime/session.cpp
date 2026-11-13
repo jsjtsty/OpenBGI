@@ -295,8 +295,8 @@ Result<vm::FrameStatus> EngineSession::resume_resources(std::int64_t now) {
 Result<void> EngineSession::present() {
     auto& m = *impl_;
     if ((!m.options.window && !m.options.render_offscreen) || (!m.player->active() && !m.system.display_enabled)) return {};
-    const auto interval = std::max(std::max(1u, m.system.frame_ms) * 1000u,
-                                   m.options.window ? m.renderer->presentation_interval_us() : 1000u);
+    m.system.presentation_interval_us = m.options.window ? m.renderer->presentation_interval_us() : 1000u;
+    const auto interval = std::max(std::max(1u, m.system.frame_ms) * 1000u, m.system.presentation_interval_us);
     if (interval != m.present_interval) { m.present_interval = interval; m.next_present = 0; }
     const auto now_us = m.vm->now_ms * 1000;
     if (now_us < m.next_present) return {};
