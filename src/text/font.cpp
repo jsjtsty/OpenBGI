@@ -125,6 +125,34 @@ const char* const kGlyphFallbacks[] = {"msyh.ttc", "simsun.ttc",
                                        "msjh.ttc", "yugothr.ttc", "meiryo.ttc",
                                        "NotoSansCJK-Regular.ttc", "NotoSansSC-Regular.otf", "DroidSansFallbackFull.ttf"};
 
+// Pick the subface inside a TrueType collection (.ttc) matching a CJK region ("sc" or "tc").
+FT_Long select_ttc_face(FT_Library ft, const fs::path& path, std::string_view region) {
+    if (lower(path.extension().string()) != ".ttc") return 0;
+    FT_Face first = nullptr;
+    if (FT_New_Face(ft, path.string().c_str(), 0, &first) != 0) return 0;
+    const FT_Long count = first->num_faces;
+    FT_Done_Face(first);
+    if (count <= 1) return 0;
+    const auto matches = [&](const std::string& s) {
+        if (region == "sc") {
+            return s.find(" sc") != std::string::npos || s.find("cjksc") != std::string::npos ||
+                   s.find("-sc") != std::string::npos || s.find("hans") != std::string::npos;
+        }
+        return s.find(" tc") != std::string::npos || s.find("cjktc") != std::string::npos ||
+               s.find("-tc") != std::string::npos || s.find("hant") != std::string::npos;
+    };
+    for (FT_Long index = 0; index < count; ++index) {
+        FT_Face face = nullptr;
+        if (FT_New_Face(ft, path.string().c_str(), index, &face) != 0) continue;
+        const std::string family = face->family_name ? lower(face->family_name) : "";
+        const char* ps = FT_Get_Postscript_Name(face);
+        const std::string postscript = ps ? lower(ps) : "";
+        FT_Done_Face(face);
+        if (matches(family) || matches(postscript)) return index;
+    }
+    return 0;
+}
+
 } // namespace
 
 struct FreeTypeState {
@@ -258,7 +286,7 @@ Result<fs::path> FontLibrary::resolve_uncached(const std::string& cp932_name, bo
     std::vector<fs::path> dirs = impl_->dirs;
     for (const char* d : {"C:/Windows/Fonts", "/usr/share/fonts", "/usr/share/fonts/truetype", "/usr/share/fonts/opentype",
                           "/usr/share/fonts/opentype/noto", "/usr/share/fonts/truetype/noto", "/usr/local/share/fonts",
-                          "/System/Library/Fonts", "/Library/Fonts"})
+                          "/System/Library/Fonts", "/Library/Fonts", "/system/fonts", "/product/fonts"})
         dirs.emplace_back(d);
     if (const char* home = std::getenv("HOME")) {
         dirs.push_back(fs::path(home) / ".fonts");
@@ -301,16 +329,24 @@ Result<fs::path> FontLibrary::resolve_uncached(const std::string& cp932_name, bo
     // cannot select simplified Chinese forms. Prefer an SC face for ordinary
     // script fonts, even when the script did not register a Chinese charset.
     if (fallback && charset != 0x88) {
-        for (const char* file : {"msyh.ttc", "simsun.ttc", "simhei.ttf", "NotoSansSC-VF.ttf", "NotoSansSC-Regular.otf", "NotoSerifSC-VF.ttf"
+        for (const char* file : {"msyh.ttc", "simsun.ttc", "simhei.ttf", "SourceHanSansSC-Medium.otf",
+                                 "SourceHanSansSC-Regular.otf", "NotoSansSC-VF.ttf", "NotoSansSC-Regular.otf",
+                                 "NotoSerifSC-VF.ttf", "NotoSansCJK-Regular.ttc"
 #ifdef __APPLE__
                                 , "Hiragino Sans GB.ttc", "STHeiti Medium.ttc"
 #endif
                                 })
-            if (fs::path p = find(file); !p.empty()) return p;
+            if (fs::path p = find(file); !p.empty()) {
+                if (const FT_Long idx = select_ttc_face(impl_->ft, p, "sc"); idx > 0) impl_->face_indices[p] = idx;
+                return p;
+            }
     }
     if (fallback && charset == 0x88) {
-        for (const char* file : {"msjh.ttc", "mingliu.ttc", "NotoSansTC-VF.ttf"})
-            if (fs::path p = find(file); !p.empty()) return p;
+        for (const char* file : {"msjh.ttc", "mingliu.ttc", "NotoSansTC-VF.ttf", "NotoSansCJK-Regular.ttc"})
+            if (fs::path p = find(file); !p.empty()) {
+                if (const FT_Long idx = select_ttc_face(impl_->ft, p, "tc"); idx > 0) impl_->face_indices[p] = idx;
+                return p;
+            }
     }
     for (const std::string& file : candidates_for(utf8))
         if (fs::path p = find(file); !p.empty()) return p;

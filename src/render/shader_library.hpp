@@ -1,4 +1,5 @@
 #pragma once
+#include <filesystem>
 #include <string>
 
 #include "render/shader_pack.hpp"
@@ -7,10 +8,10 @@
 namespace obgi {
 
 // A shader pack loaded from disk. Lookup order for <name>.pack:
-//   1. $OBGI_SHADER_DIR  2. <executable dir>/shaders  3. the build tree (development fallback)
+//   1. explicit override_dir (if non-empty)  2. $OBGI_SHADER_DIR  3. <executable dir>/shaders  4. the build tree
 class ShaderLibrary {
   public:
-    static Result<ShaderLibrary> open(const std::string& name);
+    static Result<ShaderLibrary> open(const std::string& name, const std::filesystem::path& override_dir = {});
 
     const ShaderPack& pack() const { return pack_; }
 

@@ -1,5 +1,6 @@
 #pragma once
 #include <chrono>
+#include <filesystem>
 #include <functional>
 #include <array>
 #include <cstdint>
@@ -49,6 +50,7 @@ struct RendererOptions {
     std::uint32_t logical_height = 600;
     bool headless = false;              // render into an offscreen image instead of a window
     const char* driver = nullptr;       // "vulkan", "direct3d12", "metal"; null = SDL's choice
+    std::filesystem::path shader_dir;   // optional directory containing obgi.pack
 };
 
 struct InputPress {

@@ -6,3 +6,5 @@ analysis/.venv/
 analysis/out/uv-cache/
 __pycache__/
 tmp_shots/
+launcher/apple/Staging/
+launcher/apple/OpenBGI.xcodeproj/

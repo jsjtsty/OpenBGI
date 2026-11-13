@@ -1,0 +1,120 @@
+# XcodeGen project for OpenBGI launchers (SwiftUI):
+# - OpenBGI (iOS, in-process static engine via libobgi_all.a)
+# - OpenBGI-macOS (macOS, child-process obgi_run + libobgi_probe.dylib)
+name: OpenBGI
+options:
+  bundleIdPrefix: org.openbgi
+  createIntermediateGroups: true
+  deploymentTarget:
+    iOS: "17.0"
+    macOS: "14.0"
+
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+
+targets:
+  OpenBGI:
+    type: application
+    platform: iOS
+    sources:
+      - Sources/Shared
+      - Sources/iOS
+      - Resources
+      - path: ../../packaging/ios/Assets.xcassets
+      - path: Staging/ios/shaders
+        type: folder
+        buildPhase: resources
+        optional: true
+      - path: Staging/ios/fonts
+        type: folder
+        buildPhase: resources
+        optional: true
+    info:
+      path: Staging/ios/Info.plist
+      properties:
+        CFBundleDisplayName: OpenBGI
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        CFBundleLocalizations: [en, zh-Hans]
+        CFBundleDevelopmentRegion: en
+        LSRequiresIPhoneOS: true
+        UIRequiresFullScreen: true
+        UILaunchScreen: {}
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+        UIApplicationSupportsIndirectInputEvents: true
+        GCSupportsControllerUserInteraction: true
+        UIRequiredDeviceCapabilities: [arm64]
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+        UISupportedInterfaceOrientations~ipad: [UIInterfaceOrientationPortrait, UIInterfaceOrientationPortraitUpsideDown, UIInterfaceOrientationLandscapeLeft, UIInterfaceOrientationLandscapeRight]
+    settings:
+      base:
+        PRODUCT_NAME: OpenBGI
+        PRODUCT_BUNDLE_IDENTIFIER: ${OPENBGI_BUNDLE_ID}
+        SWIFT_OBJC_BRIDGING_HEADER: Sources/Shared/OpenBGI-Bridging-Header.h
+        HEADER_SEARCH_PATHS: "$(SRCROOT)/../../include"
+        LIBRARY_SEARCH_PATHS: "$(SRCROOT)/Staging/ios"
+        OTHER_LDFLAGS: ["-lobgi_all", "-lc++", "-lobjc"]
+        ARCHS: arm64
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SDKROOT: iphoneos
+        CODE_SIGN_STYLE: Manual
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    dependencies:
+      - sdk: libz.tbd
+      - sdk: CoreMedia.framework
+      - sdk: CoreVideo.framework
+      - sdk: CoreAudio.framework
+      - sdk: AudioToolbox.framework
+      - sdk: AVFoundation.framework
+      - sdk: CoreBluetooth.framework
+      - sdk: CoreMotion.framework
+      - sdk: GameController.framework
+      - sdk: Metal.framework
+      - sdk: QuartzCore.framework
+      - sdk: CoreHaptics.framework
+        weak: true
+      - sdk: CoreText.framework
+      - sdk: CoreGraphics.framework
+      - sdk: ImageIO.framework
+      - sdk: UIKit.framework
+      - sdk: Foundation.framework
+
+  OpenBGI-macOS:
+    type: application
+    platform: macOS
+    sources:
+      - Sources/Shared
+      - Sources/macOS
+      - Resources
+      - path: ../../packaging/icons/OpenBGI.icns
+        buildPhase: resources
+    info:
+      path: Staging/macos/Info.plist
+      properties:
+        CFBundleDisplayName: OpenBGI
+        CFBundleIconFile: OpenBGI
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        CFBundleLocalizations: [en, zh-Hans]
+        CFBundleDevelopmentRegion: en
+        LSApplicationCategoryType: public.app-category.games
+        LSMinimumSystemVersion: "14.0"
+        NSHighResolutionCapable: true
+    settings:
+      base:
+        PRODUCT_NAME: OpenBGI
+        PRODUCT_BUNDLE_IDENTIFIER: ${OPENBGI_BUNDLE_ID}
+        SWIFT_OBJC_BRIDGING_HEADER: Sources/Shared/OpenBGI-Bridging-Header.h
+        HEADER_SEARCH_PATHS: "$(SRCROOT)/../../include"
+        LIBRARY_SEARCH_PATHS: "$(SRCROOT)/Staging/macos"
+        OTHER_LDFLAGS: ["-lobgi_probe"]
+        LD_RUNPATH_SEARCH_PATHS: ["@executable_path/../Frameworks"]
+        ENABLE_HARDENED_RUNTIME: NO
+        CODE_SIGN_STYLE: Manual

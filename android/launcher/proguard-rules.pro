@@ -1,0 +1,5 @@
+-keep class org.libsdl.app.** { *; }
+-keep class org.openbgi.Engine { *; }
+-keep class org.openbgi.Engine$* { *; }
+-keep class org.openbgi.OpenBGIActivity { *; }
+-dontwarn org.libsdl.app.**

@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><defs>
+    <linearGradient id="abg" x1="0.1" y1="0" x2="0.85" y2="1"><stop offset="0" stop-color="#091533"/><stop offset="0.52" stop-color="#123b68"/><stop offset="1" stop-color="#1d708c"/></linearGradient>
+    <radialGradient id="ahalo" cx="0.5" cy="0.46" r="0.48">
+      <stop offset="0" stop-color="#4de2e2" stop-opacity="0.34"/>
+      <stop offset="0.55" stop-color="#2da6d4" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#1d708c" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="acover" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b649c"/>
+      <stop offset="1" stop-color="#142d56"/>
+    </linearGradient>
+    <linearGradient id="apageL" x1="0" y1="0" x2="1" y2="0.8">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#d8e9ff"/>
+    </linearGradient>
+    <linearGradient id="apageR" x1="1" y1="0" x2="0" y2="0.8">
+      <stop offset="0" stop-color="#f4f9ff"/>
+      <stop offset="1" stop-color="#c6dfff"/>
+    </linearGradient>
+    <linearGradient id="aprismTop" x1="0" y1="0" x2="1" y2="0.8">
+      <stop offset="0" stop-color="#ffe58f"/>
+      <stop offset="1" stop-color="#ff8f6b"/>
+    </linearGradient>
+    <linearGradient id="aprismBot" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff9966"/>
+      <stop offset="1" stop-color="#e84a7a"/>
+    </linearGradient>
+    <linearGradient id="aribbon" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff8570"/>
+      <stop offset="1" stop-color="#e04372"/>
+    </linearGradient>
+    <filter id="adropLg" x="-30%" y="-30%" width="160%" height="170%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="20"/>
+      <feOffset dy="20" result="b"/>
+      <feFlood flood-color="#050c20" flood-opacity="0.52"/>
+      <feComposite in2="b" operator="in"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="aglowPrism" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="16"/>
+      <feOffset dy="12" result="b"/>
+      <feFlood flood-color="#06122b" flood-opacity="0.45"/>
+      <feComposite in2="b" operator="in"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter></defs>
+  <g transform="translate(512,530) scale(0.72)">
+    <g filter="url(#adropLg)">
+      <path d="M-310,-62 C-310,-86 -292,-104 -268,-102 L-22,-78 C-8,-76 0,-70 0,-60 C0,-70 8,-76 22,-78 L268,-102 C292,-104 310,-86 310,-62 V196 C310,220 292,238 268,236 L24,212 C8,210 0,218 0,228 C0,218 -8,210 -24,212 L-268,236 C-292,238 -310,220 -310,196 Z" fill="url(#acover)"/>
+      <path d="M46,168 L104,174 V276 L75,250 L46,276 Z" fill="url(#aribbon)"/>
+      <path d="M-274,-96 C-274,-116 -258,-132 -238,-130 L-18,-100 C-4,-98 0,-86 0,-72 V184 C0,174 -8,166 -22,164 L-244,186 C-262,188 -274,174 -274,156 Z" fill="url(#apageL)"/>
+      <path d="M274,-96 C274,-116 258,-132 238,-130 L18,-100 C4,-98 0,-86 0,-72 V184 C0,174 8,166 22,164 L244,186 C262,188 274,174 274,156 Z" fill="url(#apageR)"/>
+      <path d="M0,-72 V184" stroke="#8cb6e8" stroke-width="4" stroke-linecap="round" opacity="0.55"/>
+      <g stroke="#80a8d8" stroke-width="11" stroke-linecap="round" opacity="0.45">
+        <line x1="-224" y1="-52" x2="-46" y2="-30"/>
+        <line x1="-224" y1="-8" x2="-46" y2="14"/>
+        <line x1="-224" y1="36" x2="-78" y2="54"/>
+        <line x1="-224" y1="80" x2="-46" y2="102"/>
+        <line x1="-224" y1="124" x2="-104" y2="138"/>
+        <line x1="46" y1="-30" x2="224" y2="-52"/>
+        <line x1="46" y1="14" x2="224" y2="-8"/>
+        <line x1="78" y1="54" x2="224" y2="36"/>
+        <line x1="46" y1="102" x2="224" y2="80"/>
+      </g>
+    </g>
+    <g filter="url(#aglowPrism)">
+      <clipPath id="apclip"><path d="M-94,-248 C-94,-274 -66,-290 -44,-276 L132,-164 C154,-150 154,-118 132,-104 L-44,8 C-66,22 -94,6 -94,-20 Z"/></clipPath>
+      <g clip-path="url(#apclip)">
+        <path d="M-94,-248 C-94,-274 -66,-290 -44,-276 L132,-164 C143,-157 148,-146 148,-134 L-94,-134 Z" fill="url(#aprismTop)"/>
+        <path d="M-94,-134 L148,-134 C148,-122 143,-111 132,-104 L-44,8 C-66,22 -94,6 -94,-20 Z" fill="url(#aprismBot)"/>
+        <path d="M-94,-260 L148,-134 L-94,-134 Z" fill="#ffffff" opacity="0.16"/>
+      </g>
+      <path d="M-94,-248 C-94,-274 -66,-290 -44,-276 L132,-164 C154,-150 154,-118 132,-104 L-44,8 C-66,22 -94,6 -94,-20 Z" fill="none" stroke="#fff6df" stroke-width="3" opacity="0.55"/>
+    </g>
+    <path d="M214,-248 L224,-222 L250,-212 L224,-202 L214,-176 L204,-202 L178,-212 L204,-222 Z" fill="#9ef7ff" opacity="0.9"/>
+  </g></svg>

@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><defs>
+    <linearGradient id="abg" x1="0.1" y1="0" x2="0.85" y2="1"><stop offset="0" stop-color="#091533"/><stop offset="0.52" stop-color="#123b68"/><stop offset="1" stop-color="#1d708c"/></linearGradient>
+    <radialGradient id="ahalo" cx="0.5" cy="0.46" r="0.48">
+      <stop offset="0" stop-color="#4de2e2" stop-opacity="0.34"/>
+      <stop offset="0.55" stop-color="#2da6d4" stop-opacity="0.14"/>
+      <stop offset="1" stop-color="#1d708c" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="acover" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b649c"/>
+      <stop offset="1" stop-color="#142d56"/>
+    </linearGradient>
+    <linearGradient id="apageL" x1="0" y1="0" x2="1" y2="0.8">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#d8e9ff"/>
+    </linearGradient>
+    <linearGradient id="apageR" x1="1" y1="0" x2="0" y2="0.8">
+      <stop offset="0" stop-color="#f4f9ff"/>
+      <stop offset="1" stop-color="#c6dfff"/>
+    </linearGradient>
+    <linearGradient id="aprismTop" x1="0" y1="0" x2="1" y2="0.8">
+      <stop offset="0" stop-color="#ffe58f"/>
+      <stop offset="1" stop-color="#ff8f6b"/>
+    </linearGradient>
+    <linearGradient id="aprismBot" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ff9966"/>
+      <stop offset="1" stop-color="#e84a7a"/>
+    </linearGradient>
+    <linearGradient id="aribbon" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ff8570"/>
+      <stop offset="1" stop-color="#e04372"/>
+    </linearGradient>
+    <filter id="adropLg" x="-30%" y="-30%" width="160%" height="170%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="20"/>
+      <feOffset dy="20" result="b"/>
+      <feFlood flood-color="#050c20" flood-opacity="0.52"/>
+      <feComposite in2="b" operator="in"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+    <filter id="aglowPrism" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="16"/>
+      <feOffset dy="12" result="b"/>
+      <feFlood flood-color="#06122b" flood-opacity="0.45"/>
+      <feComposite in2="b" operator="in"/>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter></defs><rect width="1024" height="1024" fill="url(#abg)"/><rect width="1024" height="1024" fill="url(#ahalo)"/></svg>

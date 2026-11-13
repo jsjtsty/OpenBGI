@@ -3,6 +3,7 @@
 #include <chrono>
 #include <memory>
 #include <string>
+#include <vector>
 #include "core/error.hpp"
 #include "vm/vm.hpp"
 
@@ -14,6 +15,8 @@ struct SystemState;
 
 struct SessionOptions {
     std::filesystem::path game_dir, data_dir;
+    std::filesystem::path resources_dir, shader_dir;
+    std::vector<std::filesystem::path> font_dirs;
     std::string driver;
     std::uint32_t width = 1280, height = 720;
     bool window = false, audio_output = true;

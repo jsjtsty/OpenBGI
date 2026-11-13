@@ -62,6 +62,19 @@ struct Renderer::Impl {
     int wheel = 0;
     std::vector<int> wheel_events;
 
+    struct TouchFinger {
+        SDL_FingerID id = 0;
+        float start_x = 0.0f, start_y = 0.0f;
+        float x = 0.0f, y = 0.0f;
+        Uint64 down_ms = 0;
+        bool moved = false;
+    };
+    std::vector<TouchFinger> active_fingers;
+    bool multi_touch = false;
+    bool two_finger_tap_candidate = false;
+    float two_finger_scroll_accum = 0.0f;
+    bool long_press_skip_held = false;
+
     ~Impl() {
         if (pipeline) SDL_ReleaseGPUGraphicsPipeline(device, pipeline);
         if (sampler) SDL_ReleaseGPUSampler(device, sampler);
@@ -149,9 +162,25 @@ Result<std::unique_ptr<Renderer>> Renderer::create(const RendererOptions& option
         m.completion_event = SDL_RegisterEvents(1);
         if (!m.completion_event) return std::unexpected(sdl_error("register resource completion event"));
     }
-    constexpr SDL_GPUShaderFormat kFormats = SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL |
-                                             SDL_GPU_SHADERFORMAT_MSL | SDL_GPU_SHADERFORMAT_METALLIB;
-    m.device = SDL_CreateGPUDevice(kFormats, false, options.driver);
+    const SDL_PropertiesID gpu_props = SDL_CreateProperties();
+    if (!gpu_props) return std::unexpected(sdl_error("SDL_CreateProperties"));
+    SDL_SetBooleanProperty(gpu_props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_SPIRV_BOOLEAN, true);
+    SDL_SetBooleanProperty(gpu_props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_DXIL_BOOLEAN, true);
+    SDL_SetBooleanProperty(gpu_props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_MSL_BOOLEAN, true);
+    SDL_SetBooleanProperty(gpu_props, SDL_PROP_GPU_DEVICE_CREATE_SHADERS_METALLIB_BOOLEAN, true);
+    SDL_SetBooleanProperty(gpu_props, SDL_PROP_GPU_DEVICE_CREATE_DEBUGMODE_BOOLEAN, false);
+    if (options.driver && *options.driver) {
+        SDL_SetStringProperty(gpu_props, SDL_PROP_GPU_DEVICE_CREATE_NAME_STRING, options.driver);
+    }
+    // Opt out of optional Vulkan 1.0 features that OpenBGI's 2D blit pipeline
+    // does not use, so mobile GPUs (e.g. Mali) without depthClamp/clipDistance
+    // or anisotropy are still accepted by SDL_GPU.
+    SDL_SetBooleanProperty(gpu_props, SDL_PROP_GPU_DEVICE_CREATE_FEATURE_CLIP_DISTANCE_BOOLEAN, false);
+    SDL_SetBooleanProperty(gpu_props, SDL_PROP_GPU_DEVICE_CREATE_FEATURE_DEPTH_CLAMPING_BOOLEAN, false);
+    SDL_SetBooleanProperty(gpu_props, SDL_PROP_GPU_DEVICE_CREATE_FEATURE_INDIRECT_DRAW_FIRST_INSTANCE_BOOLEAN, false);
+    SDL_SetBooleanProperty(gpu_props, SDL_PROP_GPU_DEVICE_CREATE_FEATURE_ANISOTROPY_BOOLEAN, false);
+    m.device = SDL_CreateGPUDeviceWithProperties(gpu_props);
+    SDL_DestroyProperties(gpu_props);
     if (!m.device) return std::unexpected(sdl_error("SDL_CreateGPUDevice"));
 
     if (options.headless) {
@@ -167,13 +196,13 @@ Result<std::unique_ptr<Renderer>> Renderer::create(const RendererOptions& option
         if (!m.offscreen) return std::unexpected(sdl_error("offscreen target"));
     } else {
         m.window = SDL_CreateWindow(options.title, int(options.logical_width), int(options.logical_height),
-                                    SDL_WINDOW_RESIZABLE);
+                                    SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
         if (!m.window) return std::unexpected(sdl_error("SDL_CreateWindow"));
         if (!SDL_ClaimWindowForGPUDevice(m.device, m.window)) return std::unexpected(sdl_error("claim window"));
         m.target_format = SDL_GetGPUSwapchainTextureFormat(m.device, m.window);
     }
 
-    auto opened = ShaderLibrary::open("obgi");
+    auto opened = ShaderLibrary::open("obgi", options.shader_dir);
     if (!opened) return std::unexpected(opened.error());
     m.library.emplace(std::move(*opened));
     auto* library = &*m.library;
@@ -443,6 +472,81 @@ bool Renderer::poll_events() {
                 impl_->wheel_events.push_back(step);
             }
         }
+        if (e.type == SDL_EVENT_FINGER_DOWN) {
+            const Uint64 now = SDL_GetTicks();
+            impl_->active_fingers.push_back({e.tfinger.fingerID, e.tfinger.x, e.tfinger.y, e.tfinger.x, e.tfinger.y, now, false});
+            if (impl_->active_fingers.size() >= 2) {
+                impl_->multi_touch = true;
+                impl_->two_finger_tap_candidate = (impl_->active_fingers.size() == 2);
+                impl_->two_finger_scroll_accum = 0.0f;
+                if (impl_->long_press_skip_held) {
+                    impl_->held_inputs[0x11] = false;
+                    impl_->long_press_skip_held = false;
+                }
+            }
+        }
+        if (e.type == SDL_EVENT_FINGER_MOTION) {
+            for (auto& f : impl_->active_fingers) {
+                if (f.id == e.tfinger.fingerID) {
+                    f.x = e.tfinger.x;
+                    f.y = e.tfinger.y;
+                    const float dx = f.x - f.start_x;
+                    const float dy = f.y - f.start_y;
+                    if (dx * dx + dy * dy > 0.03f * 0.03f) {
+                        f.moved = true;
+                        impl_->two_finger_tap_candidate = false;
+                    }
+                    break;
+                }
+            }
+            if (impl_->active_fingers.size() == 2) {
+                impl_->two_finger_scroll_accum += e.tfinger.dy;
+                constexpr float kStepThreshold = 0.045f;
+                while (impl_->two_finger_scroll_accum >= kStepThreshold) {
+                    impl_->two_finger_scroll_accum -= kStepThreshold;
+                    impl_->wheel += 1;
+                    impl_->wheel_events.push_back(1);
+                    impl_->two_finger_tap_candidate = false;
+                }
+                while (impl_->two_finger_scroll_accum <= -kStepThreshold) {
+                    impl_->two_finger_scroll_accum += kStepThreshold;
+                    impl_->wheel -= 1;
+                    impl_->wheel_events.push_back(-1);
+                    impl_->two_finger_tap_candidate = false;
+                }
+            }
+        }
+        if (e.type == SDL_EVENT_FINGER_UP || e.type == SDL_EVENT_FINGER_CANCELED) {
+            const Uint64 now = SDL_GetTicks();
+            if (e.type == SDL_EVENT_FINGER_UP && impl_->multi_touch && impl_->two_finger_tap_candidate &&
+                impl_->active_fingers.size() == 2) {
+                const bool within_time = (now - impl_->active_fingers[0].down_ms) < 400 &&
+                                         (now - impl_->active_fingers[1].down_ms) < 400;
+                const bool neither_moved = !impl_->active_fingers[0].moved && !impl_->active_fingers[1].moved;
+                if (within_time && neither_moved) {
+                    // Two-finger tap -> right click (hide textbox / system menu / back).
+                    impl_->presses.push_back({2, impl_->mouse_x, impl_->mouse_y, true});
+                }
+                impl_->two_finger_tap_candidate = false;
+            }
+            std::erase_if(impl_->active_fingers, [&](const Impl::TouchFinger& f) { return f.id == e.tfinger.fingerID; });
+            if (impl_->active_fingers.empty()) {
+                if (impl_->long_press_skip_held) {
+                    impl_->held_inputs[0x11] = false;
+                    impl_->long_press_skip_held = false;
+                }
+                impl_->multi_touch = false;
+                impl_->two_finger_tap_candidate = false;
+                impl_->two_finger_scroll_accum = 0.0f;
+            }
+        }
+    }
+    if (impl_->active_fingers.size() == 1 && !impl_->multi_touch && !impl_->long_press_skip_held &&
+        !impl_->active_fingers[0].moved && (SDL_GetTicks() - impl_->active_fingers[0].down_ms) >= 550) {
+        // Single-finger long-press -> hold Ctrl (0x11) for fast-forward / skip.
+        impl_->held_inputs[0x11] = true;
+        impl_->presses.push_back({0x11});
+        impl_->long_press_skip_held = true;
     }
     return alive;
 }

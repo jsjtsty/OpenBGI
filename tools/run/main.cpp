@@ -19,6 +19,7 @@
 #include <charconv>
 #include <string>
 
+#include "openbgi/openbgi.h"
 #include "bindings/arc_program_provider.hpp"
 #include "bindings/system_subops.hpp"
 #include "render/display.hpp"
@@ -84,6 +85,14 @@ void write_png(const std::string& path, const std::vector<std::uint32_t>& px, un
 
 int main(int argc, char** argv) {
     using namespace obgi;
+    for (int i = 1; i < argc; ++i) {
+        if (std::string_view(argv[i]) == "--launcher") {
+            char err[1024] = {};
+            const int rc = obgi_run(argc, argv, err, sizeof(err));
+            if (rc != 0 && err[0]) std::fprintf(stderr, "%s\n", err);
+            return rc;
+        }
+    }
     if (std::getenv("OBGI_UNBUF")) std::setvbuf(stdout, nullptr, _IONBF, 0); // keep the log of a crashing run
     std::string game, driver_s, entry_arc = "autoload.arc", entry_name = "ipl._bp";
     long frames = 20000;

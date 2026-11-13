@@ -17,8 +17,8 @@ ARGS=$(printf '%s' "$ARGS" | sed "s#__PREFIX__#$PREFIX#")
 if [ ! -f ffbuild/config.mak ] || [ "$(cat .obgi_args 2>/dev/null)" != "$ARGS" ]; then
     echo "Configuring FFmpeg"
     if [ -f ffbuild/config.mak ]; then make clean >/dev/null 2>&1 || true; fi
-    "$SRC/configure" $ARGS
+    "$SRC/configure" $ARGS ${OBGI_FF_EXTRA_CFLAGS:+--extra-cflags="$OBGI_FF_EXTRA_CFLAGS"} ${OBGI_FF_EXTRA_LDFLAGS:+--extra-ldflags="$OBGI_FF_EXTRA_LDFLAGS"} ${OBGI_FF_AS:+--as="$OBGI_FF_AS"}
     printf '%s' "$ARGS" > .obgi_args
 fi
-make -j@OBGI_FF_JOBS@
-make install
+make -j@OBGI_FF_JOBS@ ${OBGI_FF_MAKE_ARGS:-}
+make install ${OBGI_FF_MAKE_ARGS:-}

@@ -6,8 +6,14 @@ function(obgi_fetch_sdl3)
   if(TARGET SDL3::SDL3)
     return()
   endif()
-  set(SDL_SHARED OFF CACHE BOOL "" FORCE) # linked statically: one self-contained executable
-  set(SDL_STATIC ON CACHE BOOL "" FORCE)
+  if(ANDROID)
+    # SDLActivity loads libSDL3.so then libmain.so dynamically.
+    set(SDL_SHARED ON CACHE BOOL "" FORCE)
+    set(SDL_STATIC OFF CACHE BOOL "" FORCE)
+  else()
+    set(SDL_SHARED OFF CACHE BOOL "" FORCE) # linked statically: one self-contained executable
+    set(SDL_STATIC ON CACHE BOOL "" FORCE)
+  endif()
   set(SDL_TEST_LIBRARY OFF CACHE BOOL "" FORCE)
   set(SDL_TESTS OFF CACHE BOOL "" FORCE)
   set(SDL_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -20,6 +26,13 @@ endfunction()
 
 # glslang provides the GLSL -> SPIR-V compiler used at build time.
 function(obgi_fetch_glslang)
+  if(CMAKE_CROSSCOMPILING)
+    find_program(OBGI_GLSLANG_HOST NAMES glslang-standalone glslangValidator glslang
+      HINTS "${PROJECT_SOURCE_DIR}/build/macos/_deps/glslang-build/StandAlone")
+    if(OBGI_GLSLANG_HOST)
+      return()
+    endif()
+  endif()
   if(TARGET glslang-standalone)
     return()
   endif()
@@ -94,11 +107,18 @@ function(obgi_shader_pack out_pack)
 
     if(NOT APPLE)
       set(spv "${dir}/${base}.spv")
+      if(OBGI_GLSLANG_HOST)
+        set(glslang_cmd "${OBGI_GLSLANG_HOST}")
+        set(glslang_dep "")
+      else()
+        set(glslang_cmd glslang-standalone)
+        set(glslang_dep glslang-standalone)
+      endif()
       add_custom_command(
         OUTPUT "${spv}"
         COMMAND ${CMAKE_COMMAND} -E make_directory "${dir}"
-        COMMAND glslang-standalone -V --target-env vulkan1.1 "-I${PROJECT_SOURCE_DIR}/shaders" -o "${spv}" "${source}"
-        DEPENDS "${source}" ${ARG_DEPENDS} glslang-standalone
+        COMMAND "${glslang_cmd}" -V --target-env vulkan1.1 "-I${PROJECT_SOURCE_DIR}/shaders" -o "${spv}" "${source}"
+        DEPENDS "${source}" ${ARG_DEPENDS} ${glslang_dep}
         COMMENT "GLSL -> SPIR-V: ${src}" VERBATIM)
     endif()
     if(NOT APPLE)
@@ -121,12 +141,21 @@ function(obgi_shader_pack out_pack)
 
     if(APPLE)
       find_program(OBGI_XCRUN xcrun REQUIRED)
+      if(IOS)
+        if(CMAKE_OSX_SYSROOT MATCHES "simulator")
+          set(obgi_metal_sdk iphonesimulator)
+        else()
+          set(obgi_metal_sdk iphoneos)
+        endif()
+      else()
+        set(obgi_metal_sdk macosx)
+      endif()
       set(msl "${PROJECT_SOURCE_DIR}/shaders/metal/${base}.metal")
       set(air "${dir}/${base}.air")
       add_custom_command(
         OUTPUT "${air}"
         COMMAND ${CMAKE_COMMAND} -E make_directory "${dir}"
-        COMMAND "${OBGI_XCRUN}" -sdk macosx metal -c "${msl}" -o "${air}"
+        COMMAND "${OBGI_XCRUN}" -sdk "${obgi_metal_sdk}" metal -c "${msl}" -o "${air}"
         DEPENDS "${msl}"
         COMMENT "MSL -> AIR: ${base}.metal" VERBATIM)
       list(APPEND airs "${air}")
@@ -138,16 +167,21 @@ function(obgi_shader_pack out_pack)
     set(metallib "${dir}/${ARG_NAME}.metallib")
     add_custom_command(
       OUTPUT "${metallib}"
-      COMMAND "${OBGI_XCRUN}" -sdk macosx metallib ${airs} -o "${metallib}"
+      COMMAND "${OBGI_XCRUN}" -sdk "${obgi_metal_sdk}" metallib ${airs} -o "${metallib}"
       DEPENDS ${airs}
       COMMENT "Linking ${ARG_NAME}.metallib" VERBATIM)
     list(APPEND entry_files "${metallib}")
   endif()
 
   set(pack "${dir}/${ARG_NAME}.pack")
+  if(DEFINED OBGI_SHADERPACK_BIN)
+    set(shaderpack_cmd "${OBGI_SHADERPACK_BIN}")
+  else()
+    set(shaderpack_cmd obgi_shaderpack)
+  endif()
   add_custom_command(
     OUTPUT "${pack}"
-    COMMAND obgi_shaderpack "${pack}" ${entries}
+    COMMAND ${shaderpack_cmd} "${pack}" ${entries}
     DEPENDS ${entry_files} obgi_shaderpack
     COMMENT "Packing shader library ${ARG_NAME}.pack" VERBATIM)
   add_custom_target(${ARG_NAME}_shaders ALL DEPENDS "${pack}")

@@ -8,9 +8,10 @@
 
 namespace obgi {
 
-Result<ShaderLibrary> ShaderLibrary::open(const std::string& name) {
+Result<ShaderLibrary> ShaderLibrary::open(const std::string& name, const std::filesystem::path& override_dir) {
     namespace fs = std::filesystem;
     std::vector<fs::path> dirs;
+    if (!override_dir.empty()) dirs.push_back(override_dir);
     if (const char* env = std::getenv("OBGI_SHADER_DIR")) dirs.emplace_back(env);
     if (const char* base = SDL_GetBasePath()) dirs.push_back(fs::path(base) / "shaders");
     dirs.emplace_back(OBGI_BUILD_SHADER_DIR);

@@ -1,3 +1,4 @@
+#include <SDL3/SDL_filesystem.h>
 #include "runtime/session.hpp"
 #include <algorithm>
 #include <array>
@@ -132,6 +133,9 @@ Result<std::unique_ptr<EngineSession>> EngineSession::create(SessionOptions opti
     ro.headless = !m.options.window;
     ro.logical_width = m.options.width; ro.logical_height = m.options.height;
     ro.driver = m.options.driver.empty() ? nullptr : m.options.driver.c_str();
+    ro.shader_dir = !m.options.shader_dir.empty()
+        ? m.options.shader_dir
+        : (!m.options.resources_dir.empty() ? m.options.resources_dir / "shaders" : std::filesystem::path{});
     auto renderer = Renderer::create(ro);
     if (!renderer) return std::unexpected(renderer.error());
     m.renderer = std::move(*renderer);
@@ -141,6 +145,9 @@ Result<std::unique_ptr<EngineSession>> EngineSession::create(SessionOptions opti
     m.display = std::move(*display);
     auto fonts = FontLibrary::create();
     if (!fonts) return std::unexpected(fonts.error());
+    for (const auto& dir : m.options.font_dirs) (*fonts)->add_search_dir(dir);
+    if (!m.options.resources_dir.empty()) (*fonts)->add_search_dir(m.options.resources_dir / "fonts");
+    if (const char* base = SDL_GetBasePath()) (*fonts)->add_search_dir(std::filesystem::path(base) / "fonts");
     m.fonts = std::move(*fonts);
     m.system.game_dir = m.options.game_dir;
     m.system.data_dir = m.options.data_dir;
