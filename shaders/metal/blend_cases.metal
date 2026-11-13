@@ -61,7 +61,7 @@ struct Results
 
 constant uint3 gl_WorkGroupSize [[maybe_unused]] = uint3(64u, 1u, 1u);
 
-constant spvUnsafeArray<uint, 7> _508 = spvUnsafeArray<uint, 7>({ 2u, 3u, 4u, 6u, 7u, 8u, 9u });
+constant spvUnsafeArray<uint, 7> _498 = spvUnsafeArray<uint, 7>({ 2u, 3u, 4u, 6u, 7u, 8u, 9u });
 
 static inline __attribute__((always_inline))
 int4 px_unpack(thread const uint& v)
@@ -120,7 +120,7 @@ uint over_int(thread const int4& s, thread const int4& d, thread const int& Q)
     o.x = _302.x;
     o.y = _302.y;
     o.z = _302.z;
-    o.w = (edi >> 8) | min(255, (((sa * ws) + (da * wd)) >> 8));
+    o.w = edi >> 8;
     int4 param_1 = o;
     return px_pack(param_1);
 }
@@ -164,28 +164,28 @@ static inline __attribute__((always_inline))
 uint mix89(thread const int4& s, thread const int4& d, thread const int& P, thread const bool& hard)
 {
     int4 o = d;
-    bool _409;
-    int _425;
+    bool _399;
+    int _415;
     for (int c = 0; c < 3; c++)
     {
         if (hard)
         {
-            _409 = s[c] > 127;
+            _399 = s[c] > 127;
         }
         else
         {
-            _409 = d[c] > 127;
+            _399 = d[c] > 127;
         }
-        bool m = _409;
+        bool m = _399;
         if (m)
         {
-            _425 = ((2 * (s[c] + d[c])) - 255) - ((s[c] * d[c]) >> 7);
+            _415 = ((2 * (s[c] + d[c])) - 255) - ((s[c] * d[c]) >> 7);
         }
         else
         {
-            _425 = (s[c] * d[c]) >> 7;
+            _415 = (s[c] * d[c]) >> 7;
         }
-        int r = _425;
+        int r = _415;
         int param = d[c] + (((r - d[c]) * P) >> 8);
         o[c] = sat255(param);
     }
@@ -210,7 +210,7 @@ uint blend_pixel(thread uint& mode, thread const uint& sf, thread const uint& df
         {
             if ((mode >= 33u) && (mode <= 39u))
             {
-                mode = _508[mode - 33u];
+                mode = _498[mode - 33u];
                 P = 256 - P;
             }
         }
@@ -328,11 +328,11 @@ uint blend_pixel(thread uint& mode, thread const uint& sf, thread const uint& df
                 }
                 uint ws = (e << uint(16)) / edi;
                 uint wd = (ecx << uint(16)) / edi;
-                int3 _826 = int3((((uint3(s.xyz) * uint3(ws)) + (uint3(d.xyz) * uint3(wd))) >> uint3(int3(16))) & uint3(255u));
+                int3 _816 = int3((((uint3(s.xyz) * uint3(ws)) + (uint3(d.xyz) * uint3(wd))) >> uint3(int3(16))) & uint3(255u));
                 int4 o_2;
-                o_2.x = _826.x;
-                o_2.y = _826.y;
-                o_2.z = _826.z;
+                o_2.x = _816.x;
+                o_2.y = _816.y;
+                o_2.z = _816.z;
                 o_2.w = int(edi >> uint(8));
                 int4 param_23 = o_2;
                 return px_pack(param_23);
@@ -372,17 +372,17 @@ uint blend_pixel(thread uint& mode, thread const uint& sf, thread const uint& df
                 int4 param_25 = o_4;
                 return px_pack(param_25);
             }
-            bool _955 = sf == 1u;
-            bool _963;
-            if (_955)
+            bool _945 = sf == 1u;
+            bool _953;
+            if (_945)
             {
-                _963 = (df == 1u) || (df == 2u);
+                _953 = (df == 1u) || (df == 2u);
             }
             else
             {
-                _963 = _955;
+                _953 = _945;
             }
-            if (_963)
+            if (_953)
             {
                 if (((s.x + s.y) + s.z) == 0)
                 {
@@ -524,11 +524,11 @@ uint blend_pixel(thread uint& mode, thread const uint& sf, thread const uint& df
                 uint den = (256u * sa) + ((256u - sa) * da);
                 uint ws_1 = ((sa * Q) << uint(16)) / den;
                 uint wd_1 = (((256u - sa) * da) << uint(16)) / den;
-                int3 _1453 = int3(((uint3(s.xyz) * uint3(ws_1)) + (uint3(d.xyz) * uint3(wd_1))) >> uint3(int3(16)));
+                int3 _1443 = int3(((uint3(s.xyz) * uint3(ws_1)) + (uint3(d.xyz) * uint3(wd_1))) >> uint3(int3(16)));
                 int4 o_13;
-                o_13.x = _1453.x;
-                o_13.y = _1453.y;
-                o_13.z = _1453.z;
+                o_13.x = _1443.x;
+                o_13.y = _1443.y;
+                o_13.z = _1443.z;
                 o_13.w = int(den >> uint(8));
                 int4 param_38 = o_13;
                 return px_pack(param_38);
@@ -587,32 +587,32 @@ uint blend_pixel(thread uint& mode, thread const uint& sf, thread const uint& df
             if ((sf == 2u) && (df == 2u))
             {
                 int4 o_17 = d;
-                int _1629;
+                int _1619;
                 if (P < 256)
                 {
-                    _1629 = (d.w * (65536 - (s.w * P))) >> 16;
+                    _1619 = (d.w * (65536 - (s.w * P))) >> 16;
                 }
                 else
                 {
-                    _1629 = (d.w * (256 - s.w)) >> 8;
+                    _1619 = (d.w * (256 - s.w)) >> 8;
                 }
-                o_17.w = _1629;
+                o_17.w = _1619;
                 int4 param_44 = o_17;
                 return px_pack(param_44);
             }
             if ((sf == 2u) && (df == 3u))
             {
                 int dg_1 = int(dv & 255u);
-                int _1668;
+                int _1658;
                 if (P < 256)
                 {
-                    _1668 = (dg_1 * (65280 - (s.w * P))) >> 16;
+                    _1658 = (dg_1 * (65280 - (s.w * P))) >> 16;
                 }
                 else
                 {
-                    _1668 = (dg_1 * (255 - s.w)) >> 8;
+                    _1658 = (dg_1 * (255 - s.w)) >> 8;
                 }
-                return uint(_1668 & 255);
+                return uint(_1658 & 255);
             }
             break;
         }
@@ -644,16 +644,16 @@ uint blend_pixel(thread uint& mode, thread const uint& sf, thread const uint& df
         {
             if ((sf == 2u) && (df == 2u))
             {
-                bool _1737;
+                bool _1727;
                 if (P != 0)
                 {
-                    _1737 = s.w != 0;
+                    _1727 = s.w != 0;
                 }
                 else
                 {
-                    _1737 = s.w == 255;
+                    _1727 = s.w == 255;
                 }
-                return _1737 ? 0u : dv;
+                return _1727 ? 0u : dv;
             }
             if ((sf == 1u) && (df == 1u))
             {
@@ -754,14 +754,14 @@ uint blend_pixel(thread uint& mode, thread const uint& sf, thread const uint& df
     return 3735928559u;
 }
 
-kernel void blend_cases(constant Params& _2013 [[buffer(0)]], device Cases& _2027 [[buffer(1)]], device Results& _2054 [[buffer(2)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
+kernel void blend_cases(constant Params& _2003 [[buffer(0)]], device Cases& _2017 [[buffer(1)]], device Results& _2044 [[buffer(2)]], uint3 gl_GlobalInvocationID [[thread_position_in_grid]])
 {
     uint i = gl_GlobalInvocationID.x;
-    if (i >= _2013.count)
+    if (i >= _2003.count)
     {
         return;
     }
-    uint4 c = _2027.cases[i];
+    uint4 c = _2017.cases[i];
     uint mode = c.x & 255u;
     uint sf = (c.x >> uint(8)) & 3u;
     uint df = (c.x >> uint(10)) & 3u;
@@ -772,6 +772,6 @@ kernel void blend_cases(constant Params& _2013 [[buffer(0)]], device Cases& _202
     int param_3 = P;
     uint param_4 = c.y;
     uint param_5 = c.z;
-    uint _2070 = blend_pixel(param, param_1, param_2, param_3, param_4, param_5);
-    _2054.results[i] = _2070;
+    uint _2060 = blend_pixel(param, param_1, param_2, param_3, param_4, param_5);
+    _2044.results[i] = _2060;
 }

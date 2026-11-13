@@ -31,6 +31,18 @@ inline std::vector<std::vector<std::string>> read_tsv(const char* name) {
     return rows;
 }
 
+// The original-vector RGB remains useful; source-over alpha intentionally uses
+// the mathematical coverage instead of the native kernel's banding-prone OR.
+inline std::uint32_t corrected_over_alpha(std::uint32_t expected, unsigned mode, unsigned sf, unsigned df,
+                                          unsigned p, std::uint32_t src, std::uint32_t dst) {
+    if ((mode != 0 && mode != 1 && mode != 0x20) || sf != 2 || df != 2) return expected;
+    const unsigned sa = src >> 24, da = dst >> 24;
+    if (sa == 0 || (mode == 0 && sa == 255)) return expected;
+    const unsigned e = sa * (mode == 0 ? 256 : 256 - p);
+    const unsigned coverage = (e + ((da * (65536 - e)) >> 8)) >> 8;
+    return (expected & 0x00ffffffu) | (coverage << 24);
+}
+
 inline fs::path game_dir() { return fs::path(OPENBGI_GAME_DIR); }
 
 inline std::string sha(std::span<const std::uint8_t> d) { return sha256_hex(d); }

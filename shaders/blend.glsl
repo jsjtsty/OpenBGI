@@ -1,4 +1,5 @@
-// Bit-exact integer ports of the original engine's CPU blend kernels (analysis/混合公式.md).
+// Integer ports of the original CPU blend kernels (analysis/混合公式.md),
+// except source-over alpha, which uses coverage without the native OR quirk.
 // Pixels are packed little-endian as in memory: 32-bit = B | G<<8 | R<<16 | A<<24, 16-bit = RGB555, 8-bit = gray.
 // Formats: 0 = 16-bit, 1 = 32-bit without alpha, 2 = 32-bit with alpha, 3 = 8-bit.
 // These match the scalar path of the originals; the SIMD pair path differs by at most 1..3 levels (rcpps etc.).
@@ -25,7 +26,7 @@ uint crossfade_pixel(uint av, uint bv, uint ratio, bool has_alpha) {
 ivec3 rgb555(uint v) { return ivec3((v >> 10) & 31u, (v >> 5) & 31u, v & 31u); }
 uint rgb555_pack(ivec3 c) { return uint(c.x) << 10 | uint(c.y) << 5 | uint(c.z); }
 
-// Over with the exact integer model of 0040cda0 (Q = 256 - P, or 256 for mode 0), including the alpha OR quirk.
+// Straight-alpha source-over (Q = 256 - P, or 256 for mode 0).
 uint over_int(ivec4 s, ivec4 d, int Q) {
     int sa = s.w, da = d.w;
     int e = sa * Q;
@@ -35,7 +36,8 @@ uint over_int(ivec4 s, ivec4 d, int Q) {
     int ws = (e << 8) / edi, wd = (ecx << 8) / edi;
     ivec4 o;
     o.xyz = ((d.xyz * wd + s.xyz * ws) >> 8) & 255;
-    o.w = (edi >> 8) | min(255, (sa * ws + da * wd) >> 8);
+    // The native alpha OR quirk produces severe bands in translucent gradients.
+    o.w = edi >> 8;
     return px_pack(o);
 }
 

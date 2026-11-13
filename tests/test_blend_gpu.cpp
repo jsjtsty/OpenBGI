@@ -7,12 +7,12 @@
 
 using namespace obgi;
 
-// The shader must reproduce the scalar path of the original CPU kernels bit for bit; the expected values come from
+// Apart from corrected source-over alpha, the shader reproduces the original scalar kernels; expected values come from
 // reference formulas that were checked against the real kernels under Unicorn (analysis/混合公式.md).
 static void check_driver(const char* driver);
 
-// Every backend that exists on this machine must give identical, original-exact results.
-TEST_CASE("gpu blend kernels match the original CPU kernels" * doctest::test_suite("gpu")) {
+// Every backend that exists on this machine must give identical results.
+TEST_CASE("gpu blend kernels match the reference formulas" * doctest::test_suite("gpu")) {
     std::size_t ran = 0;
     for (const char* driver : {"vulkan", "direct3d12", "metal"}) {
         auto probe = GpuBlendRunner::create(driver);
@@ -46,7 +46,8 @@ static void check_driver(const char* driver) {
         c.src = static_cast<std::uint32_t>(std::stoul(r[4], nullptr, 16));
         c.dst = static_cast<std::uint32_t>(std::stoul(r[5], nullptr, 16));
         cases.push_back(c);
-        expected.push_back(static_cast<std::uint32_t>(std::stoul(r[6], nullptr, 16)));
+        expected.push_back(obgi_test::corrected_over_alpha(static_cast<std::uint32_t>(std::stoul(r[6], nullptr, 16)),
+            c.mode, c.src_format, c.dst_format, c.p, c.src, c.dst));
     }
 
     auto got = (*runner)->run(cases);

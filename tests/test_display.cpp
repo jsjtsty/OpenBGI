@@ -33,6 +33,27 @@ constexpr const char* kDrivers[] = {"vulkan", "direct3d12", "metal"};
 
 } // namespace
 
+TEST_CASE("translucent gradient stays smooth through nameplate composition" * doctest::test_suite("gpu")) {
+    for (const char* driver : kDrivers) {
+        auto rig = make_rig(driver);
+        if (!rig.display) continue;
+        SUBCASE(driver) {
+            auto& d = *rig.display;
+            std::array<std::uint32_t, 256> gradient{};
+            for (unsigned a = 0; a < gradient.size(); ++a) gradient[a] = (a << 24) | 0x00806040u;
+            REQUIRE(d.upload_slot(1, 256, 1, SlotFormat::Bgra, gradient));
+            REQUIRE(d.create_slot(2, 256, 1, SlotFormat::Bgra));
+            REQUIRE(d.create_slot(3, 256, 1, SlotFormat::Bgra));
+            REQUIRE(d.blit(2, 0, 0, 1, 0, 0, 256, 1, 1, 25));
+            REQUIRE(d.blit(3, 0, 0, 2, 0, 0, 256, 1, 1, 0));
+            auto result = d.read_slot(3);
+            REQUIRE(result);
+            for (unsigned a = 0; a < gradient.size(); ++a)
+                CHECK(((*result)[a] >> 24) == ((a * 231) >> 8));
+        }
+    }
+}
+
 TEST_CASE("GPU crossfade matches the scalar picture blend" * doctest::test_suite("gpu")) {
     auto rig = make_rig(nullptr);
     REQUIRE(rig.display);
@@ -231,7 +252,7 @@ TEST_CASE("blit reproduces the blend vectors through real image slots" * doctest
                 const auto& r = rows[i];
                 std::uint32_t mode = std::stoul(r[0], nullptr, 16), sf = std::stoul(r[1]), df = std::stoul(r[2]);
                 std::uint32_t p = std::stoul(r[3]), sv = std::stoul(r[4], nullptr, 16), dv = std::stoul(r[5], nullptr, 16);
-                std::uint32_t expected = std::stoul(r[6], nullptr, 16);
+                std::uint32_t expected = obgi_test::corrected_over_alpha(std::stoul(r[6], nullptr, 16), mode, sf, df, p, sv, dv);
                 if (!blend_mode_supported(mode)) continue;
                 std::uint32_t sp[1] = {sv}, dp[1] = {dv};
                 REQUIRE(d.upload_slot(10, 1, 1, static_cast<SlotFormat>(sf), sp).has_value());
