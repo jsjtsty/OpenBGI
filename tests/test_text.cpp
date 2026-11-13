@@ -302,3 +302,34 @@ TEST_CASE("dialogue uses natural advances for Latin within CJK text" * doctest::
         CHECK(layout.glyphs[i + 1].x - layout.glyphs[i].x == layout.glyphs[i].glyph.advance);
     CHECK(layout.last_width == layout.glyphs[8].x + 28);
 }
+
+TEST_CASE("92:9C uses percentage line spacing for multiline backlog text" * doctest::test_suite("gpu")) {
+    auto fonts = FontLibrary::create(); REQUIRE(fonts);
+    REQUIRE(open_font(**fonts, 24));
+    RendererOptions options; options.headless = true;
+    auto renderer = Renderer::create(options); REQUIRE(renderer);
+    auto display = Display::create(**renderer); REQUIRE(display);
+    TextHost host{display->get(), fonts->get()};
+    vm::SubopRegistry registry; vm::register_core_subops(registry); register_text_subops(registry, host);
+    OneProgram provider; vm::Vm machine(provider, registry);
+    const char font_name[] = "MS Gothic", text[] = "A\nB";
+    REQUIRE(machine.global.write(0x100, sizeof font_name, reinterpret_cast<const std::uint8_t*>(font_name)));
+    REQUIRE(machine.global.write(0x200, sizeof text, reinterpret_cast<const std::uint8_t*>(text)));
+    REQUIRE((*display)->create_slot(5, 120, 80, SlotFormat::Bgra));
+    Asm a;
+    a.i32(5).i32(0).i32(0).i32(0x200).i32(0xffffff).i32(0).i32(0).i32(0).i32(0x100).i32(24).i32(100).i32(0);
+    a.i32(0).i32(0).i32(54).i32(0).i32(0).i32(0).i32(0).i32(0).i32(0).sub(0x92, 0x9c).ret();
+    provider.program = {8, 0, 0, 0};
+    for (int i = 0; i < 4; ++i) provider.program.push_back(static_cast<std::uint8_t>(a.b.size() >> (8 * i)));
+    provider.program.insert(provider.program.end(), a.b.begin(), a.b.end());
+    vm::ThreadConfig cfg; cfg.stack_size = 0x1000; cfg.program_capacity = 0x10000;
+    REQUIRE(machine.spawn(cfg, "x.arc", "main")); REQUIRE(machine.run_frame(0));
+    auto pixels = (*display)->read_slot(5); REQUIRE(pixels);
+    const auto row_has_ink = [&](unsigned y) {
+        return std::any_of(pixels->begin() + y * 120, pixels->begin() + (y + 1) * 120, [](auto pixel) { return pixel >> 24; });
+    };
+    bool first = false, second = false;
+    for (unsigned y = 0; y < 36; ++y) first |= row_has_ink(y);
+    for (unsigned y = 36; y < 80; ++y) second |= row_has_ink(y);
+    CHECK(first); CHECK(second);
+}

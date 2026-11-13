@@ -91,7 +91,9 @@ void register_text_subops(vm::SubopRegistry& r, TextHost& host) {
                }
                TextStyle style;
                style.color = color;
-               style.line_gap = line_gap;
+               // 92:9C specifies line spacing as a percentage of the font size.
+               style.line_gap = static_cast<int>(std::int64_t{size} * line_gap / 100);
+               style.row_height = std::max(static_cast<int>(size) + style.line_gap, 1);
                // Font ascent is the baseline in the font's own metrics, as in
                // the original's GDI glyph placement; a fixed 7/8 em can sit too high.
                style.baseline = (*font)->ascent();
