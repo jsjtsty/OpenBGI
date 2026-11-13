@@ -136,6 +136,7 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
     TextHost* th = &text;
     FontHost* fh = &fonts;
     auto shared = text.messages;
+    state.reset_plane_text = [shared](std::size_t index) { shared->cursors[index] = {}; };
 
     // 91:9B (out, string, font no, size, width %, bold, proportional): writes the width in pixels of the string to `out`, pushes 0
     // (0x80000001 bad size, 0x80000003 bad font number; nothing written then). Width = the laid-out line's width, unwrapped.

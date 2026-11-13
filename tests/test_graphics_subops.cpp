@@ -928,7 +928,7 @@ TEST_CASE("90:28 stops a long motion when a forced notification arrives" * docte
     SystemState state; state.display = &d;
     SubopRegistry registry; register_core_subops(registry); register_plane_subops(registry, state, &d);
     MemProvider provider;
-    provider.set(Asm().i32(object).i32(100).i32(50).i32(0).i32(128).i32(0).i32(256)
+    provider.set(Asm().i32(object).i32(100 << 16).i32(50 << 16).i32(0).i32(128).i32(0).i32(256)
                      .i32(60000).i32(250).i32(0).i32(0).i32(0x710).sub(0x90, 0x28).ret());
     Vm vm(provider, registry); ThreadConfig config; config.stack_size = 1024;
     auto thread = vm.spawn(config, "test", "motion"); REQUIRE(thread);
@@ -938,6 +938,8 @@ TEST_CASE("90:28 stops a long motion when a forced notification arrives" * docte
         if (op == 0x9028) result = values;
     };
     REQUIRE(vm.run_frame(0)); REQUIRE(state.motions.size() == 1);
+    advance_motions(state, d, 30000);
+    CHECK(sp.script_x() == 50); CHECK(sp.script_y() == 25);
     Thread sender; sender.expr.resize(16); Ctx ctx(vm, sender);
     const auto* notify = registry.find(0x804c); REQUIRE(notify);
     ctx.push(id); ctx.push(1); ctx.push(0); ctx.push(0); notify->fn(ctx);
@@ -959,7 +961,7 @@ TEST_CASE("90:28 cancellation releases the thread without completing the motion"
     SystemState state; state.display = &d;
     SubopRegistry registry; register_core_subops(registry); register_plane_subops(registry, state, &d);
     MemProvider provider;
-    provider.set(Asm().i32(object).i32(100).i32(50).i32(0).i32(128).i32(0).i32(256)
+    provider.set(Asm().i32(object).i32(100 << 16).i32(50 << 16).i32(0).i32(128).i32(0).i32(256)
                      .i32(60000).i32(250).i32(0).i32(0).i32(0x710).sub(0x90, 0x28).ret());
     Vm vm(provider, registry); ThreadConfig config; config.stack_size = 1024;
     auto thread = vm.spawn(config, "test", "motion"); REQUIRE(thread);
@@ -974,4 +976,24 @@ TEST_CASE("90:28 cancellation releases the thread without completing the motion"
     REQUIRE(vm.run_frame(20));
     REQUIRE(result.size() == 2); CHECK(result[1] == 0xffffffffu);
     CHECK(state.motions.empty()); CHECK(sp.script_x() == 0); CHECK(sp.script_y() == 0);
+}
+
+TEST_CASE("recreating a window resets its text cursor" * doctest::test_suite("gpu")) {
+    RendererOptions options; options.headless = true;
+    auto renderer = Renderer::create(options); REQUIRE(renderer);
+    auto display = Display::create(**renderer, 16, 16); REQUIRE(display);
+    SystemState state; TextHost text; FontHost fonts;
+    SubopRegistry registry; register_core_subops(registry);
+    register_plane_subops(registry, state, display->get());
+    register_message_subops(registry, state, text, fonts);
+    MemProvider provider; Vm vm(provider, registry);
+    Thread thread; thread.expr.resize(32); Ctx c(vm, thread);
+    const auto call = [&](Word op) { const auto* def = registry.find(op); REQUIRE(def); def->fn(c); REQUIRE(c.ok()); };
+    c.push(100); c.push(40); call(0x9080); const Word handle = c.pop();
+    c.push(handle); c.push(268); c.push(0); call(0x918c);
+    c.push(handle); call(0x9081);
+    c.push(100); c.push(40); call(0x9080); CHECK(c.pop() == handle);
+    c.push(handle); call(0x918d);
+    const Word y = c.pop(), x = c.pop(), ok = c.pop();
+    CHECK(ok == 1); CHECK(x == 0); CHECK(y == 0);
 }

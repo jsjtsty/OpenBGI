@@ -247,7 +247,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         if (!bg_usable(bmp, true)) { c.fail(Errc::Range, "background bitmap " + std::to_string(bmp) + " is unusable"); return 0; }
         if (static_cast<Word>(w) < 2 || static_cast<Word>(h) < 2) { c.fail(Errc::Range, "invalid view size " + std::to_string(w) + "x" + std::to_string(h)); return 0; }
         d.bg_fx.bmp[0] = bmp, d.bg_fx.view_w = w, d.bg_fx.view_h = h;
-        d.sprite(kBgUpper).script_move_to(static_cast<std::int32_t>(static_cast<Word>(x) << 16), static_cast<std::int32_t>(static_cast<Word>(y) << 16)); // 16.16
+        d.sprite(kBgUpper).script_move_to(x, y);
         return 0;
     });
     // 90:49 (bmp, scale, option): type 10, a picture of any size zoomed by `scale` (16.16, not 0) and rotated by `option` (16.16 degrees)

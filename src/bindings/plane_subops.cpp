@@ -516,7 +516,7 @@ std::array<double, 3> spline_at(const std::vector<std::array<double, 3>>& pts, d
 // `duration` ms. The object becomes visible; scripts wait for the end with 80:5C. `move` = false leaves the position alone.
 // With a `path` the position follows the object's start followed by those points (90:29).
 std::int64_t start_motion(SystemState& s, Display& display, Ctx& c, Word id, bool move, std::int32_t x, std::int32_t y, int curve, Word level,
-                  int level_curve, Word duration, std::int32_t progress = -1, std::vector<std::array<double, 3>> path = {}) {
+                  int level_curve, Word duration, std::int32_t progress = -1, std::vector<std::array<double, 3>> path = {}, bool fixed_position = false) {
     Sprite* sp = display.find_sprite(id);
     if (!sp && id >= 0x90000000u) return 0; // filters, effectors, windows and the like are not drawn objects here
     if (!sp) { c.fail(Errc::Range, "no display object " + std::to_string(id)); return 0; }
@@ -524,7 +524,9 @@ std::int64_t start_motion(SystemState& s, Display& display, Ctx& c, Word id, boo
     m.object = id;
     m.start_ms = c.vm.now_ms;
     m.duration_ms = duration;
-    m.from_x = sp->script_x(), m.from_y = sp->script_y();
+    m.fixed_position = fixed_position;
+    m.from_x = fixed_position ? sp->script_fixed_x() : sp->script_x();
+    m.from_y = fixed_position ? sp->script_fixed_y() : sp->script_y();
     m.to_x = move ? x : m.from_x, m.to_y = move ? y : m.from_y;
     m.curve = curve;
     m.from_level = static_cast<std::int32_t>(sp->alpha), m.to_level = static_cast<std::int32_t>(level);
@@ -545,6 +547,7 @@ std::int64_t start_motion(SystemState& s, Display& display, Ctx& c, Word id, boo
     if (m.duration_ms <= 0) {
         if (move) {
             if (!m.path.empty()) sp->script_fixed_move_to(static_cast<std::int32_t>(m.path.back()[0] * 65536.0), static_cast<std::int32_t>(m.path.back()[1] * 65536.0));
+            else if (m.fixed_position) sp->script_fixed_move_to(m.to_x, m.to_y);
             else sp->script_move_to(m.to_x, m.to_y);
             sp->depth = m.to_z;
         }
@@ -728,8 +731,10 @@ void advance_motions(SystemState& state, Display& display, std::int64_t now_ms) 
                 sp->script_fixed_move_to(fixed_axis(it->path[0][0], it->path[1][0]), fixed_axis(it->path[0][1], it->path[1][1]));
                 sp->depth = fixed_axis(it->path[0][2], it->path[1][2]);
             } else {
-                sp->script_move_to(it->from_x + static_cast<std::int32_t>((std::int64_t{it->to_x} - it->from_x) * fp >> 16),
-                            it->from_y + static_cast<std::int32_t>((std::int64_t{it->to_y} - it->from_y) * fp >> 16));
+                const auto x = it->from_x + static_cast<std::int32_t>((std::int64_t{it->to_x} - it->from_x) * fp >> 16);
+                const auto y = it->from_y + static_cast<std::int32_t>((std::int64_t{it->to_y} - it->from_y) * fp >> 16);
+                if (it->fixed_position) sp->script_fixed_move_to(x, y);
+                else sp->script_move_to(x, y);
             }
             display.set_level(it->object, static_cast<std::uint32_t>(it->from_level + static_cast<std::int32_t>((std::int64_t{it->to_level} - it->from_level) * fl >> 16)));
             if (it->to_progress != it->from_progress) // linear in time, whatever the curves
@@ -764,7 +769,7 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
         if (!c.ok()) return 0;
         if (a[3] == 0) { c.fail(Errc::Range, "90:28: rate 0"); return 0; }
         const auto duration = start_motion(*s, *display, c, a[11], true, static_cast<std::int32_t>(a[10]), static_cast<std::int32_t>(a[9]), static_cast<int>(a[8]), a[7],
-                                            static_cast<int>(a[6]), a[4], static_cast<std::int32_t>(a[5]));
+                                            static_cast<int>(a[6]), a[4], static_cast<std::int32_t>(a[5]), {}, true);
         if (c.ok()) {
             wait_for_motion(c, duration);
             auto& wait = c.t.wait;
@@ -775,7 +780,8 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
                 const auto it = std::find_if(s->motions.begin(), s->motions.end(), [id](const auto& m) { return m.object == id; });
                 if (it == s->motions.end()) return;
                 if (auto* sp = display->find_sprite(id); sp && message != 0) {
-                    sp->script_move_to(it->to_x, it->to_y);
+                    if (it->fixed_position) sp->script_fixed_move_to(it->to_x, it->to_y);
+                    else sp->script_move_to(it->to_x, it->to_y);
                     sp->depth = it->to_z;
                     display->set_level(id, static_cast<Word>(it->to_level));
                     if (it->to_progress != it->from_progress) display->set_progress(id, static_cast<Word>(it->to_progress));
@@ -938,6 +944,7 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
             sp.visible = false; // windows start hidden; 90:84 shows them
         }
         s->plane_shown[slot] = false, s->plane_level[slot] = 0, s->plane_effect[slot] = 1;
+        if (s->reset_plane_text) s->reset_plane_text(slot);
         s->planes[slot] = std::move(p);
         c.push(kHandleBase + static_cast<Word>(slot));
         return 0;

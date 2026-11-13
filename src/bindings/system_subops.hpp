@@ -37,6 +37,7 @@ struct SystemState : InputState {
         std::int64_t start_ms = 0, duration_ms = 0;
         std::int32_t from_x = 0, from_y = 0, to_x = 0, to_y = 0;
         std::int32_t curve = 0;                  // ease curve of the position
+        bool fixed_position = false;             // motion endpoints are 16.16 coordinates
         std::int32_t from_level = 0, to_level = 0; // the object's alpha (90:32)
         std::int32_t level_curve = 0;
         std::int32_t from_progress = 0, to_progress = 0; // 90:28/29: the object's progress (0..0x100), linearly; equal = untouched
@@ -159,6 +160,7 @@ struct SystemState : InputState {
     std::map<std::uint16_t, std::vector<std::uint32_t>> props; // 91:88.. / 92:88.. text settings, by sub-opcode id
     };
     std::array<std::optional<Plane>, 16> planes;
+    std::function<void(std::size_t)> reset_plane_text; // reset state when a window slot is reused
     // 90:84 records the last explicit show request; animation can also change the display object's visibility.
     std::array<bool, 16> plane_shown{};
     std::array<std::uint32_t, 16> plane_level{}, plane_effect{};
