@@ -54,7 +54,22 @@ void register_object_settings(vm::SubopRegistry& r, SystemState& state, Display*
                                {0x9148, "object layer 91:48", 3, 0}, {0x9149, "object layer 91:49", 3, 0},
                                {0x914A, "object layer 91:4A", 4, 0}, {0x9155, "object query 91:55", 2, 1},
                                {0x913D, "object query 91:3D", 1, 1}};
-    static const Rec loose[] = {{0x9053, "object setting 90:53", 5, 0}, {0x9055, "object setting 90:55", 2, 0}};
+    static const Rec loose[] = {{0x9053, "object setting 90:53", 5, 0}};
+    add(r, 0x9055, "set sprite screen mask", 2, 0, [display](Ctx& c) {
+        const auto bmp = static_cast<std::int32_t>(c.pop());
+        const Word h = c.pop();
+        if (!c.ok() || !display) return 0;
+        Sprite* sp = display->find_sprite(h);
+        if (!sp) { c.fail(Errc::Range, "no display object " + std::to_string(h)); return 0; }
+        if (bmp == -1) { sp->screen_mask = -1; sp->screen_mask_generation = 0; return 0; }
+        const auto* info = bmp >= 0 ? display->slot(static_cast<Word>(bmp)) : nullptr;
+        if (!info || (info->format != SlotFormat::Gray8 && info->format != SlotFormat::Bgra)) {
+            c.fail(Errc::Range, "invalid sprite mask " + std::to_string(bmp)); return 0;
+        }
+        sp->screen_mask = bmp;
+        sp->screen_mask_generation = display->slot_generation(static_cast<Word>(bmp));
+        return 0;
+    });
     // 90:3C (object, bmp): the object's hit-test mask, built from the opaque pixels of bitmap `bmp` (alpha of an ARGB picture, any colour bit of
     // an RGB one, non-zero gray); -1 removes it (the whole picture hits), -2 installs a mask that never hits (gfx/mgr/generic.c)
     add(r, 0x903C, "set object hit mask", 2, 0, [display](Ctx& c) {

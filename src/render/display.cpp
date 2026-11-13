@@ -74,7 +74,7 @@ struct Display::Impl {
         std::vector<std::int64_t> key;
         std::int32_t anchor_x = 0, anchor_y = 0;
     };
-    std::map<std::uint32_t, TempCache> mixes, xforms;
+    std::map<std::uint32_t, TempCache> mixes, xforms, masks;
     // the pictures of the background types as pixels, and what the temporary slot of the rendered background was last made for
     std::map<std::uint32_t, bgfx::Image> bg_images;
     std::map<std::uint32_t, std::uint64_t> versions; // how often each slot's pixels changed
@@ -1029,6 +1029,43 @@ Result<void> Display::compose(std::optional<std::uint32_t> max_priority) {
         }
         auto it = m.slots.find(draw_id);
         if (it == m.slots.end()) continue; // a sprite whose image was freed draws nothing
+        if (sp.screen_mask >= 0) {
+            const auto mask_id = static_cast<std::uint32_t>(sp.screen_mask);
+            auto mask = m.slots.find(mask_id);
+            if (mask != m.slots.end() && mask->second.generation == sp.screen_mask_generation &&
+                (it->second.info.format == SlotFormat::Bgra || it->second.info.format == SlotFormat::Bgrx)) {
+                auto& cache = m.masks[kv->first];
+                const std::uint32_t tmp_id = 0x7F400000u | (kv->first & 0xFFFFFu);
+                const std::vector<std::int64_t> key = {draw_id, sp.slot, sp.slot2, sp.mix_ratio, version_of(sp.slot),
+                    version_of(sp.slot2), static_cast<std::int64_t>(it->second.generation), mask_id, version_of(mask_id), blit_x, blit_y,
+                    it->second.info.width, it->second.info.height};
+                if (!m.slots.count(tmp_id) || cache.key != key) {
+                    auto src = m.download(it->second);
+                    auto mask_pixels = m.download(mask->second);
+                    if (!src) return std::unexpected(src.error());
+                    if (!mask_pixels) return std::unexpected(mask_pixels.error());
+                    const auto sw = it->second.info.width, sh = it->second.info.height;
+                    const auto mw = mask->second.info.width, mh = mask->second.info.height;
+                    const bool source_alpha = it->second.info.format == SlotFormat::Bgra;
+                    const bool mask_alpha = mask->second.info.format == SlotFormat::Bgra;
+                    for (std::uint32_t y = 0; y < sh; ++y) for (std::uint32_t x = 0; x < sw; ++x) {
+                        const auto mx = std::int64_t{blit_x} + x, my = std::int64_t{blit_y} + y;
+                        std::uint32_t a = 0;
+                        if (mx >= 0 && my >= 0 && mx < mw && my < mh) {
+                            const auto v = (*mask_pixels)[std::size_t(my) * mw + std::size_t(mx)];
+                            a = mask_alpha ? v >> 24 : v & 0xff;
+                        }
+                        auto& v = (*src)[std::size_t(y) * sw + x];
+                        const auto source = source_alpha ? v >> 24 : 255u;
+                        v = (v & 0xffffffu) | ((source * a >> 8) << 24);
+                    }
+                    if (auto result = upload_slot(tmp_id, sw, sh, SlotFormat::Bgra, *src); !result) return result;
+                    cache.key = key;
+                }
+                draw_id = tmp_id;
+                it = m.slots.find(draw_id);
+            }
+        }
         if (!blend_mode_supported(sp.blend)) return fail(Errc::Unsupported, "blend mode " + std::to_string(sp.blend) + " is not implemented");
         std::uint32_t alpha = sp.alpha;
         if (sp.fade || sp.opacity != 0x100) { // the effective level of the effect family (dispobj.c: DispObj_EffectiveLevel)

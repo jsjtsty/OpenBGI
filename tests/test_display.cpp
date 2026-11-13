@@ -370,3 +370,19 @@ TEST_CASE("projected character translations keep subpixel sampling on the GPU" *
     REQUIRE(d.compose()); auto nearest = d.read_screen(); REQUIRE(nearest);
     CHECK(((*nearest)[4 * w + 4] & 0xffffffu) == 0xffffffu);
 }
+
+TEST_CASE("sprite mask is aligned to the screen and tracks bitmap changes" * doctest::test_suite("gpu")) {
+    auto rig = make_rig(nullptr); REQUIRE(rig.display);
+    auto& d = *rig.display;
+    const std::array<std::uint32_t, 4> pixels{0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff};
+    const std::array<std::uint32_t, 8> mask{0, 0, 255, 0, 0, 0, 255, 0};
+    REQUIRE(d.upload_slot(1, 2, 2, SlotFormat::Bgra, pixels));
+    REQUIRE(d.upload_slot(2, 4, 2, SlotFormat::Gray8, mask));
+    auto& sp = d.sprite(5); sp.slot = 1; sp.x = 1; sp.y = 0; sp.visible = true;
+    sp.screen_mask = 2; sp.screen_mask_generation = d.slot_generation(2);
+    REQUIRE(d.compose()); auto screen = d.read_screen(); REQUIRE(screen);
+    CHECK(((*screen)[1] & 0xffffffu) == 0); CHECK(((*screen)[2] & 0xffffffu) != 0);
+    sp.x = 2;
+    REQUIRE(d.compose()); screen = d.read_screen(); REQUIRE(screen);
+    CHECK(((*screen)[2] & 0xffffffu) != 0); CHECK(((*screen)[3] & 0xffffffu) == 0);
+}

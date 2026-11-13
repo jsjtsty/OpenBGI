@@ -113,6 +113,8 @@ struct Sprite {
     // No mask means the whole picture hits.
     std::vector<std::uint8_t> hit_bits;
     std::uint32_t hit_w = 0, hit_h = 0;
+    std::int32_t screen_mask = -1; // 90:55: bitmap mask in screen coordinates
+    std::uint64_t screen_mask_generation = 0;
     bool has_hit_mask = false;
     bool hidden = false; // 91:31: kept from being drawn without touching the shown, enabled or fade state
     bool is_shown() const { return visible && enabled && !hidden && fade < 0x100 && opacity > 0; }
