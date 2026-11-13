@@ -160,12 +160,15 @@ void register_core_subops(SubopRegistry& r) {
         return static_cast<int>(StayThread);
     }, 1});
     add(r, 0x804C, "notify waiting thread", 4, 1, [](Ctx& c) {
-        c.pop(); c.pop();
+        const Word arg_c = c.pop(), arg_b = c.pop();
         const Word message = c.pop(), id = c.pop();
         Thread* target = c.ok() ? c.vm.find(id) : nullptr;
         const bool waiting = target && target->wait.kind != WaitObject::Kind::None;
         // Message 0 terminates the wait in the original wait-object queue.
-        if (waiting && (message == 0 || (message == 1 && target->wait.kind != WaitObject::Kind::Resource))) {
+        if (waiting && (target->wait.accepts_notification
+                            ? target->wait.accepts_notification(message, arg_b, arg_c)
+                            : (message == 0 || (message == 1 && target->wait.kind != WaitObject::Kind::Resource)))) {
+            target->wait.notification = message;
             target->wait.notified = true;
             if (target->wait.kind == WaitObject::Kind::Resource) c.vm.notify_resource_wait();
         }

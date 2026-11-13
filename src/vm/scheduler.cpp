@@ -89,6 +89,11 @@ Result<WaitUpdate> Vm::update_wait(Thread& t) {
     switch (w.kind) {
     case WaitObject::Kind::None: return WaitUpdate::complete();
     case WaitObject::Kind::Time:
+        if (w.notified && w.interrupt) {
+            w.interrupt(w.notification);
+            if (w.values.size() == 2) w.values[1] = w.notification == 0 ? 0xffffffffu : 1;
+            return WaitUpdate::complete(w.values);
+        }
         return now_ms >= w.until ? WaitUpdate::complete(w.values) : WaitUpdate::pending();
     case WaitObject::Kind::Frame:
         return static_cast<std::int64_t>(frame) >= w.until ? WaitUpdate::complete(w.values) : WaitUpdate::pending();

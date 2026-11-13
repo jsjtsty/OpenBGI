@@ -765,7 +765,24 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
         if (a[3] == 0) { c.fail(Errc::Range, "90:28: rate 0"); return 0; }
         const auto duration = start_motion(*s, *display, c, a[11], true, static_cast<std::int32_t>(a[10]), static_cast<std::int32_t>(a[9]), static_cast<int>(a[8]), a[7],
                                             static_cast<int>(a[6]), a[4], static_cast<std::int32_t>(a[5]));
-        if (c.ok()) wait_for_motion(c, duration);
+        if (c.ok()) {
+            wait_for_motion(c, duration);
+            auto& wait = c.t.wait;
+            wait.accepts_notification = [skip = a[1] != 0](Word message, Word b, Word) {
+                return message == 0 || (message == 1 && (b != 0 || skip));
+            };
+            wait.interrupt = [s, display, id = a[11]](Word message) {
+                const auto it = std::find_if(s->motions.begin(), s->motions.end(), [id](const auto& m) { return m.object == id; });
+                if (it == s->motions.end()) return;
+                if (auto* sp = display->find_sprite(id); sp && message != 0) {
+                    sp->script_move_to(it->to_x, it->to_y);
+                    sp->depth = it->to_z;
+                    display->set_level(id, static_cast<Word>(it->to_level));
+                    if (it->to_progress != it->from_progress) display->set_progress(id, static_cast<Word>(it->to_progress));
+                }
+                s->motions.erase(it);
+            };
+        }
         return c.ok() ? vm::StayThread : 0;
     }, 2);
     // 90:20 fade: prio, skip, fps, duration, level, object. 90:22 adds max skip after skip.

@@ -101,6 +101,9 @@ struct WaitObject {
     Word resume_depth = 0;
     Word input_priority = 0;
     bool interrupt_input = false, notified = false;
+    std::function<bool(Word, Word, Word)> accepts_notification;
+    Word notification = 0;
+    std::function<void(Word)> interrupt;
 };
 
 class WaitInput {

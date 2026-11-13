@@ -917,3 +917,61 @@ TEST_CASE("90:29 keeps fractional path coordinates through a small character mov
     CHECK(sp.script_fixed_y() == -16384);
     sp.script_move_to(1, 2); CHECK(sp.fraction_x == 0); CHECK(sp.fraction_y == 0);
 }
+
+TEST_CASE("90:28 stops a long motion when a forced notification arrives" * doctest::test_suite("gpu")) {
+    RendererOptions options; options.headless = true;
+    auto renderer = Renderer::create(options); REQUIRE(renderer);
+    auto display = Display::create(**renderer, 16, 16); REQUIRE(display);
+    auto& d = **display;
+    constexpr Word object = 0x80000004;
+    auto& sp = d.sprite(object); sp.projected = true; sp.visible = true;
+    SystemState state; state.display = &d;
+    SubopRegistry registry; register_core_subops(registry); register_plane_subops(registry, state, &d);
+    MemProvider provider;
+    provider.set(Asm().i32(object).i32(100).i32(50).i32(0).i32(128).i32(0).i32(256)
+                     .i32(60000).i32(250).i32(0).i32(0).i32(0x710).sub(0x90, 0x28).ret());
+    Vm vm(provider, registry); ThreadConfig config; config.stack_size = 1024;
+    auto thread = vm.spawn(config, "test", "motion"); REQUIRE(thread);
+    const Word id = (*thread)->id;
+    std::vector<Word> result;
+    vm.trace_completion = [&](const Thread&, std::uint16_t op, const std::vector<Word>& values) {
+        if (op == 0x9028) result = values;
+    };
+    REQUIRE(vm.run_frame(0)); REQUIRE(state.motions.size() == 1);
+    Thread sender; sender.expr.resize(16); Ctx ctx(vm, sender);
+    const auto* notify = registry.find(0x804c); REQUIRE(notify);
+    ctx.push(id); ctx.push(1); ctx.push(0); ctx.push(0); notify->fn(ctx);
+    REQUIRE(vm.run_frame(10)); CHECK(result.empty()); CHECK(state.motions.size() == 1);
+    ctx.push(id); ctx.push(1); ctx.push(1); ctx.push(0); notify->fn(ctx);
+    REQUIRE(vm.run_frame(20));
+    REQUIRE(result.size() == 2); CHECK(result[1] == 1);
+    CHECK(state.motions.empty()); CHECK(sp.script_x() == 100); CHECK(sp.script_y() == 50);
+    CHECK(sp.level() == 128);
+}
+
+TEST_CASE("90:28 cancellation releases the thread without completing the motion" * doctest::test_suite("gpu")) {
+    RendererOptions options; options.headless = true;
+    auto renderer = Renderer::create(options); REQUIRE(renderer);
+    auto display = Display::create(**renderer, 16, 16); REQUIRE(display);
+    auto& d = **display;
+    constexpr Word object = 0x80000004;
+    auto& sp = d.sprite(object); sp.projected = true; sp.visible = true;
+    SystemState state; state.display = &d;
+    SubopRegistry registry; register_core_subops(registry); register_plane_subops(registry, state, &d);
+    MemProvider provider;
+    provider.set(Asm().i32(object).i32(100).i32(50).i32(0).i32(128).i32(0).i32(256)
+                     .i32(60000).i32(250).i32(0).i32(0).i32(0x710).sub(0x90, 0x28).ret());
+    Vm vm(provider, registry); ThreadConfig config; config.stack_size = 1024;
+    auto thread = vm.spawn(config, "test", "motion"); REQUIRE(thread);
+    std::vector<Word> result;
+    vm.trace_completion = [&](const Thread&, std::uint16_t op, const std::vector<Word>& values) {
+        if (op == 0x9028) result = values;
+    };
+    REQUIRE(vm.run_frame(0)); REQUIRE(state.motions.size() == 1);
+    Thread sender; sender.expr.resize(16); Ctx ctx(vm, sender);
+    const auto* notify = registry.find(0x804c); REQUIRE(notify);
+    ctx.push((*thread)->id); ctx.push(0); ctx.push(0); ctx.push(0); notify->fn(ctx);
+    REQUIRE(vm.run_frame(20));
+    REQUIRE(result.size() == 2); CHECK(result[1] == 0xffffffffu);
+    CHECK(state.motions.empty()); CHECK(sp.script_x() == 0); CHECK(sp.script_y() == 0);
+}
