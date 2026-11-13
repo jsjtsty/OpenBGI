@@ -185,6 +185,14 @@ Result<std::unique_ptr<EngineSession>> EngineSession::create(SessionOptions opti
     m.vm = std::make_unique<vm::Vm>(m.programs, m.registry);
     m.vm->global_ready = false;
     m.vm->wait_input = &m.input;
+    // The BGI animation manager yields after polling up to 288 animation slots.
+    // Its 1 kHz polling is redundant between presented frames; other threads
+    // retain their script-selected scheduler rate and message wakeups.
+    m.vm->yield_interval = [&m](const vm::Thread& thread) -> std::uint32_t {
+        if (thread.modules.empty() || thread.modules.front().arc != "sysprg.arc" ||
+            thread.modules.front().name != "anmmngrs._bp") return 0;
+        return std::max(std::max(1u, m.system.frame_ms) * 1000u, m.system.presentation_interval_us);
+    };
     if (m.options.deterministic) m.system.calendar_time = [&m] {
         const auto time = static_cast<std::time_t>(m.options.calendar_epoch + m.vm->now_ms / 1000);
         std::tm calendar{};

@@ -999,3 +999,56 @@ TEST_CASE("recreating a window resets its text cursor" * doctest::test_suite("gp
     const Word y = c.pop(), x = c.pop(), ok = c.pop();
     CHECK(ok == 1); CHECK(x == 0); CHECK(y == 0);
 }
+
+TEST_CASE("wheel advances a message after a nonmodal panel has polled" * doctest::test_suite("gpu")) {
+    RendererOptions options; options.headless = true;
+    auto renderer = Renderer::create(options); REQUIRE(renderer);
+    auto display = Display::create(**renderer, 32, 32); REQUIRE(display);
+    SystemState state; state.display = display->get();
+    constexpr Word window = 0xB0000000u;
+    auto& win = state.display->sprite(window); win.visible = true;
+    auto& panel = state.icon_controls[1]; panel.window = window; panel.mouse = true;
+    MessageInput message(state);
+    state.wheel_events.push_back(-1);
+    knob_input(state);
+    panel_input(state);
+    CHECK(message.poll(state) == 1);
+    CHECK(state.input_pending[0x0f] == 0);
+    state.wheel_events.push_back(1);
+    knob_input(state); panel_input(state);
+    CHECK(message.poll(state) == 1); // wheel up does not advance text
+}
+
+TEST_CASE("knob reports wheel overflow only at its boundary" * doctest::test_suite("gpu")) {
+    SystemState state;
+    constexpr Word knob = 0xF0000000u;
+    state.knobs[knob].handle = knob;
+    state.knobs[knob].track_h = 11;
+    state.knobs[knob].track_w = 1;
+    state.knob_wheel.push_back(knob);
+    SubopRegistry registry; register_knob_subops(registry, state);
+    MemProvider provider; Vm vm(provider, registry);
+    Thread thread; thread.expr.resize(8); Ctx c(vm, thread);
+    const auto* get = registry.find(0x90da); REQUIRE(get);
+    const auto poll = [&] { c.push(knob); get->fn(c); return static_cast<std::int32_t>(c.pop()); };
+    state.knobs[knob].value_y = 4;
+    state.wheel_events.push_back(-1); knob_input(state);
+    CHECK(state.knobs[knob].value_y == 5); CHECK(poll() == 0);
+    state.knobs[knob].value_y = 10;
+    state.wheel_events.push_back(-1); knob_input(state);
+    CHECK(state.knobs[knob].value_y == 10); CHECK(poll() == 1); CHECK(poll() == 0);
+    state.knobs[knob].value_y = 0;
+    state.wheel_events.push_back(1); knob_input(state);
+    CHECK(poll() == -1);
+}
+
+TEST_CASE("message wheel input respects allow keys" * doctest::test_suite("gpu")) {
+    InputState state;
+    MessageInput blocked(state, false);
+    state.press_input(0x0f);
+    CHECK(blocked.poll(state) == 0);
+    CHECK(state.input_pending[0x0f] == 1);
+    MessageInput allowed(state, true);
+    state.press_input(0x0f);
+    CHECK(allowed.poll(state) == 1);
+}

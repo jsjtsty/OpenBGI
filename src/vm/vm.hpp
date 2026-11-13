@@ -138,6 +138,8 @@ struct Thread {
     std::vector<Call> calls;
     WaitObject wait;
     std::int64_t deadline = 0;
+    std::int64_t yield_due_us = 0; // optional host pacing of this thread after 80:5F
+    std::uint32_t yield_interval_us = 0;
     std::int64_t objects_until = 0; // virtual time at which the timed display-object changes installed by 90:28 finish (80:5C waits)
     std::deque<Word> queue; // inbox (80:48 / 80:4A)
 };
@@ -246,6 +248,8 @@ class Vm {
     std::function<void(const Thread&, std::uint8_t)> trace_op;
     // Called at the start of every scheduler frame with the virtual time (display object motions advance here).
     std::function<void(std::int64_t)> frame_hook;
+    // Optional pacing for selected cooperative threads; 0 preserves normal 80:5F semantics.
+    std::function<std::uint32_t(const Thread&)> yield_interval;
     std::function<void(const Thread&, std::uint16_t, const std::vector<Word>&)> trace_completion;
     WaitInput* wait_input = nullptr; // must outlive the VM
     Word exclusive_thread = 0;

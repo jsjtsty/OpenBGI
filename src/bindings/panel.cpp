@@ -380,6 +380,8 @@ void panel_input(SystemState& s) {
                 // A non-modal panel polls only the mouse, wheel and cancel groups
                 // (0x2C3). Do not consume navigation keys that it will discard.
                 if (!ic.modal && (bit & 0x2C3u) == 0) continue;
+                // Non-modal panels have only a mouse layer; wheel pseudo-keys belong to the keyboard layer.
+                if (!ic.modal && (bit == 0x40 || bit == 0x80)) continue;
                 for (std::uint32_t n : s.input_numbers(bit))
                     if (consume_input_trigger(s, n)) {
                         bits |= bit;

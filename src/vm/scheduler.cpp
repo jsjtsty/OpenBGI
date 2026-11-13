@@ -138,6 +138,17 @@ Result<FrameStatus> Vm::dispatch(bool resources_only) {
             ++i; continue;
         }
         if (resources_only && t.wait.kind != WaitObject::Kind::Resource) { ++i; continue; }
+        // A message must wake the thread promptly even if its ordinary update is paced.
+        if (t.yield_due_us && t.queue.empty() && t.id != exclusive_thread) {
+            const auto interval = yield_interval ? yield_interval(t) : 0;
+            if (interval != t.yield_interval_us) {
+                if (!interval) t.yield_due_us = 0;
+                else t.yield_due_us += std::int64_t(interval) - t.yield_interval_us;
+                t.yield_interval_us = interval;
+            }
+            if (t.yield_due_us && now_ms * 1000 < t.yield_due_us) { ++i; continue; }
+        }
+        if (!t.queue.empty()) t.yield_due_us = 0;
         if (t.wait.kind != WaitObject::Kind::None) {
             auto update = update_wait(t);
             if (!update) {
@@ -160,6 +171,21 @@ Result<FrameStatus> Vm::dispatch(bool resources_only) {
             return std::unexpected(rc.error());
         }
         switch (*rc) {
+        case NextThread: {
+            const std::uint32_t interval = yield_interval ? yield_interval(t) : 0;
+            if (interval && t.id != exclusive_thread) {
+                const auto now_us = now_ms * 1000;
+                if (!t.yield_due_us || t.yield_interval_us != interval || t.yield_due_us < now_us - interval)
+                    t.yield_due_us = now_us;
+                t.yield_interval_us = interval;
+                t.yield_due_us += interval;
+            } else {
+                t.yield_due_us = 0;
+                t.yield_interval_us = 0;
+            }
+            ++i;
+            break;
+        }
         case ExitThread:
             t.dead = true;
             if (exclusive_thread == t.id) exclusive_thread = 0;
@@ -177,6 +203,7 @@ Result<FrameStatus> Vm::dispatch(bool resources_only) {
             // Retain the event for waiters earlier than the target.
             if (resources_only && resource_signal_active_) retain_resource_signal = true;
             resources_only = false;
+            (*it)->yield_due_us = 0; // an explicit thread switch takes precedence over pacing
             i = static_cast<std::size_t>(it - threads_.begin());
             break;
         }

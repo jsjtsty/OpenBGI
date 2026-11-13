@@ -466,7 +466,7 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
     };
     // Ends the op: the thread types the message out (a click shows the rest at once), then waits for a click at the end when
     // asked, and receives 1 when the user ended it that way.
-    auto finish = [shared](Ctx& c, Reveal visual, bool instant, bool allow_skip, bool wait_click, SystemState* state) {
+    auto finish = [shared](Ctx& c, Reveal visual, bool instant, bool allow_skip, bool wait_click, bool allow_keys, SystemState* state) {
         MessagePacing pacing;
         pacing.character_ms = character_ms(*state);
         pacing.auto_ms = record_ms(*state, 0x9097);
@@ -476,7 +476,7 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         pacing.instant = instant;
         pacing.allow_skip = allow_skip;
         pacing.wait_click = wait_click;
-        MessageInput input(*state);
+        MessageInput input(*state, allow_keys);
         auto operation = shared->start(std::move(visual), pacing, c.vm.now_ms, 0);
         vm::WaitObject wait;
         wait.kind = vm::WaitObject::Kind::Poll;
@@ -507,13 +507,13 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         const Word handle = c.pop();
         Reveal rv;
         if (!c.ok() || !write_text(c, handle, str, colour, global_text_opts(*s, false), rv)) return 0;
-        return finish(c, rv, instant != 0, skip != 0, wait_end != 0, s);
+        return finish(c, rv, instant != 0, skip != 0, wait_end != 0, true, s);
     }, 1);
     // 91:90 (window, string, colour, instant, wait at end, allow skip, allow keys, ruby on, hang, unused)
     add(r, 0x9190, "message text (rich)", 10, 1, [write_text, finish, s](Ctx& c) {
         c.pop(); // unused
         const bool hang = c.pop() != 0, ruby = c.pop() != 0;
-        c.pop();                   // allow keys
+        const bool allow_keys = c.pop() != 0;
         const Word skip = c.pop();
         const Word wait_end = c.pop();
         const Word instant = c.pop();
@@ -523,12 +523,12 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         Reveal rv;
         auto opts = global_text_opts(*s, true); opts.ruby = ruby; opts.kinsoku = hang;
         if (!c.ok() || !write_text(c, handle, str, colour, opts, rv)) return 0;
-        return finish(c, rv, instant != 0, skip != 0, wait_end != 0, s);
+        return finish(c, rv, instant != 0, skip != 0, wait_end != 0, allow_keys, s);
     }, 1);
     // 92:90 (window, string, colour, ruby on, ruby colour, hang, shadow on, dx, dy, shadow colour, shadow level, instant,
     // wait at end, allow skip, allow keys)
     add(r, 0x9290, "message text (styled)", 15, 1, [write_text, finish, s](Ctx& c) {
-        c.pop();                     // allow keys
+        const bool allow_keys = c.pop() != 0;
         const Word skip = c.pop();
         const Word wait_end = c.pop();
         const Word instant = c.pop();
@@ -539,7 +539,7 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         const Word handle = c.pop();
         Reveal rv;
         if (!c.ok() || !write_text(c, handle, str, colour, opts, rv)) return 0;
-        return finish(c, rv, instant != 0, skip != 0, wait_end != 0, s);
+        return finish(c, rv, instant != 0, skip != 0, wait_end != 0, allow_keys, s);
     }, 1);
     // 92:91 (window, string, colour, ruby on, ruby colour, hang, shadow on, dx, dy, shadow colour, shadow level).
     // Native 00495170 calls the synchronous window renderer, consumes 11 arguments and pushes nothing.

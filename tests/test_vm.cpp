@@ -411,6 +411,88 @@ TEST_CASE("scheduler: yield hands over to the next thread, new frame resumes") {
     CHECK(g32(f.vm, 0x404) == 1);
 }
 
+TEST_CASE("scheduler: paced yield follows presentation cadence without delaying other threads") {
+    Fixture f;
+    f.provider.put("manager", Asm().sub(0x80, 0x5f).set32(0x400, 1).sub(0x80, 0x5f)
+        .set32(0x404, 1).sub(0x80, 0x5f).set32(0x408, 1).ret());
+    f.provider.put("other", Asm().sub(0x80, 0x5f).set32(0x40c, 1).ret());
+    f.vm.yield_interval = [](const Thread& t) { return t.modules.front().name == "manager" ? 16667u : 0u; };
+    REQUIRE(f.vm.spawn(small(), "x.arc", "manager"));
+    REQUIRE(f.vm.spawn(small(), "x.arc", "other"));
+    REQUIRE(f.vm.run_frame(0));
+    REQUIRE(f.vm.run_frame(1));
+    CHECK(g32(f.vm, 0x400) == 0);
+    CHECK(g32(f.vm, 0x40c) == 1);
+    REQUIRE(f.vm.run_frame(16));
+    CHECK(g32(f.vm, 0x400) == 0);
+    REQUIRE(f.vm.run_frame(17));
+    CHECK(g32(f.vm, 0x400) == 1);
+    REQUIRE(f.vm.run_frame(33));
+    CHECK(g32(f.vm, 0x404) == 0);
+    REQUIRE(f.vm.run_frame(34));
+    CHECK(g32(f.vm, 0x404) == 1);
+    REQUIRE(f.vm.run_frame(50));
+    CHECK(g32(f.vm, 0x408) == 0);
+    REQUIRE(f.vm.run_frame(51));
+    CHECK(g32(f.vm, 0x408) == 1);
+}
+
+TEST_CASE("scheduler: a paced animation manager avoids repeated scans between 60 Hz frames") {
+    Fixture f;
+    const auto loop = Asm().sub(0x80, 0x5f).raw({0x13, 0xfe, 0xff});
+    f.provider.put("manager", loop);
+    f.provider.put("other", loop);
+    f.vm.yield_interval = [](const Thread& t) { return t.modules.front().name == "manager" ? 16667u : 0u; };
+    std::array<unsigned, 3> yields{};
+    f.vm.trace = [&](const Thread& t, std::uint16_t op, const std::vector<Word>&) {
+        if (op == 0x805f && t.id < yields.size()) ++yields[t.id];
+    };
+    REQUIRE(f.vm.spawn(small(), "x.arc", "manager"));
+    REQUIRE(f.vm.spawn(small(), "x.arc", "other"));
+    for (int ms = 0; ms < 1000; ++ms) REQUIRE(f.vm.run_frame(ms));
+    CHECK(yields[1] == 60);
+    CHECK(yields[2] == 1000);
+}
+
+TEST_CASE("scheduler: paced yield adapts when the refresh interval changes") {
+    Fixture f;
+    f.provider.put("manager", Asm().sub(0x80, 0x5f).set32(0x400, 1).ret());
+    std::uint32_t interval = 16667;
+    f.vm.yield_interval = [&](const Thread&) { return interval; };
+    REQUIRE(f.vm.spawn(small(), "x.arc", "manager"));
+    REQUIRE(f.vm.run_frame(0));
+    interval = 8334;
+    REQUIRE(f.vm.run_frame(8));
+    CHECK(g32(f.vm, 0x400) == 0);
+    REQUIRE(f.vm.run_frame(9));
+    CHECK(g32(f.vm, 0x400) == 1);
+}
+
+TEST_CASE("scheduler: an explicit switch wakes a paced thread immediately") {
+    Fixture f;
+    f.provider.put("manager", Asm().sub(0x80, 0x5f).set32(0x400, 1).ret());
+    f.provider.put("switcher", Asm().sub(0x80, 0x5f).i8(1).sub(0x80, 0x5e).ret());
+    f.vm.yield_interval = [](const Thread& t) { return t.modules.front().name == "manager" ? 16667u : 0u; };
+    REQUIRE(f.vm.spawn(small(), "x.arc", "manager"));
+    REQUIRE(f.vm.spawn(small(), "x.arc", "switcher"));
+    REQUIRE(f.vm.run_frame(0));
+    REQUIRE(f.vm.run_frame(1));
+    CHECK(g32(f.vm, 0x400) == 1);
+}
+
+TEST_CASE("scheduler: a message wakes a paced thread immediately") {
+    Fixture f;
+    f.provider.put("manager", Asm().sub(0x80, 0x5f).i32(0x500).sub(0x80, 0x49).ret());
+    f.vm.yield_interval = [](const Thread&) { return 16667u; };
+    auto thread = f.vm.spawn(small(), "x.arc", "manager"); REQUIRE(thread);
+    REQUIRE(f.vm.run_frame(0));
+    const auto id = (*thread)->id;
+    (*thread)->queue.push_back(77);
+    REQUIRE(f.vm.run_frame(1));
+    CHECK(g32(f.vm, 0x500) == 77);
+    CHECK(f.vm.find(id) == nullptr);
+}
+
 TEST_CASE("thread messages") {
     Fixture f;
     f.provider.put("a", Asm().i8(2).i8(77).sub(0x80, 0x48).ret()); // send 77 to thread 2 (ids start at 1)

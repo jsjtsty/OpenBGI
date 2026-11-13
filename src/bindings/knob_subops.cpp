@@ -133,9 +133,10 @@ void knob_input(SystemState& s) {
         Knob& k = s.knobs.at(s.knob_wheel.front());
         const std::int32_t dir = away ? -1 : 1;
         const std::int32_t h = thumb_size(s, k).second;
-        k.wheel_step = dir;
         const std::int32_t vy = k.value_y + dir;
-        if (vy >= 0 && vy <= max_value(k.track_h, h, k.steps_y)) set_value(s, k, k.value_x, vy);
+        const bool accepted = vy >= 0 && vy <= max_value(k.track_h, h, k.steps_y);
+        k.wheel_step = accepted ? 0 : dir;
+        if (accepted) set_value(s, k, k.value_x, vy);
     }
     if (s.knobs.empty()) {
         s.knob_focus = 0;
@@ -300,7 +301,7 @@ void register_knob_subops(vm::SubopRegistry& r, SystemState& state) {
         if (tw >= w && th >= hh) k->track_w = tw, k->track_h = th;
         return 0;
     });
-    // 90:DA (knob): the wheel step the knob was scrolled by since the last call (+1 towards the user, -1 away, 0 none)
+    // 90:DA (knob): rejected wheel step at a boundary (+1 down, -1 up, 0 otherwise)
     add(r, 0x90DA, "knob wheel step", 1, 1, [s](Ctx& c) {
         const Word h = c.pop();
         if (!c.ok()) return 0;

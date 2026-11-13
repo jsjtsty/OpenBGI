@@ -56,16 +56,16 @@ bool consume_input_trigger(InputState& state, std::uint32_t virtual_key) {
     return take_input_trigger(state, virtual_key);
 }
 
-namespace { constexpr std::array<std::uint32_t, 3> kMessageKeys{0x0D, 0x20, 0x01}; }
+namespace { constexpr std::array<std::uint32_t, 5> kMessageKeys{0x0D, 0x20, 0x01, 0x0F, 0x28}; }
 
-MessageInput::MessageInput(const InputState& state) {
+MessageInput::MessageInput(const InputState& state, bool allow_keys) : allow_keys_(allow_keys) {
     for (std::size_t i = 0; i < kMessageKeys.size(); ++i) seen_[i] = state.input_counts[kMessageKeys[i]];
 }
 
 std::uint32_t MessageInput::poll(InputState& state) {
     for (std::size_t i = 0; i < kMessageKeys.size(); ++i) {
         const auto count = state.input_counts[kMessageKeys[i]];
-        if (count != seen_[i] && state.input_enabled && consume_input_trigger(state, kMessageKeys[i])) ++delivered_;
+        if (count != seen_[i] && state.input_enabled && (i < 3 || allow_keys_) && consume_input_trigger(state, kMessageKeys[i])) ++delivered_;
         seen_[i] = count;
     }
     return delivered_;

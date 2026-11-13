@@ -68,10 +68,11 @@ bool consume_input_trigger(InputState& state, std::uint32_t key);
 // A text wait observes only new triggers that remain after higher-priority controls have polled them.
 class MessageInput {
   public:
-    explicit MessageInput(const InputState& state);
+    explicit MessageInput(const InputState& state, bool allow_keys = true);
     std::uint32_t poll(InputState& state);
   private:
-    std::array<std::uint32_t, 3> seen_{};
+    std::array<std::uint32_t, 5> seen_{};
+    bool allow_keys_ = true;
     std::uint32_t delivered_ = 0;
 };
 std::uint32_t input_skip_state(InputState& state);
