@@ -333,3 +333,16 @@ TEST_CASE("92:9C uses percentage line spacing for multiline backlog text" * doct
     for (unsigned y = 36; y < 80; ++y) second |= row_has_ink(y);
     CHECK(first); CHECK(second);
 }
+
+TEST_CASE("font baseline centers representative CJK ink without distortion" * doctest::test_suite("host")) {
+    auto library = FontLibrary::create(); REQUIRE(library);
+    for (int size : {28, 46}) {
+        auto font = open_font(**library, size); REQUIRE(font);
+        const auto* glyph = font->glyph(U'中'); REQUIRE(glyph);
+        CHECK(glyph->height > size * 4 / 5);
+        const int top = font->ascent() - glyph->top;
+        const int bottom = size - top - glyph->height;
+        CHECK(std::abs(top - bottom) <= 3);
+        CHECK(font->glyph(U'A'));
+    }
+}

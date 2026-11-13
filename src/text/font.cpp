@@ -413,7 +413,25 @@ Result<std::shared_ptr<Font>> FontLibrary::open_path(Impl& m, const fs::path& pa
     if (FT_Select_Charmap(face, FT_ENCODING_UNICODE) != 0) return fail(Errc::Format, "font has no Unicode map: " + path->string());
     if (FT_Set_Pixel_Sizes(face, 0, static_cast<FT_UInt>(pixel_size)) != 0) return fail(Errc::Format, "font size not available");
     const FT_Size_Metrics& sm = face->size->metrics;
-    font->ascent_ = static_cast<int>((sm.ascender + 63) >> 6);
+    // Center representative ink in the requested cell while keeping one
+    // baseline for every character. Prefer CJK samples for dialogue fonts;
+    // Latin-only faces use uppercase samples. The median avoids one unusually
+    // tall or short glyph shifting the entire font.
+    const auto centered_baseline = [&](std::u32string_view samples) -> std::optional<int> {
+        std::vector<int> baselines;
+        for (char32_t cp : samples) {
+            const Glyph* glyph = font->native_glyph(cp);
+            if (glyph && glyph->height > 0)
+                baselines.push_back(glyph->top + (pixel_size - glyph->height) / 2);
+        }
+        if (baselines.empty()) return std::nullopt;
+        std::sort(baselines.begin(), baselines.end());
+        return baselines[baselines.size() / 2];
+    };
+    auto baseline = centered_baseline(U"中国永大田");
+    if (!baseline) baseline = centered_baseline(U"HIONM");
+    // A one-pixel optical adjustment keeps centered text from appearing high.
+    font->ascent_ = baseline ? *baseline + 1 : std::min(pixel_size, static_cast<int>((sm.ascender + 63) >> 6));
     font->descent_ = static_cast<int>((-sm.descender + 63) >> 6);
     font->line_height_ = std::max(static_cast<int>((sm.height + 63) >> 6), font->ascent_ + font->descent_);
     if (cache) {

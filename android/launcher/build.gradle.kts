@@ -11,7 +11,7 @@ val sdlJava = file(
 )
 
 val engineVersion: String = Regex("""project\(OpenBGI VERSION ([0-9.]+)""")
-    .find(File(repo, "CMakeLists.txt").readText())?.groupValues?.get(1) ?: "0.1.0"
+    .find(File(repo, "CMakeLists.txt").readText())?.groupValues?.get(1) ?: "0.2.1"
 val engineVersionCode: Int = engineVersion.split('.').map { it.toInt() }.let { v ->
     v[0] * 10000 + v.getOrElse(1) { 0 } * 100 + v.getOrElse(2) { 0 }
 }

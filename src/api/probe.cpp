@@ -18,7 +18,7 @@
 #include "vfs/arc.hpp"
 
 #ifndef OPENBGI_VERSION
-#define OPENBGI_VERSION "0.1.0"
+#define OPENBGI_VERSION "0.2.1"
 #endif
 
 namespace {
