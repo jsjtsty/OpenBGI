@@ -136,7 +136,11 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
     TextHost* th = &text;
     FontHost* fh = &fonts;
     auto shared = text.messages;
-    state.reset_plane_text = [shared](std::size_t index) { shared->cursors[index] = {}; };
+    auto plane_ruby_y = std::make_shared<std::unordered_map<std::size_t, int>>();
+    state.reset_plane_text = [shared, plane_ruby_y](std::size_t index) {
+        shared->cursors[index] = {};
+        (*plane_ruby_y)[index] = 0;
+    };
 
     // 91:9B (out, string, font no, size, width %, bold, proportional): writes the width in pixels of the string to `out`, pushes 0
     // (0x80000001 bad size, 0x80000003 bad font number; nothing written then). Width = the laid-out line's width, unwrapped.
@@ -285,7 +289,7 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
     });
 
     // Writes `str` at the cursor of window `handle`. Returns false after failing the context.
-    auto write_text = [s, th, fh, shared](Ctx& c, Word handle, const std::string& whole, Word colour, const TextOpts& opts, Reveal& rv) {
+    auto write_text = [s, th, fh, shared, plane_ruby_y](Ctx& c, Word handle, const std::string& whole, Word colour, const TextOpts& opts, Reveal& rv) {
         std::size_t idx = 0;
         SystemState::Plane* p = plane_of(*s, c, handle, &idx);
         if (!p) return false;
@@ -435,6 +439,7 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
             if (cleared) snapshot->assign(std::size_t{tw} * th_, 0); // the old page is gone before this text starts
             else if (auto px = s->display->read_slot(text_slot)) *snapshot = std::move(*px);
         }
+        (*plane_ruby_y)[idx] = ruby_y;
         const std::int32_t x0 = p->area[0], y0 = cur.y + ruby_y;
         const int line_h = layout->row_height;
         const std::size_t glyphs = layout->glyphs.size();
@@ -466,7 +471,7 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
     };
     // Ends the op: the thread types the message out (a click shows the rest at once), then waits for a click at the end when
     // asked, and receives 1 when the user ended it that way.
-    auto finish = [shared](Ctx& c, Reveal visual, bool instant, bool allow_skip, bool wait_click, bool allow_keys, SystemState* state) {
+    auto finish = [shared, plane_ruby_y](Ctx& c, Word handle, Reveal visual, bool instant, bool allow_skip, bool wait_click, bool allow_keys, SystemState* state) {
         MessagePacing pacing;
         pacing.character_ms = character_ms(*state);
         pacing.auto_ms = record_ms(*state, 0x9097);
@@ -487,16 +492,60 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
                 static_cast<long long>(pacing.auto_ms), static_cast<long long>(pacing.delay_ms), visual.total, visual.rich);
         MessageInput input(*state, allow_keys);
         auto operation = shared->start(std::move(visual), pacing, c.vm.now_ms, 0);
+        constexpr Word kWaitIconSprite = 0x7F910000u;
+        const std::size_t idx = (handle & 0xFF000000u) == 0xB0000000u ? (handle & 0xFFFFFFu) : 0;
         vm::WaitObject wait;
         wait.kind = vm::WaitObject::Kind::Poll;
-        wait.poll = [operation = std::move(operation), state, input, wait_voice](const vm::WaitContext& context) mutable -> Result<vm::WaitUpdate> {
+        wait.poll = [operation = std::move(operation), state, shared, plane_ruby_y, handle, idx, wait_click, input, wait_voice](const vm::WaitContext& context) mutable -> Result<vm::WaitUpdate> {
             // 80:4C message 0 interrupts the active wait (e.g. a backlog jump).
-            if (context.notified) return vm::WaitUpdate::complete({0});
+            if (context.notified) {
+                if (state->display) state->display->remove_sprite(kWaitIconSprite);
+                return vm::WaitUpdate::complete({0});
+            }
             operation.pacing.visual_interval_us = std::max(std::max(1u, state->frame_ms) * 1000u, state->presentation_interval_us);
             if (wait_voice && state->auto_voice_delay)
                 if (auto delay = state->auto_voice_delay()) operation.pacing.auto_ms = *delay;
             auto result = operation.update(context.now_ms, input.poll(*state),
                                            wait_voice && state->auto_voice_active && state->auto_voice_active());
+            if (!result && wait_click && state->display && operation.progress.completed_ms >= 0) {
+                const auto ids_it = state->records.find(0x9098);
+                if (ids_it != state->records.end() && ids_it->second.size() > 1) {
+                    const auto& ids = ids_it->second;
+                    std::int64_t interval_ms = 100;
+                    if (const auto int_it = state->records.find(0x9099); int_it != state->records.end() && !int_it->second.empty() && int_it->second[0] > 0)
+                        interval_ms = static_cast<std::int64_t>(int_it->second[0]);
+                    const std::int64_t elapsed = std::max<std::int64_t>(0, context.now_ms - operation.progress.completed_ms);
+                    const Word slot_id = ids[static_cast<std::size_t>(elapsed / interval_ms) % ids.size()];
+                    if (slot_id == 0xFFFFFFFFu || !state->display->slot(slot_id)) {
+                        state->display->remove_sprite(kWaitIconSprite);
+                    } else {
+                        Word mode = 0;
+                        std::int32_t off_x = 0, off_y = 0;
+                        if (const auto pos_it = state->records.find(0x909A); pos_it != state->records.end() && pos_it->second.size() >= 3) {
+                            mode = pos_it->second[0];
+                            off_x = static_cast<std::int32_t>(pos_it->second[1]);
+                            off_y = static_cast<std::int32_t>(pos_it->second[2]);
+                        }
+                        const SystemState::Plane* p = (idx < state->planes.size() && state->planes[idx].has_value()) ? &*state->planes[idx] : nullptr;
+                        const Sprite* win_sp = state->display->find_sprite(handle);
+                        const std::int32_t wx = win_sp ? win_sp->x : (p ? p->x : 0);
+                        const std::int32_t wy = win_sp ? win_sp->y : (p ? p->y : 0);
+                        const Cursor& cur = idx < shared->cursors.size() ? shared->cursors[idx] : Cursor{};
+                        const int ruby_y = (*plane_ruby_y)[idx];
+                        const std::int32_t cx = cur.placed ? cur.x : (p ? p->area[0] : 0);
+                        const std::int32_t cy = (cur.placed ? cur.y : (p ? p->area[1] : 0)) + ruby_y;
+                        Sprite& ic = state->display->sprite(kWaitIconSprite);
+                        ic.slot = slot_id;
+                        ic.x = mode == 1 ? wx + off_x : wx + cx + off_x;
+                        ic.y = mode == 1 ? wy + off_y : wy + cy + off_y;
+                        ic.blend = 1;
+                        ic.alpha = win_sp ? win_sp->alpha : 0;
+                        ic.priority = (win_sp ? win_sp->priority : 1872u) + 2u;
+                        ic.visible = win_sp ? win_sp->is_shown() : true;
+                    }
+                }
+            }
+            if (result && state->display) state->display->remove_sprite(kWaitIconSprite);
             if (result && std::getenv("OBGI_TRACE_AUTO"))
                 std::fprintf(stderr, "AUTO end t=%lld result=%u completed=%lld auto_ms=%lld\n",
                     static_cast<long long>(context.now_ms), *result,
@@ -506,6 +555,7 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         if (wait_click) {
             ++state->message_wait_clicks;
             wait.cleanup = [state]() {
+                if (state->display) state->display->remove_sprite(kWaitIconSprite);
                 if (state->message_wait_clicks) --state->message_wait_clicks;
             };
         }
@@ -523,7 +573,7 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         const Word handle = c.pop();
         Reveal rv;
         if (!c.ok() || !write_text(c, handle, str, colour, global_text_opts(*s, false), rv)) return 0;
-        return finish(c, rv, instant != 0, skip != 0, wait_end != 0, true, s);
+        return finish(c, handle, rv, instant != 0, skip != 0, wait_end != 0, true, s);
     }, 1);
     // 91:90 (window, string, colour, instant, wait at end, allow skip, allow keys, ruby on, hang, unused)
     add(r, 0x9190, "message text (rich)", 10, 1, [write_text, finish, s](Ctx& c) {
@@ -539,7 +589,7 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         Reveal rv;
         auto opts = global_text_opts(*s, true); opts.ruby = ruby; opts.kinsoku = hang;
         if (!c.ok() || !write_text(c, handle, str, colour, opts, rv)) return 0;
-        return finish(c, rv, instant != 0, skip != 0, wait_end != 0, allow_keys, s);
+        return finish(c, handle, rv, instant != 0, skip != 0, wait_end != 0, allow_keys, s);
     }, 1);
     // 92:90 (window, string, colour, ruby on, ruby colour, hang, shadow on, dx, dy, shadow colour, shadow level, instant,
     // wait at end, allow skip, allow keys)
@@ -555,7 +605,7 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         const Word handle = c.pop();
         Reveal rv;
         if (!c.ok() || !write_text(c, handle, str, colour, opts, rv)) return 0;
-        return finish(c, rv, instant != 0, skip != 0, wait_end != 0, allow_keys, s);
+        return finish(c, handle, rv, instant != 0, skip != 0, wait_end != 0, allow_keys, s);
     }, 1);
     // 92:91 (window, string, colour, ruby on, ruby colour, hang, shadow on, dx, dy, shadow colour, shadow level).
     // Native 00495170 calls the synchronous window renderer, consumes 11 arguments and pushes nothing.
