@@ -186,10 +186,7 @@ struct InstallDetailView: View {
             }
 
             Section("Engine Options") {
-                Picker("GPU Driver", selection: store.options(install.id).driver) {
-                    Text("Auto").tag(GpuDriver.auto)
-                    Text("Metal").tag(GpuDriver.metal)
-                }
+                LabeledContent("GPU Driver", value: "Metal")
             }
 
             Section("Data & Saves") {
@@ -226,6 +223,15 @@ struct InstallDetailView: View {
                 if let p = probe {
                     LabeledContent("Game ID", value: p.gameID)
                     LabeledContent("Archives Found", value: "\(p.arcsFound)")
+                    if !p.archiveFormats.isEmpty {
+                        LabeledContent("Resource Format Version", value: p.archiveFormats.map {
+                            switch $0 {
+                            case "PackFile": return "v1 (PackFile)"
+                            case "BURIKO ARC20": return "v2 (BURIKO ARC20)"
+                            default: return String(localized: "Unknown Format")
+                            }
+                        }.joined(separator: ", "))
+                    }
                     if p.hasScPatch {
                         LabeledContent("Script Patch", value: "Simplified Chinese")
                     }

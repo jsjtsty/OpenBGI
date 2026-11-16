@@ -75,6 +75,8 @@ void register_core_subops(SubopRegistry& r) {
         else c.push((*t)->id);
         return 0;
     });
+    // Native 80:45 returns scheduler code 4 immediately, ending only this thread.
+    add(r, 0x8045, "exit thread", 0, 0, [](Ctx&) { return static_cast<int>(ExitThread); });
     add(r, 0x8046, "current thread id", 0, 1, [](Ctx& c) {
         c.push(c.t.id);
         return 0;

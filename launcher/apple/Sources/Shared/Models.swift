@@ -6,7 +6,7 @@ enum GpuDriver: String, Codable, CaseIterable {
 }
 
 struct PlayOptions: Codable, Equatable {
-    var driver: GpuDriver = .auto
+    var driver: GpuDriver = .metal
     var entryArc: String = "autoload.arc"
     var entryName: String = "ipl._bp"
 }
@@ -46,6 +46,7 @@ struct ProbeInfo: Equatable {
     var ok: Bool
     var complete: Bool
     var arcsFound: Int
+    var archiveFormats: [String]
     var hasScPatch: Bool
     var gameID: String
     var gameName: String

@@ -10,6 +10,7 @@
 #include "bindings/panel.hpp"
 #include "render/background_fx.hpp"
 #include "bindings/system_subops.hpp"
+#include "text/encoding.hpp"
 
 namespace obgi {
 
@@ -333,6 +334,116 @@ void register_object_settings(vm::SubopRegistry& r, SystemState& state, Display*
         return 0;
     });
     add(r, 0xB01C, "child window copy text", 2, 0, [child_of](Ctx& c) { const Word h = c.pop(); c.pop(); if (c.ok()) child_of(c, h); return 0; });
+    // Edit control (B0:20..2A, FUN_00471360..004717e0): native text input box rendered over the canvas.
+    add(r, 0xB020, "create edit box", 8, 0, [s, display](Ctx& c) {
+        const Word focus = c.pop(), max_chars = c.pop(), font_size = c.pop(), font_index = c.pop();
+        const auto h = static_cast<std::int32_t>(c.pop()), w = static_cast<std::int32_t>(c.pop());
+        const auto y = static_cast<std::int32_t>(c.pop()), x = static_cast<std::int32_t>(c.pop());
+        if (!c.ok()) return 0;
+        if (w < 8 || h < 8 || font_size < 8 || font_size > 64 || max_chars < 1 || max_chars > 256) {
+            c.fail(Errc::Range, "invalid edit box parameters");
+            return 0;
+        }
+        auto& eb = s->edit_box;
+        eb.active = true;
+        eb.visible = true;
+        eb.focused = (focus != 0);
+        eb.x = x; eb.y = y; eb.w = w; eb.h = h;
+        eb.font_index = font_index;
+        eb.font_size = font_size;
+        eb.max_chars = max_chars;
+        eb.editing.clear();
+        eb.text = script_to_utf32(eb.pending_raw_text, s->code_page);
+        eb.dirty = true;
+        (void)display;
+        return 0;
+    });
+    add(r, 0xB021, "destroy edit box", 0, 1, [s, display](Ctx& c) {
+        auto& eb = s->edit_box;
+        eb.active = false;
+        eb.visible = false;
+        eb.focused = false;
+        eb.editing.clear();
+        eb.dirty = true;
+        if (display) display->remove_sprite(0x7F900000u);
+        c.push(0);
+        return 0;
+    });
+    add(r, 0xB022, "set edit box width scale", 1, 1, [s](Ctx& c) {
+        const Word pct = c.pop();
+        if (!c.ok()) return 0;
+        if (pct >= 25 && pct <= 200) {
+            s->edit_box.font_width_pct = pct;
+            s->edit_box.dirty = true;
+            c.push(1);
+        } else {
+            c.push(0);
+        }
+        return 0;
+    });
+    add(r, 0xB023, "edit box visible", 0, 1, [s](Ctx& c) {
+        c.push((s->edit_box.active && s->edit_box.visible) ? 1 : 0);
+        return 0;
+    });
+    add(r, 0xB024, "show edit box", 1, 0, [s](Ctx& c) {
+        const Word on = c.pop();
+        if (!c.ok() || !s->edit_box.active) return 0;
+        s->edit_box.visible = (on != 0);
+        if (!s->edit_box.visible) s->edit_box.focused = false;
+        s->edit_box.dirty = true;
+        return 0;
+    });
+    add(r, 0xB025, "set edit box color", 1, 0, [s](Ctx& c) {
+        const Word rgb = c.pop();
+        if (!c.ok()) return 0;
+        s->edit_box.text_color = rgb & 0xFFFFFFu;
+        s->edit_box.dirty = true;
+        return 0;
+    });
+    add(r, 0xB026, "set edit box text", 1, 0, [s](Ctx& c) {
+        const std::string raw = c.cstring(c.pop());
+        if (!c.ok()) return 0;
+        s->edit_box.pending_raw_text = raw;
+        if (s->edit_box.active) {
+            s->edit_box.text = script_to_utf32(raw, s->code_page);
+            s->edit_box.dirty = true;
+        }
+        return 0;
+    });
+    add(r, 0xB027, "get edit box text", 1, 1, [s](Ctx& c) {
+        const Word dst = c.pop();
+        if (!c.ok()) return 0;
+        if (!s->edit_box.active) {
+            c.push(0);
+            return 0;
+        }
+        const std::string out = utf32_to_script(s->edit_box.text, s->code_page);
+        if (dst) c.write_cstring(dst, out);
+        c.push(static_cast<Word>(out.size()));
+        return 0;
+    });
+    add(r, 0xB028, "set edit box hide on enter", 1, 0, [s](Ctx& c) {
+        const Word v = c.pop();
+        if (c.ok()) s->edit_box.hide_on_enter = (v != 0);
+        return 0;
+    });
+    add(r, 0xB029, "set edit box fullwidth only", 1, 0, [s](Ctx& c) {
+        const Word v = c.pop();
+        if (c.ok()) s->edit_box.no_ascii = (v != 0);
+        return 0;
+    });
+    add(r, 0xB02A, "set edit box alignment", 1, 1, [s](Ctx& c) {
+        const Word align = c.pop();
+        if (!c.ok()) return 0;
+        if (align < 3) {
+            s->edit_box.align = align;
+            s->edit_box.dirty = true;
+            c.push(1);
+        } else {
+            c.push(0);
+        }
+        return 0;
+    });
     // Effectors (91:60..68, effector.c): up to 8 screen effect objects, handle 0x91000000 | index. Each is a display object that
     // Display::compose() draws in its sort position: it snapshots everything drawn below it and writes back a displaced (mode 0, 91:65),
     // blurred (1, 91:66), rippled (2, 91:67) or rotated and zoomed (3, 91:68) copy. The level is the strength.
@@ -783,8 +894,11 @@ void register_plane_subops(vm::SubopRegistry& r, SystemState& state, Display* di
         for (Word& w : a) w = c.pop();
         if (!c.ok()) return 0;
         if (a[3] == 0) { c.fail(Errc::Range, "90:28: rate 0"); return 0; }
-        const auto duration = start_motion(*s, *display, c, a[11], true, static_cast<std::int32_t>(a[10]), static_cast<std::int32_t>(a[9]), static_cast<int>(a[8]), a[7],
-                                            static_cast<int>(a[6]), a[4], static_cast<std::int32_t>(a[5]), {}, true);
+        const auto raw_x = static_cast<std::int32_t>(a[10]);
+        const auto raw_y = static_cast<std::int32_t>(a[9]);
+        const bool fixed_pos = std::abs(std::int64_t{raw_x}) >= 0x10000 || std::abs(std::int64_t{raw_y}) >= 0x10000;
+        const auto duration = start_motion(*s, *display, c, a[11], true, raw_x, raw_y, static_cast<int>(a[8]), a[7],
+                                            static_cast<int>(a[6]), a[4], static_cast<std::int32_t>(a[5]), {}, fixed_pos);
         if (c.ok()) {
             wait_for_motion(c, duration);
             auto& wait = c.t.wait;

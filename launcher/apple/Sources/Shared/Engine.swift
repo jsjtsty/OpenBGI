@@ -17,6 +17,25 @@ enum Engine {
         return DetectedGame(id: id, name: name)
     }
 
+    // Inspect only archive headers; games need not include any Windows executable.
+    private static func archiveFormats(at dir: URL) -> [String] {
+        guard let files = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: [.isRegularFileKey]) else { return [] }
+        var formats = Set<String>()
+        for file in files where file.pathExtension.lowercased() == "arc" {
+            guard (try? file.resourceValues(forKeys: [.isRegularFileKey]).isRegularFile) == true,
+                  let handle = try? FileHandle(forReadingFrom: file) else { continue }
+            let header = try? handle.read(upToCount: 12)
+            try? handle.close()
+            guard let header, header.count == 12 else { formats.insert("Unknown"); continue }
+            switch String(data: header, encoding: .ascii) {
+            case "PackFile    ": formats.insert("PackFile")
+            case "BURIKO ARC20": formats.insert("BURIKO ARC20")
+            default: formats.insert("Unknown")
+            }
+        }
+        return formats.sorted()
+    }
+
     static func probe(at dir: URL) -> ProbeInfo {
         var r = obgi_probe_result()
         _ = dir.path.withCString { obgi_probe($0, &r) }
@@ -28,6 +47,7 @@ enum Engine {
             ok: r.ok != 0,
             complete: r.complete != 0,
             arcsFound: Int(r.arcs_found),
+            archiveFormats: archiveFormats(at: dir),
             hasScPatch: r.has_sc_patch != 0,
             gameID: gameID,
             gameName: gameName,

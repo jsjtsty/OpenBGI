@@ -53,21 +53,32 @@ void register_text_subops(vm::SubopRegistry& r, TextHost& host) {
                else c.push(img->width);
                return 0;
            }});
-    r.add({0x929C, "draw text", 21, 1, [&host](Ctx& c) {
-               // pops are the reverse of the script's push order (analysis/文字绘制.md)
-               c.pop();                                   // 21 reserved
-               Word eff_alpha = c.pop(), eff_color = c.pop(), eff_b = c.pop(), eff_a = c.pop(), eff_mode = c.pop();
-               (void)eff_alpha, (void)eff_color, (void)eff_b, (void)eff_a;
+    // 91:9D is the older variant: a font ID replaces the font-name address,
+    // and one ruby argument is used for both native ruby parameters.
+    auto draw_text = [&host](Ctx& c, bool legacy) {
+               c.pop(); // legacy effect flag, or 92:9C reserved argument
+               if (!legacy) for (int i = 0; i < 5; ++i) c.pop(); // effects are not rendered yet
+               Word ruby_enabled = 0;
+               if (legacy) ruby_enabled = c.pop();
                auto line_gap = static_cast<std::int32_t>(c.pop());
-               Word hang = c.pop(), prop = c.pop(); // hanging punctuation, proportional glyph widths (not modelled)
-               (void)hang, (void)prop;
-               c.pop();
-               c.pop(); // font parameters 2 and 3
+               Word hang = c.pop(), prop = c.pop();
+               (void)hang; (void)prop;
+               c.pop(); c.pop(); // remaining font parameters
                Word size = c.pop();
-               std::string font_name = c.cstring(c.pop());
-               c.pop();
-               c.pop();
-               const Word ruby_enabled = c.pop(); // ruby: parameter, dictionary address, enable flag
+               std::string font_name;
+               if (legacy) {
+                   const Word id = c.pop();
+                   if (c.ok() && (!host.font_ids || id >= host.font_ids->size())) {
+                       c.fail(Errc::Range, "no font " + std::to_string(id));
+                       return 0;
+                   }
+                   if (c.ok()) font_name = (*host.font_ids)[id];
+                   c.pop(); // ruby dictionary
+               } else {
+                   font_name = c.cstring(c.pop());
+                   c.pop(); c.pop(); // ruby parameters and dictionary
+                   ruby_enabled = c.pop();
+               }
                Word color = c.pop();
                std::string text = c.cstring(c.pop());
                auto y = static_cast<std::int32_t>(c.pop());
@@ -82,7 +93,6 @@ void register_text_subops(vm::SubopRegistry& r, TextHost& host) {
                }
                if (std::getenv("OBGI_DBGTEXT"))
                    std::fprintf(stderr, "92:9C slot %u at %d,%d size %u prop %u ruby %u str=%s\n", slot, x, y, size, prop, ruby_enabled, text.c_str());
-               (void)eff_mode; // outline/shadow effects are not rendered yet
 
                auto font = host.fonts->open(font_name, static_cast<int>(size));
                if (!font) {
@@ -150,7 +160,9 @@ void register_text_subops(vm::SubopRegistry& r, TextHost& host) {
                if (!blit) c.fail(blit.error().code, blit.error().message);
                else c.push(static_cast<Word>(img->lines));
                return 0;
-           }});
+           };
+    r.add({0x919D, "draw text with font id", 15, 1, [draw_text](Ctx& c) { return draw_text(c, true); }});
+    r.add({0x929C, "draw text", 21, 1, [draw_text](Ctx& c) { return draw_text(c, false); }});
 }
 
 } // namespace obgi

@@ -390,9 +390,7 @@ final class LibraryStore: ObservableObject {
             "--data-dir", dataURL(i).path,
             "--entry", i.options.entryArc, i.options.entryName
         ]
-        if i.options.driver != .auto {
-            a += ["--driver", i.options.driver.rawValue]
-        }
+        a += ["--driver", "metal"]
         return a
     }
 

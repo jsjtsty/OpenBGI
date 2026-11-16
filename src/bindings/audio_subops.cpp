@@ -224,11 +224,13 @@ void register_audio_subops(vm::SubopRegistry& r, SoundHost& host) {
         Word pan = c.pop(), vol = c.pop(), ch = c.pop();
         if (!c.ok() || !channel_ok(c, Bank::Point, ch) || !level_ok(c, vol) || !level_ok(c, pan)) return 0;
         const bool ok = mx.play(Bank::Point, ch, vol, pan).has_value();
+        if (std::getenv("OBGI_TRACE_AUTO")) std::fprintf(stderr, "AUTO sound play t=%lld channel=%u ok=%d\n", static_cast<long long>(c.vm.now_ms), ch, ok);
         c.push(ok && mx.state(Bank::Point, ch) == ChannelState::Playing ? 1 : 0);
         return 0;
     });
     add(r, 0xA025, "stop point sound", 1, 0, [&mx](Ctx& c) {
         Word ch = c.pop();
+        if (std::getenv("OBGI_TRACE_AUTO")) std::fprintf(stderr, "AUTO sound stop t=%lld channel=%u\n", static_cast<long long>(c.vm.now_ms), ch);
         if (c.ok() && channel_ok(c, Bank::Point, ch)) check(c, mx.stop(Bank::Point, ch));
         return 0;
     });

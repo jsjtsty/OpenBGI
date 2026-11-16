@@ -348,13 +348,18 @@ TEST_CASE("font table sub-opcodes register names, aliases and definitions") {
     put(0x120, "FontB");
     put(0x140, "AliasA");
 
-    // B0:C1: ids count up from 0 and a known name keeps its id
-    REQUIRE(run(Asm().i32(0x400).i32(0x100).i32(1).sub(0xB0, 0xC1).raw({0x09, 0x02}).ret()).has_value());
+    // Native startup reserves 0 and 1; new names begin at 2.
+    REQUIRE(host.table.ids.size() == 2);
+    put(0x160, host.table.ids[0]);
+    REQUIRE(run(Asm().i32(0x400).i32(0x160).i32(1).sub(0xB0, 0xC1).raw({0x09, 0x02}).ret()).has_value());
     CHECK(word_at(0x400) == 0);
+    host.table.infos.clear();
+    REQUIRE(run(Asm().i32(0x400).i32(0x100).i32(1).sub(0xB0, 0xC1).raw({0x09, 0x02}).ret()).has_value());
+    CHECK(word_at(0x400) == 2);
     REQUIRE(run(Asm().i32(0x400).i32(0x120).i32(0).sub(0xB0, 0xC1).raw({0x09, 0x02}).ret()).has_value());
-    CHECK(word_at(0x400) == 1);
+    CHECK(word_at(0x400) == 3);
     REQUIRE(run(Asm().i32(0x400).i32(0x100).i32(1).sub(0xB0, 0xC1).raw({0x09, 0x02}).ret()).has_value());
-    CHECK(word_at(0x400) == 0);
+    CHECK(word_at(0x400) == 2);
     REQUIRE(host.table.infos.size() == 2);
     CHECK(host.table.infos.back().charset == 0); // FontA registered first with charset 1 -> ANSI (0)
     CHECK(host.table.infos.front().charset == 0x80);
@@ -535,4 +540,27 @@ TEST_CASE("input numbers follow the original's default map until a script remaps
     s.press_input(0x41);
     s.press_input(9999); // out of range: ignored
     CHECK(s.input_counts[0x41] == 2);
+}
+
+TEST_CASE("external process stub consumes its arguments and reports failure") {
+    Rig rig(false);
+    REQUIRE(rig.run(Asm().i32(0x100).i32(11).i32(22).i32(33).i32(44).sub(0x80, 0xE0).store32().ret()));
+    CHECK(rig.mem(0x100, 4) == std::vector<std::uint8_t>{0, 0, 0, 0});
+}
+
+TEST_CASE("relative Windows save paths use the writable overlay") {
+    Rig rig(false);
+    rig.state.game_dir = rig.data / "game";
+    std::filesystem::create_directories(rig.state.game_dir / "UserData");
+    std::filesystem::create_directories(rig.data / "UserData");
+    rig.put(0x100, "UserData\\AiyokunoEustia001.sud");
+    rig.put(0x200, "saved data");
+    Asm a;
+    a.i32(0x300).i32(0x100).i32(0x200).i32(10).sub(0x80, 0x32).store32();
+    a.i32(0x304).i32(0).i32(0x100).sub(0x81, 0x35).store32().ret();
+    REQUIRE(rig.run(a));
+    CHECK(rig.mem(0x300, 4)[0] == 1);
+    CHECK(rig.mem(0x304, 4)[0] == 10);
+    CHECK(std::filesystem::exists(rig.data / "UserData/AiyokunoEustia001.sud"));
+    CHECK_FALSE(std::filesystem::exists(rig.state.game_dir / "UserData/AiyokunoEustia001.sud"));
 }

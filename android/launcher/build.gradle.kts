@@ -12,7 +12,7 @@ val sdlJava = file(
 
 val engineVersion: String = Regex("""project\(OpenBGI VERSION ([0-9.]+)""")
     .find(File(repo, "CMakeLists.txt").readText())?.groupValues?.get(1) ?: error("OpenBGI version not found")
-val engineVersionCode = 202
+val engineVersionCode = 300
 
 android {
     namespace = "org.openbgi"

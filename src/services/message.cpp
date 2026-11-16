@@ -9,7 +9,7 @@ MessageService::Operation MessageService::start(MessageVisual visual, MessagePac
     return op;
 }
 
-std::optional<std::uint32_t> MessageService::Operation::update(std::int64_t now, std::uint32_t input) {
+std::optional<std::uint32_t> MessageService::Operation::update(std::int64_t now, std::uint32_t input, bool voice_active) {
     auto& p = progress;
     if (!p.page_done) {
         const auto age = std::max<std::int64_t>(0, now - p.page_ms);
@@ -54,7 +54,12 @@ std::optional<std::uint32_t> MessageService::Operation::update(std::int64_t now,
         p.completed_ms = p.started_ms + static_cast<std::int64_t>(visual.total) * (visual.rich ? 1 : pacing.character_ms);
     if (!pacing.wait_click) return 0;
     if (age < pacing.delay_ms) { p.input_base = input; return std::nullopt; }
-    if (input != p.input_base || (pacing.automatic && now - p.completed_ms >= pacing.auto_ms)) return 1;
+    if (input != p.input_base) return 1;
+    if (pacing.automatic) {
+        if (voice_active) { p.voice_was_active = true; return std::nullopt; }
+        if (p.voice_was_active) { p.voice_was_active = false; p.completed_ms = now; }
+        if (now - p.completed_ms >= pacing.auto_ms) return 1;
+    }
     return std::nullopt;
 }
 

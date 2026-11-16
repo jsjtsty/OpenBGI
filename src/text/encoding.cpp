@@ -123,4 +123,70 @@ std::u32string script_to_utf32(std::string_view bytes, std::uint32_t code_page) 
     return cp932_to_utf32(bytes);
 }
 
+std::string utf32_to_script(std::u32string_view text, std::uint32_t code_page) {
+    std::string out;
+    out.reserve(text.size() * 3);
+    auto append_utf8 = [&out](char32_t cp) {
+        if (cp < 0x80) {
+            out.push_back(static_cast<char>(cp));
+        } else if (cp < 0x800) {
+            out.push_back(static_cast<char>(0xC0 | (cp >> 6)));
+            out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+        } else if (cp < 0x10000) {
+            out.push_back(static_cast<char>(0xE0 | (cp >> 12)));
+            out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+            out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+        } else if (cp <= 0x10FFFF) {
+            out.push_back(static_cast<char>(0xF0 | (cp >> 18)));
+            out.push_back(static_cast<char>(0x80 | ((cp >> 12) & 0x3F)));
+            out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+            out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+        }
+    };
+    if (code_page == 65001) {
+        for (char32_t cp : text) append_utf8(cp);
+        return out;
+    }
+    if (code_page == 936) {
+        for (char32_t cp : text) {
+            if (cp < 0x80) { out.push_back(static_cast<char>(cp)); continue; }
+            if (cp == 0x20AC) { out.push_back(static_cast<char>(0x80)); continue; }
+            bool found = false;
+            for (unsigned r = 0; r < 126 && !found; ++r) {
+                for (unsigned c = 0; c < 190; ++c) {
+                    if (kCp936Table[r][c] == cp) {
+                        out.push_back(static_cast<char>(0x81 + r));
+                        out.push_back(static_cast<char>(0x40 + c + (c >= 0x3F ? 1 : 0)));
+                        found = true;
+                        break;
+                    }
+                }
+            }
+            if (!found) out.push_back('?');
+        }
+        return out;
+    }
+    for (char32_t cp : text) {
+        if (cp < 0x80) { out.push_back(static_cast<char>(cp)); continue; }
+        if (cp >= 0xFF61 && cp <= 0xFF9F) {
+            out.push_back(static_cast<char>(0xA1 + (cp - 0xFF61)));
+            continue;
+        }
+        bool found = false;
+        for (unsigned row = 0; row < 60 && !found; ++row) {
+            for (unsigned col = 0; col < 189; ++col) {
+                if (kCp932Table[row][col] == cp) {
+                    const unsigned b0 = row < 0x1F ? 0x81 + row : 0xE0 + (row - 0x1F);
+                    out.push_back(static_cast<char>(b0));
+                    out.push_back(static_cast<char>(0x40 + col));
+                    found = true;
+                    break;
+                }
+            }
+        }
+        if (!found) out.push_back('?');
+    }
+    return out;
+}
+
 } // namespace obgi

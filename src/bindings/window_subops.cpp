@@ -516,6 +516,11 @@ void register_window_subops(vm::SubopRegistry& r, SystemState& state, Display* d
     add_range_pair(r, state, 0x9096, "setting 90:96");
     add_record(r, state, 0x9097, "setting 90:97", 2);
     add_record(r, state, 0x909C, "setting 90:9C", 1);
+    // TODO: 91:97 configures ruby font and offsets; ruby rendering is not implemented yet.
+    add(r, 0x9197, "ruby style (stub)", 5, 0, [](Ctx& c) {
+        for (int i = 0; i < 5; ++i) c.pop();
+        return 0;
+    });
     add_record(r, state, 0x9198, "text spacing", 6);
     add_record(r, state, 0x9297, "text ruby layout", 7);
     add(r, 0x900C, "display setting 90:0C", 2, 0, [s](Ctx& c) {

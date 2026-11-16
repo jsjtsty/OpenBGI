@@ -23,6 +23,8 @@ namespace obgi {
 struct SystemState : InputState {
     std::function<std::array<std::uint16_t, 8>()> calendar_time;
     std::function<std::int64_t()> frame_elapsed_ms; // real time spent in the current interactive scheduler frame
+    std::function<bool()> auto_voice_active; // optional game-specific voice playback check
+    std::function<std::optional<std::uint32_t>()> auto_voice_delay; // current game setting
     bool launcher = false;                 // 80:FD: started with "Execute as a launcher."
     std::string game_name = "AmairoChocolate2ML"; // 80:E8
     std::uint32_t frame_ms = 4;            // 90:02: present interval in ms; the original scheduler starts at 250 fps
@@ -199,6 +201,27 @@ struct SystemState : InputState {
     std::uint32_t knob_focus = 0;                // the knob being dragged
     std::uint32_t knob_seen_left = 0, knob_seen_right = 0; // presses already looked at
     std::map<std::uint32_t, std::uint32_t> typesetting; // 91:9A: key -> value (analysis/排版引擎.md)
+
+    // B0:20..2A: native single-line / multi-line edit control
+    struct EditBox {
+        bool active = false;
+        bool visible = false;
+        bool focused = false;
+        bool hide_on_enter = false;           // B0:28
+        bool no_ascii = false;                // B0:29
+        std::int32_t x = 0, y = 0, w = 0, h = 0;
+        std::uint32_t font_index = 0;
+        std::uint32_t font_size = 16;
+        std::uint32_t font_width_pct = 100;   // B0:22
+        std::uint32_t max_chars = 256;
+        std::uint32_t align = 0;              // B0:2A: 0 left, 1 center, 2 right
+        std::uint32_t text_color = 0x000000;  // B0:25: 0xRRGGBB
+        std::u32string text;
+        std::string editing;
+        std::string pending_raw_text;         // B0:26
+        bool dirty = false;
+    };
+    EditBox edit_box;
 };
 
 // Registers the setters above and the few system queries (local time, memory size, resource existence).

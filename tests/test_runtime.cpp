@@ -1,3 +1,4 @@
+#include "bindings/eustia_auto.hpp"
 #include <doctest/doctest.h>
 #include <chrono>
 #include <thread>
@@ -536,4 +537,35 @@ TEST_CASE("startup brand fade has intermediate pixels from its priority snapshot
     REQUIRE(brightness.size() == 3);
     CHECK(brightness[1] > brightness[0]);
     CHECK(brightness[2] > brightness[1]);
+}
+
+TEST_CASE("automatic message waits for voice then applies its delay") {
+    MessageService service;
+    MessagePacing pacing; pacing.wait_click = true; pacing.automatic = true; pacing.auto_ms = 2490;
+    MessageVisual visual; visual.total = 0;
+    auto op = service.start(visual, pacing, 0, 0);
+    CHECK_FALSE(op.update(100, 0, true));
+    CHECK_FALSE(op.update(4000, 0, true));
+    CHECK_FALSE(op.update(4001, 0, false));
+    CHECK_FALSE(op.update(6490, 0, false));
+    CHECK(op.update(6491, 0, false) == 1);
+    auto manual = service.start(visual, pacing, 0, 0);
+    CHECK_FALSE(manual.update(1, 0, true));
+    CHECK(manual.update(2, 1, true) == 1);
+}
+
+TEST_CASE("Eustia AUTO speed uses the current script setting") {
+    CHECK(eustia_auto_delay(0) == 4490);
+    CHECK(eustia_auto_delay(3) == 2490);
+    CHECK(eustia_auto_delay(10) == 0);
+    CHECK_FALSE(eustia_auto_delay(11));
+    MessageService service;
+    MessagePacing pacing; pacing.wait_click = true; pacing.automatic = true;
+    pacing.auto_ms = *eustia_auto_delay(3);
+    MessageVisual visual; auto op = service.start(visual, pacing, 0, 0);
+    CHECK_FALSE(op.update(10, 0, true));
+    op.pacing.auto_ms = *eustia_auto_delay(8); // changed before speech finishes
+    CHECK_FALSE(op.update(100, 0, false));
+    CHECK_FALSE(op.update(339, 0, false));
+    CHECK(op.update(340, 0, false) == 1);
 }

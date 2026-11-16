@@ -613,7 +613,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         Sprite& s = d.sprite(id);
         s.fraction_x = s.fraction_y = 0;
         s.slot = slot, s.x = x, s.y = y, s.blend = blend, s.alpha = alpha, s.priority = priority;
-        s.projected = false, s.xform = false, s.slot2 = 0xFFFFFFFFu, s.mix_ratio = 0, s.level_route = -1, s.ripple_map = -1;
+        s.projected = false, s.xform = false, s.slot2 = 0xFFFFFFFFu, s.mix_ratio = 0, s.level_route = -1, s.ripple_map = -1, s.wipe_gray = 0xFFFFFFFFu, s.through_gray = false;
         return 0;
     });
     // 90:58 (object, x, y, bmp1, bmp2, mix ratio, level, priority, level route): two pictures of the same size cross-faded by the mix ratio
@@ -635,7 +635,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         s.slot = static_cast<Word>(bmp1), s.slot2 = static_cast<Word>(bmp2), s.mix_ratio = mix, s.level_route = route;
         s.fraction_x = s.fraction_y = 0;
         s.x = x, s.y = y, s.blend = 1, s.alpha = level, s.priority = priority;
-        s.projected = false, s.xform = false, s.ripple_map = -1;
+        s.projected = false, s.xform = false, s.ripple_map = -1, s.wipe_gray = 0xFFFFFFFFu, s.through_gray = false;
         return 0;
     });
     // 90:59 (object, x, y, bmp, ox, oy, angle, sx, sy, smooth, effect, level, priority): one picture rotated by `angle` (16.16 degrees) and scaled by
@@ -654,7 +654,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         if (!d.slot(bmp)) { c.fail(Errc::Range, "no image slot " + std::to_string(bmp)); return 0; }
         if (sx <= 0 || sy <= 0) { c.fail(Errc::Range, "invalid scale " + std::to_string(sx) + "," + std::to_string(sy)); return 0; }
         s.slot = bmp, s.slot2 = 0xFFFFFFFFu, s.mix_ratio = 0, s.level_route = -1;
-        s.projected = false, s.xform = true, s.ripple_map = -1;
+        s.projected = false, s.xform = true, s.ripple_map = -1, s.wipe_gray = 0xFFFFFFFFu, s.through_gray = false;
         s.origin_x = ox, s.origin_y = oy, s.angle = angle, s.sx = sx, s.sy = sy, s.smooth = smooth != 0;
         return 0;
     });
@@ -673,7 +673,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         Sprite& s = d.sprite(id);
         s.fraction_x = s.fraction_y = 0;
         s.slot = slot, s.x = x, s.y = y, s.blend = effect, s.alpha = level, s.priority = priority;
-        s.projected = false, s.xform = false, s.slot2 = 0xFFFFFFFFu, s.mix_ratio = 0, s.level_route = -1, s.ripple_map = -1;
+        s.projected = false, s.xform = false, s.slot2 = 0xFFFFFFFFu, s.mix_ratio = 0, s.level_route = -1, s.ripple_map = -1, s.wipe_gray = 0xFFFFFFFFu, s.through_gray = false;
         const SlotInfo* gi = d.slot(gray);
         s.wipe_gray = gi && gi->format == SlotFormat::Gray8 ? gray : 0xFFFFFFFFu; // no pattern: shown whole
         s.wipe_mode = wipe_mode;
@@ -718,7 +718,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         // route of the previous mode, priority), then sets the mode, which may still refuse the pictures
         // the script's position stays relative to the centre (90:29 paths and 90:28 tweens are in that space); the compositor
         // projects it
-        s->projected = true, s->xform = false, s->ripple_map = -1;
+        s->projected = true, s->xform = false, s->ripple_map = -1, s->wipe_gray = 0xFFFFFFFFu, s->through_gray = false;
         s->x = static_cast<std::int32_t>(v[15]) >> 16;
         s->y = static_cast<std::int32_t>(v[14]) >> 16;
         s->fraction_x = v[15] & 0xffffu, s->fraction_y = v[14] & 0xffffu;
@@ -1181,7 +1181,7 @@ void register_graphics_subops(vm::SubopRegistry& r, GraphicsHost& host) {
         if (vecmap::ripple_check(d.ripples, ok, ripple, 0, rings) != 0) { c.fail(Errc::Range, "ripple " + std::to_string(ripple) + " is not registered"); return 0; }
         if (!ok) { c.fail(Errc::Range, "ripple " + std::to_string(ripple) + " does not fit the map " + std::to_string(map)); return 0; }
         Sprite& s = d.sprite(id);
-        s.slot = static_cast<Word>(bmp), s.slot2 = 0xFFFFFFFFu, s.mix_ratio = 0, s.level_route = -1, s.projected = false, s.xform = false;
+        s.slot = static_cast<Word>(bmp), s.slot2 = 0xFFFFFFFFu, s.mix_ratio = 0, s.level_route = -1, s.projected = false, s.xform = false, s.wipe_gray = 0xFFFFFFFFu, s.through_gray = false;
         s.ripple_map = map, s.rings = rings, s.ripple_no = ripple, s.ripple_sel = 0;
         s.alpha = static_cast<Word>(level);
         s.fraction_x = s.fraction_y = 0;

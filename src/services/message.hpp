@@ -28,6 +28,7 @@ struct MessageProgress {
     std::uint32_t input_base = 0;
     std::size_t shown = 0;
     bool page_done = false;
+    bool voice_was_active = false;
     int last_pre_frame = -1;
 };
 
@@ -41,7 +42,7 @@ class MessageService {
         MessagePacing pacing;
         MessageProgress progress;
         // Returns the opcode result when complete; no VM state is accessed here.
-        std::optional<std::uint32_t> update(std::int64_t now_ms, std::uint32_t input);
+        std::optional<std::uint32_t> update(std::int64_t now_ms, std::uint32_t input, bool voice_active = false);
     };
     Operation start(MessageVisual visual, MessagePacing pacing, std::int64_t now_ms, std::uint32_t input);
 };

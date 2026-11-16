@@ -15,10 +15,11 @@
 #include "bindings/arc_program_provider.hpp"
 #include "core/bytes.hpp"
 #include "resources/archive_store.hpp"
+#include "resources/translation_detection.hpp"
 #include "vfs/arc.hpp"
 
 #ifndef OPENBGI_VERSION
-#define OPENBGI_VERSION "0.2.1"
+#define OPENBGI_VERSION "0.3.0"
 #endif
 
 namespace {
@@ -66,18 +67,7 @@ std::optional<std::string> game_name_from_system_ipl(obgi::vm::ProgramProvider& 
     return std::string(name);
 }
 
-bool has_gbk_story_patch(obgi::ArcResourceFinder& resources) {
-    auto script = resources.read("data01120.arc", "ac3_01mikuri");
-    if (!script || script->size() < 0x120 ||
-        !std::string_view(reinterpret_cast<const char*>(script->data()), script->size()).starts_with("BurikoCompiledScriptVer1.00"))
-        return false;
-    constexpr std::array<std::uint8_t, 6> name = {0xC3, 0xC0, 0xBE, 0xC3, 0xC0, 0xF5}; // GBK: 美久栗
-    constexpr std::array<std::uint8_t, 10> phrase_prefix = {0xBD, 0xF1, 0xCC, 0xEC, 0xCA, 0xC7, 0xC8, 0xA5, 0xBB, 0xA8};
-    const auto contains = [&](const auto& bytes) {
-        return std::search(script->begin(), script->end(), bytes.begin(), bytes.end()) != script->end();
-    };
-    return contains(name) && contains(phrase_prefix);
-}
+
 
 std::map<std::string, fs::path> scan_arcs(const fs::path& dir) {
     std::map<std::string, fs::path> arcs;
@@ -190,7 +180,7 @@ int obgi_probe(const char* game_dir, obgi_probe_result* result) {
             display = *detected;
             id = sanitize_id(*detected);
         }
-        if (has_gbk_story_patch(resources)) result->has_sc_patch = 1;
+        if (obgi::has_gbk_story_patch(resources)) result->has_sc_patch = 1;
     }
 
     std::string missing_csv;

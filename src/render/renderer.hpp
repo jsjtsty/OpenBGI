@@ -102,6 +102,11 @@ class Renderer {
     int take_wheel();              // wheel notches since the last call (positive = away from the user)
     std::vector<int> take_wheel_events(); // each event as +1 away / -1 toward, preserving order
 
+    void set_text_input(bool active, int x = 0, int y = 0, int w = 0, int h = 0);
+    std::vector<std::string> take_text_inputs();
+    std::string text_editing() const;
+    std::vector<std::uint32_t> take_edit_keys();
+
     Result<void> begin_frame(const float clear_rgba[4]);
     // Returns false without blocking when the window swapchain has no free image.
     Result<bool> try_begin_frame(const float clear_rgba[4]);

@@ -1,9 +1,12 @@
 #include <doctest/doctest.h>
 
+#include <algorithm>
 #include <array>
 #include <cstring>
 
 #include "bindings/graphics_subops.hpp"
+#include "bindings/font_subops.hpp"
+#include "bindings/text_subops.hpp"
 #include "bindings/panel.hpp"
 #include "bindings/message_subops.hpp"
 #include "bindings/system_subops.hpp"
@@ -1051,4 +1054,49 @@ TEST_CASE("message wheel input respects allow keys" * doctest::test_suite("gpu")
     MessageInput allowed(state, true);
     state.press_input(0x0f);
     CHECK(allowed.poll(state) == 1);
+}
+
+TEST_CASE("92:1E draws with the native default font zero" * doctest::test_suite("gpu")) {
+    RendererOptions options; options.headless = true;
+    auto renderer = Renderer::create(options); REQUIRE(renderer);
+    auto display = Display::create(**renderer, 128, 64); REQUIRE(display);
+    auto fonts = FontLibrary::create(); REQUIRE(fonts);
+    REQUIRE((*display)->upload_slot(1, 128, 64, SlotFormat::Bgra, std::vector<std::uint32_t>(128 * 64, 0)));
+    FontHost font_host; font_host.fonts = fonts->get();
+    TextHost text; text.display = display->get(); text.fonts = fonts->get(); text.font_ids = &font_host.table.ids;
+    SubopRegistry registry; register_text_subops(registry, text);
+    MemProvider provider;
+    provider.set(Asm().i32(0x300).i32(1).i32(0).i32(0).i32(0x100).i32(0).i32(24).i32(0).i32(0).i32(0)
+        .sub(0x92, 0x1E).raw({0x09, 0x02}).ret());
+    Vm vm(provider, registry); put_string(vm, 0x100, "Test");
+    ThreadConfig cfg; cfg.stack_size = 1024;
+    REQUIRE(vm.spawn(cfg, "test", "font zero"));
+    auto result = vm.run_frame(0); REQUIRE_MESSAGE(result.has_value(), (result ? "" : result.error().message));
+    std::uint8_t width[4]; REQUIRE(vm.global.read(0x300, 4, width));
+    CHECK(load_u32le(width) > 0);
+    auto pixels = (*display)->read_slot(1); REQUIRE(pixels);
+    CHECK(std::any_of(pixels->begin(), pixels->end(), [](auto pixel) { return pixel != 0; }));
+}
+
+TEST_CASE("91:9D draws text with a registered default font" * doctest::test_suite("gpu")) {
+    RendererOptions options; options.headless = true;
+    auto renderer = Renderer::create(options); REQUIRE(renderer);
+    auto display = Display::create(**renderer, 128, 64); REQUIRE(display);
+    auto fonts = FontLibrary::create(); REQUIRE(fonts);
+    REQUIRE((*display)->upload_slot(1, 128, 64, SlotFormat::Bgra, std::vector<std::uint32_t>(128 * 64, 0)));
+    FontHost font_host; TextHost text;
+    text.display = display->get(); text.fonts = fonts->get(); text.font_ids = &font_host.table.ids;
+    SubopRegistry registry; register_text_subops(registry, text);
+    MemProvider provider;
+    provider.set(Asm().i32(0x300).i32(1).i32(0).i32(0).i32(0x100).i32(0xffffff).i32(0).i32(0)
+        .i32(24).i32(100).i32(0).i32(0).i32(0).i32(0).i32(0).i32(0)
+        .sub(0x91, 0x9D).raw({0x09, 0x02}).ret());
+    Vm vm(provider, registry); put_string(vm, 0x100, "Save");
+    ThreadConfig cfg; cfg.stack_size = 1024;
+    REQUIRE(vm.spawn(cfg, "test", "legacy text"));
+    auto result = vm.run_frame(0); REQUIRE_MESSAGE(result.has_value(), (result ? "" : result.error().message));
+    std::uint8_t lines[4]; REQUIRE(vm.global.read(0x300, 4, lines));
+    CHECK(load_u32le(lines) == 1);
+    auto pixels = (*display)->read_slot(1); REQUIRE(pixels);
+    CHECK(std::any_of(pixels->begin(), pixels->end(), [](auto pixel) { return pixel != 0; }));
 }

@@ -10,5 +10,6 @@ std::u32string cp932_to_utf32(std::string_view bytes);
 std::u32string cp936_to_utf32(std::string_view bytes);
 std::u32string utf8_to_utf32(std::string_view bytes);
 std::u32string script_to_utf32(std::string_view bytes, std::uint32_t code_page);
+std::string utf32_to_script(std::u32string_view text, std::uint32_t code_page);
 
 } // namespace obgi

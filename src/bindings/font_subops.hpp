@@ -12,7 +12,12 @@ class ArcResourceFinder;
 
 // The engine's font tables, filled by the scripts at start-up (analysis/子opcode语义表.md, B0:C1..C7, 91:0E).
 struct FontTable {
-    std::vector<std::string> ids; // B0:C1: font names in registration order; the index is the id scripts get back
+    // Native startup registers ＭＳ ゴシック and ＭＳ 明朝 as IDs 0 and 1.
+    // Names are CP932 bytes, matching strings supplied by BGI scripts.
+    std::vector<std::string> ids = {
+        "\x82\x6c\x82\x72 \x83\x53\x83\x56\x83\x62\x83\x4e",
+        "\x82\x6c\x82\x72 \x96\xbe\x92\xa9",
+    };
     struct Info {
         std::string name;
         std::optional<std::string> alias; // B0:C7

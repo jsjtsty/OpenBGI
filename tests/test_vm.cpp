@@ -729,3 +729,16 @@ TEST_CASE("vm store 0A pops the address first, 09 the value first") {
     CHECK(g32(f.vm, 0x104) == 0x5678);
     CHECK(g32(f.vm, 0x108) == 0x5678); // the value 09 left on the stack went to 0x108 through 0A
 }
+
+TEST_CASE("80:45 ends only the current thread") {
+    Fixture f;
+    f.provider.put("ending", Asm().sub(0x80, 0x45).set32(0x100, 99).ret());
+    f.provider.put("other", Asm().set32(0x104, 42).ret());
+    REQUIRE(f.vm.spawn(small(), "x.arc", "ending"));
+    REQUIRE(f.vm.spawn(small(), "x.arc", "other"));
+    auto result = f.vm.run_frame(0);
+    REQUIRE(result);
+    CHECK(*result == FrameStatus::AllThreadsDead);
+    CHECK(g32(f.vm, 0x100) == 0);
+    CHECK(g32(f.vm, 0x104) == 42);
+}

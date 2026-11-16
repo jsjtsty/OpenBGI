@@ -61,6 +61,10 @@ struct Renderer::Impl {
     bool left_down = false;
     int wheel = 0;
     std::vector<int> wheel_events;
+    bool text_input_active = false;
+    std::vector<std::string> text_inputs;
+    std::string text_editing;
+    std::vector<std::uint32_t> edit_keys;
 
     struct TouchFinger {
         SDL_FingerID id = 0;
@@ -424,7 +428,23 @@ bool Renderer::poll_events() {
     SDL_Event e;
     while (SDL_PollEvent(&e)) {
         if (e.type == SDL_EVENT_QUIT || e.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED) { alive = false; if (std::getenv("OBGI_DBGWIN")) std::fprintf(stderr, "window event %u\n", e.type); }
+        if (e.type == SDL_EVENT_TEXT_INPUT) {
+            if (impl_->text_input_active && e.text.text && *e.text.text) {
+                impl_->text_inputs.emplace_back(e.text.text);
+            }
+        }
+        if (e.type == SDL_EVENT_TEXT_EDITING) {
+            if (impl_->text_input_active) {
+                impl_->text_editing = e.edit.text ? e.edit.text : "";
+            }
+        }
         if (e.type == SDL_EVENT_KEY_DOWN) {
+            if (impl_->text_input_active &&
+                (e.key.key == SDLK_BACKSPACE || e.key.key == SDLK_RETURN ||
+                 e.key.key == SDLK_KP_ENTER || e.key.key == SDLK_ESCAPE)) {
+                impl_->edit_keys.push_back(e.key.key);
+                continue;
+            }
             if (!e.key.repeat) impl_->key = e.key.key;
             if (const std::uint32_t vk = virtual_key(e.key.key); vk && vk < impl_->held_inputs.size()) {
                 const std::size_t sc = static_cast<std::size_t>(e.key.scancode);
@@ -564,6 +584,43 @@ int Renderer::take_wheel() { return std::exchange(impl_->wheel, 0); }
 std::vector<int> Renderer::take_wheel_events() { return std::exchange(impl_->wheel_events, {}); }
 
 std::uint32_t Renderer::take_key() { return std::exchange(impl_->key, 0u); }
+
+void Renderer::set_text_input(bool active, int x, int y, int w, int h) {
+    if (!impl_->window) {
+        impl_->text_input_active = active;
+        return;
+    }
+    if (active) {
+        int ww = 0, wh = 0;
+        if (SDL_GetWindowSize(impl_->window, &ww, &wh) && ww > 0 && wh > 0) {
+            const float lw = float(impl_->opt.logical_width), lh = float(impl_->opt.logical_height);
+            const float scale = std::min(float(ww) / lw, float(wh) / lh);
+            const float ox = (float(ww) - lw * scale) * 0.5f;
+            const float oy = (float(wh) - lh * scale) * 0.5f;
+            SDL_Rect r{
+                int(ox + float(x) * scale),
+                int(oy + float(y) * scale),
+                std::max(1, int(float(w) * scale)),
+                std::max(1, int(float(h) * scale))
+            };
+            SDL_SetTextInputArea(impl_->window, &r, 0);
+        }
+        if (!impl_->text_input_active) {
+            impl_->text_input_active = true;
+            SDL_StartTextInput(impl_->window);
+        }
+    } else if (impl_->text_input_active) {
+        impl_->text_input_active = false;
+        impl_->text_editing.clear();
+        impl_->text_inputs.clear();
+        impl_->edit_keys.clear();
+        SDL_StopTextInput(impl_->window);
+    }
+}
+
+std::vector<std::string> Renderer::take_text_inputs() { return std::exchange(impl_->text_inputs, {}); }
+std::string Renderer::text_editing() const { return impl_->text_editing; }
+std::vector<std::uint32_t> Renderer::take_edit_keys() { return std::exchange(impl_->edit_keys, {}); }
 
 Result<void> Renderer::begin_frame(const float clear[4]) {
     auto result = begin_frame_impl(clear, true);

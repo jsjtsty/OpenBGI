@@ -79,6 +79,12 @@ std::filesystem::path host_path(const SystemState& s, const std::string& script_
             return s.data_dir / normalized;
         p = s.game_dir / p;
     }
+    // Older scripts use paths relative to the game directory (e.g. UserData\\slot.sud).
+    // Redirect those to the same writable overlay as absolute game paths.
+    if (p.is_relative()) {
+        auto normalized = p.lexically_normal();
+        if (!normalized.empty() && *normalized.begin() != "..") return s.data_dir / normalized;
+    }
     std::error_code ec;
     auto rel = std::filesystem::relative(p, s.game_dir, ec);
     if (!ec && !rel.empty() && *rel.begin() != "..") return s.data_dir / rel;
@@ -1060,6 +1066,19 @@ void register_system_subops(vm::SubopRegistry& r, SystemState& state, ArcResourc
     });
     add(r, 0x803B, "file dialog", 6, 1, [](Ctx& c) { for (int i = 0; i < 6; ++i) c.pop(); c.push(0xFFFFFFFFu); return 0; }); // always cancelled
     add(r, 0x803F, "install paths", 4, 1, [](Ctx& c) { for (int i = 0; i < 4; ++i) c.pop(); c.push(0); return 0; });
+    // TODO: 80:63 selects the fullscreen scaling mode; keep the current
+    // letterboxed layout until fullscreen presentation and input mapping support it.
+    add(r, 0x8063, "fullscreen scaling (stub)", 1, 0, [](Ctx& c) {
+        c.pop();
+        return 0;
+    });
+    // TODO: 80:E0 launches and waits for an external process. Temporarily report
+    // failure so the script follows its fallback path without launching a program.
+    add(r, 0x80E0, "run external process (stub)", 4, 1, [](Ctx& c) {
+        for (int i = 0; i < 4; ++i) c.pop();
+        if (c.ok()) c.push(0);
+        return 0;
+    });
     add(r, 0x80E1, "run on exit", 3, 0, [](Ctx& c) { for (int i = 0; i < 3; ++i) c.pop(); return 0; });
     add(r, 0x80E3, "shell open", 1, 1, [](Ctx& c) { c.pop(); c.push(0); return 0; });
     add(r, 0x8119, "touch points", 1, 1, [](Ctx& c) { c.pop(); c.push(0); return 0; });

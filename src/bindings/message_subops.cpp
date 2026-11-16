@@ -473,18 +473,34 @@ void register_message_subops(vm::SubopRegistry& r, SystemState& state, TextHost&
         pacing.delay_ms = record_ms(*state, 0x909B);
         const auto automatic = state->records.find(0x9097);
         pacing.automatic = automatic != state->records.end() && !automatic->second.empty() && automatic->second[0] != 0;
+        // Eustia temporarily passes zero while speech plays. Read the actual
+        // AUTO speed setting instead of caching an earlier unvoiced delay.
+        const bool wait_voice = pacing.automatic && pacing.auto_ms == 0 && state->auto_voice_active && state->auto_voice_active();
+        if (wait_voice && state->auto_voice_delay)
+            pacing.auto_ms = state->auto_voice_delay().value_or(0);
         pacing.instant = instant;
         pacing.allow_skip = allow_skip;
         pacing.wait_click = wait_click;
+        if (std::getenv("OBGI_TRACE_AUTO"))
+            std::fprintf(stderr, "AUTO start t=%lld enabled=%d wait=%d instant=%d auto_ms=%lld delay_ms=%lld visual=%zu rich=%d\n",
+                static_cast<long long>(c.vm.now_ms), pacing.automatic, pacing.wait_click, pacing.instant,
+                static_cast<long long>(pacing.auto_ms), static_cast<long long>(pacing.delay_ms), visual.total, visual.rich);
         MessageInput input(*state, allow_keys);
         auto operation = shared->start(std::move(visual), pacing, c.vm.now_ms, 0);
         vm::WaitObject wait;
         wait.kind = vm::WaitObject::Kind::Poll;
-        wait.poll = [operation = std::move(operation), state, input](const vm::WaitContext& context) mutable -> Result<vm::WaitUpdate> {
+        wait.poll = [operation = std::move(operation), state, input, wait_voice](const vm::WaitContext& context) mutable -> Result<vm::WaitUpdate> {
             // 80:4C message 0 interrupts the active wait (e.g. a backlog jump).
             if (context.notified) return vm::WaitUpdate::complete({0});
             operation.pacing.visual_interval_us = std::max(std::max(1u, state->frame_ms) * 1000u, state->presentation_interval_us);
-            auto result = operation.update(context.now_ms, input.poll(*state));
+            if (wait_voice && state->auto_voice_delay)
+                if (auto delay = state->auto_voice_delay()) operation.pacing.auto_ms = *delay;
+            auto result = operation.update(context.now_ms, input.poll(*state),
+                                           wait_voice && state->auto_voice_active && state->auto_voice_active());
+            if (result && std::getenv("OBGI_TRACE_AUTO"))
+                std::fprintf(stderr, "AUTO end t=%lld result=%u completed=%lld auto_ms=%lld\n",
+                    static_cast<long long>(context.now_ms), *result,
+                    static_cast<long long>(operation.progress.completed_ms), static_cast<long long>(operation.pacing.auto_ms));
             return result ? vm::WaitUpdate::complete({*result}) : vm::WaitUpdate::pending();
         };
         if (wait_click) {

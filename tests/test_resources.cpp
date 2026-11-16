@@ -6,6 +6,7 @@
 #include <fstream>
 #include "bindings/arc_program_provider.hpp"
 #include "resources/directory_index.hpp"
+#include "resources/translation_detection.hpp"
 
 using namespace obgi;
 
@@ -125,4 +126,16 @@ TEST_CASE("PackFile archives read members and reject malformed directories") {
     bytes[12] = static_cast<char>(0xff);
     write(dir.path / "short.arc", bytes);
     CHECK_FALSE(Arc::open(dir.path / "short.arc"));
+}
+
+TEST_CASE("Eustia GBK detection requires both translation signatures") {
+    Directory dir;
+    std::string script = "BurikoCompiledScriptVer1.00";
+    script.resize(0x120, '\0');
+    script += "\xc8\xcb\xc9\xfa\xb2\xbb\xc8\xe7\xd2\xe2\xca\xc2\xa3\xac\xca\xae";
+    archive(dir.path / "data01000.arc", "aiy00010", script);
+    { ArcResourceFinder resources(dir.path); CHECK_FALSE(has_gbk_story_patch(resources)); }
+    script += "\xca\xc0\xbc\xe4\xb5\xc4\xcd\xf2\xce\xef\xbd\xd4\xb1\xbb\xd7\xb0";
+    archive(dir.path / "data01000.arc", "aiy00010", script);
+    { ArcResourceFinder resources(dir.path); CHECK(has_gbk_story_patch(resources)); }
 }

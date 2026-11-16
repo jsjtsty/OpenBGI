@@ -67,3 +67,7 @@
 "Return & Play" = "返回并开始游玩";
 "OpenBGI detects new games automatically, or tap Rescan." = "OpenBGI 会自动检测新游戏，也可以点击“重新扫描”。";
 "Put game folders in Files -> On My iPhone -> OpenBGI, or tap the folder button above to import." = "将游戏文件夹放入“文件 -> 我的 iPhone -> OpenBGI”，或点击上方文件夹按钮导入。";
+
+"Archive Format" = "资源包格式";
+"Unknown Format" = "未知格式";
+"Resource Format Version" = "资源格式版本";
