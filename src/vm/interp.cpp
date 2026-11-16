@@ -54,6 +54,38 @@ struct Reader {
 
 std::int32_t s32(Word v) { return static_cast<std::int32_t>(v); }
 std::int16_t s16(unsigned v) { return static_cast<std::int16_t>(v); }
+Word compare_values(unsigned mode, Word a, Word b) {
+    switch (mode) {
+    case 0: return a == b;
+    case 1: return a != b;
+    case 2: return s32(a) < s32(b);
+    case 3: return s32(a) <= s32(b);
+    case 4: return s32(a) >= s32(b);
+    case 5: return s32(a) > s32(b);
+    case 6: return a & b;
+    case 7: return a | b;
+    case 8: return a && b;
+    case 9: return a || b;
+    default: return 0;
+    }
+}
+
+Word arithmetic_values(unsigned mode, Word a, Word b) {
+    switch (mode) {
+    case 0: return a + b;
+    case 1: return a - b;
+    case 2: return a * b;
+    case 3: return b ? static_cast<Word>(std::int64_t(s32(a)) / s32(b)) : 0x80000000u;
+    case 4: return b ? static_cast<Word>(std::int64_t(s32(a)) % s32(b)) : 0x80000000u;
+    case 5: return a & b;
+    case 6: return a | b;
+    case 7: return a ^ b;
+    case 8: return a << (b & 31);
+    case 9: return a >> (b & 31);
+    case 10: return static_cast<Word>(s32(a) >> (b & 31));
+    default: return 0x80000000u;
+    }
+}
 unsigned width_of(unsigned idx) {
     static constexpr unsigned w[4] = {1, 2, 4, 1};
     return w[idx & 3];
@@ -426,6 +458,25 @@ Result<int> Vm::step(Thread& t) {
         c.push(div == 0 ? Word(-1) : static_cast<Word>(n / div));
         break;
     }
+    case 0x36: {
+        const unsigned mode = r.u8();
+        const Word imm = static_cast<Word>(r.sleb());
+        t.ip = r.p;
+        if (c.ok()) c.push(compare_values(mode, c.pop(), imm));
+        break;
+    }
+    case 0x37: {
+        const unsigned mode = r.u8();
+        const Word dest = pc + static_cast<Word>(static_cast<std::int32_t>(s16(r.u16())));
+        const Word imm = static_cast<Word>(r.sleb());
+        t.ip = r.p;
+        if (!c.ok()) break;
+        const Word value = c.pop();
+        bool cond = compare_values(mode & 15, value, imm) != 0;
+        if (!(mode & 0x80)) cond = !cond;
+        if (cond) t.ip = dest;
+        break;
+    }
     case 0x38: case 0x39: {
         t.ip = r.p;
         Word a = c.pop(), b = c.pop();
@@ -452,6 +503,18 @@ Result<int> Vm::step(Thread& t) {
     case 0x3c: {
         auto shift = static_cast<std::int8_t>(r.u8()); t.ip = r.p;
         c.push(shift_value(s32(c.pop()), shift));
+        break;
+    }
+    case 0x3e: case 0x3f: {
+        const unsigned mode = r.u8();
+        const Word rhs = op == 0x3f ? static_cast<Word>(r.sleb()) : c.pop();
+        t.ip = r.p;
+        if (!c.ok()) break;
+        const Word lhs = c.pop();
+        const Word address = c.pop();
+        const Word value = (mode & 0x20) ? compare_values(mode & 0x1f, lhs, rhs)
+                                         : arithmetic_values(mode & 0x1f, lhs, rhs);
+        c.write(address, value, width_of(mode >> 6));
         break;
     }
     case 0x40: {
@@ -718,6 +781,62 @@ Result<int> Vm::step(Thread& t) {
         Word dst = c.pop();
         std::string text = format_script(c, fmt);
         c.write_cstring(dst, text);
+        break;
+    }
+    case 0xec: { // copy an immediate number of bytes from source to destination
+        const Word n = static_cast<Word>(r.sleb());
+        t.ip = r.p;
+        if (!c.ok()) break;
+        const Word src = c.pop(), dst = c.pop();
+        if (n > kMaxBlock) { c.fail(Errc::Range, "copy too large"); break; }
+        std::vector<std::uint8_t> buf;
+        c.read_bytes(src, n, buf);
+        c.write_bytes(dst, buf.data(), buf.size());
+        break;
+    }
+    case 0xed: { // copy from a stack-relative address to a popped destination
+        const Word offset = r.u16();
+        const Word n = static_cast<Word>(r.sleb());
+        t.ip = r.p;
+        if (!c.ok()) break;
+        const Word dst = c.pop();
+        if (n > kMaxBlock) { c.fail(Errc::Range, "copy too large"); break; }
+        std::vector<std::uint8_t> buf;
+        c.read_bytes(make_addr(Tag::Stack, t.sp - offset), n, buf);
+        c.write_bytes(dst, buf.data(), buf.size());
+        break;
+    }
+    case 0xee: { // call with a signed 16-bit displacement from the opcode
+        const auto delta = s16(r.u16());
+        const Word dest = pc + static_cast<Word>(static_cast<std::int32_t>(delta));
+        t.ip = r.p;
+        if (!c.ok()) break;
+        if (dest == 0 || dest >= t.program.size()) {
+            c.fail(Errc::Range, "relative call target outside program");
+            break;
+        }
+        c.write(make_addr(Tag::Stack, t.sp), t.ip, 4);
+        if (!c.ok()) break;
+        t.sp += 4;
+        t.calls.push_back({pc, t.ip});
+        t.ip = dest;
+        break;
+    }
+    case 0xef: { // call through a packed address and operand width
+        const Word enc = r.u32();
+        t.ip = r.p;
+        const unsigned width = width_of(enc >> 30);
+        const Word dest = static_cast<Word>(c.read(enc & 0x3fffffff, width, width < 4));
+        if (!c.ok()) break;
+        if (dest == 0 || dest >= t.program.size()) {
+            c.fail(Errc::Range, "indirect call target outside program");
+            break;
+        }
+        c.write(make_addr(Tag::Stack, t.sp), t.ip, 4);
+        if (!c.ok()) break;
+        t.sp += 4;
+        t.calls.push_back({pc, t.ip});
+        t.ip = dest;
         break;
     }
     case 0xe3: { // push one or more stack-relative values

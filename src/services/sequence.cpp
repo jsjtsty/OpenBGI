@@ -6,10 +6,14 @@ namespace obgi {
 
 Result<SequenceService::Info> SequenceService::load(std::vector<std::uint8_t> bytes) {
     auto file = std::make_shared<const std::vector<std::uint8_t>>(std::move(bytes));
-    auto decoder = BmDecoder::open(*file);
+    return load(OwnedBytes{file, *file});
+}
+
+Result<SequenceService::Info> SequenceService::load(OwnedBytes file) {
+    auto decoder = BmDecoder::open(file.bytes);
     if (!decoder) return std::unexpected(decoder.error());
     const auto id = ++counter_;
-    Info info{id, decoder->width(), decoder->height(), load_u32le(file->data() + 0x20), decoder->rate(), decoder->frame_count()};
+    Info info{id, decoder->width(), decoder->height(), load_u32le(file.bytes.data() + 0x20), decoder->rate(), decoder->frame_count()};
     sequences_.emplace(id, Sequence{std::move(file), std::move(*decoder)});
     return info;
 }
@@ -27,7 +31,7 @@ SequenceService::CloneResult SequenceService::clone(std::uint32_t id) {
     auto it = sequences_.find(id);
     if (it == sequences_.end()) return {3};
     if (it->second.clone) return {7};
-    auto decoder = BmDecoder::open(*it->second.file);
+    auto decoder = BmDecoder::open(it->second.file.bytes);
     if (!decoder) return {8};
     auto no = ++counter_;
     sequences_.emplace(no, Sequence{it->second.file, std::move(*decoder), 0, id});
@@ -35,10 +39,10 @@ SequenceService::CloneResult SequenceService::clone(std::uint32_t id) {
     return {0, no};
 }
 
-Result<SequenceService::DecodedFrame> SequenceService::decode_frame(std::shared_ptr<const std::vector<std::uint8_t>> file,
+Result<SequenceService::DecodedFrame> SequenceService::decode_frame(OwnedBytes file,
                                                                   BmDecoder decoder, std::uint32_t next, std::uint32_t frame) {
     if (frame + 1 < next) {
-        auto reset = BmDecoder::open(*file);
+        auto reset = BmDecoder::open(file.bytes);
         if (!reset) return std::unexpected(reset.error());
         decoder = std::move(*reset);
         next = 0;
@@ -59,7 +63,7 @@ SequenceService::Request SequenceService::decode(std::uint32_t bitmap, std::uint
     auto& s = it->second;
     if (frame >= s.decoder.frame_count()) return {4};
     const auto slot = display_.slot(bitmap);
-    const auto format = load_u32le(s.file->data() + 0x20) == 2 ? SlotFormat::Bgra : SlotFormat::Bgrx;
+    const auto format = load_u32le(s.file.bytes.data() + 0x20) == 2 ? SlotFormat::Bgra : SlotFormat::Bgrx;
     if (!slot || slot->width != s.decoder.width() || slot->height != s.decoder.height() || slot->format != format) return {5};
     auto op = std::make_shared<Operation>();
     op->sequence = id;

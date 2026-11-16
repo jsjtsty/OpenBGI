@@ -18,7 +18,7 @@ class BmDecoder {
 
     std::uint32_t width() const { return width_; }
     std::uint32_t height() const { return height_; }
-    std::uint32_t source_bits() const { return bits_; } // 24 or 32
+    std::uint32_t source_bits() const { return bits_; } // 8, 24 or 32
     std::uint32_t frame_count() const { return frame_count_; }
     std::uint32_t rate() const { return rate_; } // header field at 0x24, meaning unconfirmed (see analysis/Codex任务书4.md)
 

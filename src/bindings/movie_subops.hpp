@@ -21,7 +21,7 @@ struct MovieHost {
 //   90:F1 stops playback; 90:F2 reports whether the player is active; 90:F3 sets the volume.
 //   91:F8 starts a movie and suspends the thread until playback ends or is skipped. Its completion status is
 //   0 for played/skipped, -3 for missing input, and -1 for a playback error. The flag remains unverified.
-// The .bm effect-movie ops (92:F1, 90:F5..F7 ...) belong to the display objects and are not registered here.
+// The .bm effect-movie ops are registered by sequence_subops.
 void register_movie_subops(vm::SubopRegistry& registry, MovieHost& host);
 
 } // namespace obgi

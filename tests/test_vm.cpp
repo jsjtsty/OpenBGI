@@ -372,6 +372,55 @@ TEST_CASE("vm loop with compare-branch") {
     CHECK(g32(f.vm, 0x200) == 5);
 }
 
+TEST_CASE("vm 37 compares a stack value with a signed immediate and branches") {
+    struct Case { Word value; std::uint8_t mode, immediate; bool taken; };
+    const Case cases[] = {
+        {5, 0x80, 5, true}, {5, 0x00, 5, false},
+        {5, 0x81, 5, false}, {5, 0x01, 5, true},
+        {Word(-2), 0x82, 0x7f, true}, {Word(-2), 0x83, 0x7e, true},
+        {Word(-2), 0x84, 0x7f, false}, {Word(-2), 0x85, 0x7f, false},
+        {2, 0x86, 1, false}, {2, 0x87, 1, true},
+        {0, 0x88, 1, false}, {0, 0x89, 1, true},
+        {1, 0x8f, 1, false}, {1, 0x0f, 1, true},
+    };
+    for (const auto& test : cases) {
+        Fixture f;
+        Thread t;
+        t.expr = {test.value, 0}; t.depth = 1;
+        t.program = {0, 0, 0x37, test.mode, 8, 0, test.immediate, 0, 0, 0, 0};
+        t.ip = 2;
+        REQUIRE(f.vm.step(t));
+        CHECK(t.depth == 0);
+        CHECK(t.ip == (test.taken ? 10 : 7));
+    }
+    // The startup instruction uses a multi-byte immediate and jumps relative to its opcode.
+    Fixture f;
+    Thread t;
+    t.expr = {0x129a0a, 0}; t.depth = 1;
+    t.program = {0x37, 0x04, 0x0f, 0, 0x80, 0x80, 0x80, 0x01};
+    REQUIRE(f.vm.step(t));
+    CHECK(t.ip == 15);
+    CHECK(t.depth == 0);
+}
+
+TEST_CASE("vm immediate comparison and arithmetic stores") {
+    Fixture f;
+    Thread t;
+    t.expr.resize(8);
+    t.program = {0x36, 6, 3,             // 6 & 3 = 2 (not booleanized)
+                 0x3f, 0x83, 8,          // signed division, 32-bit output
+                 0x3e, 0x61,             // comparison !=, 16-bit output
+                 0x3f, 0x03, 0};         // division by zero, 8-bit output
+    t.expr[0] = 6; t.depth = 1;
+    REQUIRE(f.vm.step(t)); CHECK(t.depth == 1); CHECK(t.expr[0] == 2);
+    t.depth = 0; t.expr[0] = 0x100; t.expr[1] = 0x7fffffff; t.depth = 2;
+    REQUIRE(f.vm.step(t)); CHECK(t.depth == 0); CHECK(g32(f.vm, 0x100) == 0x0fffffffu);
+    t.expr[0] = 0x104; t.expr[1] = 7; t.expr[2] = 9; t.depth = 3;
+    REQUIRE(f.vm.step(t)); CHECK(t.depth == 0); CHECK(g32(f.vm, 0x104) == 1);
+    t.expr[0] = 0x108; t.expr[1] = 7; t.depth = 2;
+    REQUIRE(f.vm.step(t)); CHECK(t.depth == 0); CHECK(g32(f.vm, 0x108) == 0);
+}
+
 TEST_CASE("vm call and return use the data stack") {
     Fixture f;
     Asm a;
@@ -389,6 +438,56 @@ TEST_CASE("vm call and return use the data stack") {
     REQUIRE(f.vm.spawn(small(), "x.arc", "main"));
     REQUIRE(f.vm.run_frame(0).has_value());
     CHECK(g32(f.vm, 0x300) == 42);
+}
+
+TEST_CASE("vm EE relative call returns after its operand") {
+    Fixture f;
+    Thread t;
+    t.expr.resize(8); t.stack.resize(32);
+    t.program = {0, 0xee, 5, 0, 0, 0, 0x17};
+    t.ip = 1;
+    REQUIRE(f.vm.step(t));
+    CHECK(t.ip == 6); CHECK(t.sp == 4); REQUIRE(t.calls.size() == 1);
+    REQUIRE(f.vm.step(t));
+    CHECK(t.ip == 4); CHECK(t.sp == 0); CHECK(t.calls.empty());
+}
+
+TEST_CASE("vm EC copies an immediate length including overlapping regions") {
+    Fixture f;
+    Thread t;
+    t.expr = {0x102, 0x100}; t.depth = 2;
+    t.program = {0xec, 4};
+    const std::uint8_t source[] = {1, 2, 3, 4, 5, 6};
+    REQUIRE(f.vm.global.write(0x100, sizeof source, source));
+    REQUIRE(f.vm.step(t));
+    std::uint8_t result[6]{};
+    REQUIRE(f.vm.global.read(0x100, sizeof result, result));
+    const std::vector<std::uint8_t> expected{1, 2, 1, 2, 3, 4};
+    CHECK(std::vector<std::uint8_t>(result, result + 6) == expected);
+    CHECK(t.depth == 0); CHECK(t.ip == 2);
+}
+
+TEST_CASE("vm ED copies an immediate length from the data stack") {
+    Fixture f;
+    Thread t;
+    t.expr = {0x100}; t.depth = 1; t.stack.resize(32); t.sp = 16;
+    t.stack[12] = 0xaa; t.stack[13] = 0xbb; t.stack[14] = 0xcc;
+    t.program = {0xed, 4, 0, 3};
+    REQUIRE(f.vm.step(t));
+    CHECK(g32(f.vm, 0x100) == 0xccbbaa);
+    CHECK(t.depth == 0); CHECK(t.ip == 4);
+}
+
+TEST_CASE("vm EF calls a target loaded through a packed address") {
+    Fixture f;
+    Thread t;
+    t.expr.resize(8); t.stack.resize(32);
+    t.program = {0, 0xef, 0x00, 0x01, 0, 0x80, 0, 0x17};
+    t.ip = 1;
+    const std::uint8_t target[] = {7, 0, 0, 0};
+    REQUIRE(f.vm.global.write(0x100, sizeof target, target));
+    REQUIRE(f.vm.step(t)); CHECK(t.ip == 7); CHECK(t.sp == 4);
+    REQUIRE(f.vm.step(t)); CHECK(t.ip == 6); CHECK(t.sp == 0);
 }
 
 TEST_CASE("scheduler: yield hands over to the next thread, new frame resumes") {

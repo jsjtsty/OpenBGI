@@ -1,0 +1,241 @@
+00407250	https://charge1.soft-denchi.jp/DenchiSystem/satxControler
+0040728c	https://charge1.soft-denchi.jp/DenchiSystem/satxControler
+00407301	title#
+00407309	0000400
+004073c4	http://charge1.soft-denchi.jp/redirect/sdrt.htm
+004073f8	http://charge1.soft-denchi.jp/redirect/Lgi01.htm
+0040742c	http://charge1.soft-denchi.jp/redirect/runtime.htm
+00407484	LogPath
+0040748c	CommonFilesDir
+0040749c	UCBatLog.dat
+004074ac	softdenchi.sdlog
+004074c0	UCharge
+004074f8	SoftDenchi meter
+0040750c	Paltiosoft.SdMeter1
+00407520	Software\SoftDenchi
+00407534	MeterPath
+00407580	Software\SoftDenchi
+00407594	%s\apps\%s
+004075b8	Software\SoftDenchi
+004075e0	https://charge1.soft-denchi.jp/DenchiSystem/denchiController
+00407620	LogLevel
+00407a86	SetFilePointer
+00407a98	ReadFile
+00407aa4	FreeLibrary
+00407ab2	GetProcAddress
+00407ac4	LoadLibraryA
+00407ad4	SetCurrentDirectoryA
+00407aec	GetCurrentDirectoryA
+00407b04	CloseHandle
+00407b12	TerminateProcess
+00407b26	WaitForSingleObject
+00407b3c	OpenProcess
+00407b4a	lstrcpyA
+00407b56	Sleep
+00407b5c	KERNEL32.dll
+00407b6c	EnableWindow
+00407b7c	ShowWindow
+00407b8a	GetWindowThreadProcessId
+00407ba6	EnumWindows
+00407bb4	IsWindowEnabled
+00407bc6	IsWindowVisible
+00407bd8	wsprintfA
+00407be4	MessageBoxA
+00407bf2	SetForegroundWindow
+00407c08	GetForegroundWindow
+00407c1e	EnumDisplaySettingsA
+00407c36	ChangeDisplaySettingsA
+00407c50	DispatchMessageA
+00407c64	TranslateMessage
+00407c78	TranslateAcceleratorA
+00407c90	GetMessageA
+00407c9e	LoadAcceleratorsA
+00407cb2	FindWindowA
+00407cc0	LoadStringA
+00407cce	RegisterClassExA
+00407ce2	LoadCursorA
+00407cf0	LoadIconA
+00407cfc	PostMessageA
+00407d0c	UpdateWindow
+00407d1c	CreateWindowExA
+00407d2e	SetTimer
+00407d3a	DefWindowProcA
+00407d4c	DialogBoxParamA
+00407d5e	PostQuitMessage
+00407d70	KillTimer
+00407d7c	EndPaint
+00407d88	BeginPaint
+00407d96	DestroyWindow
+00407da6	EndDialog
+00407db0	USER32.dll
+00407dbe	ShellExecuteA
+00407dcc	SHELL32.dll
+00407dda	free
+00407de2	malloc
+00407dec	__CxxFrameHandler
+00407e00	strncmp
+00407e0a	strtoul
+00407e14	time
+00407e1c	??3@YAXPAX@Z
+00407e2c	??2@YAPAXI@Z
+00407e3c	memmove
+00407e46	_beginthread
+00407e56	_makepath
+00407e62	_splitpath
+00407e70	strchr
+00407e7a	strstr
+00407e84	realloc
+00407e8e	_strdup
+00407e98	_mbsinc
+00407ea2	_mbsnbcpy
+00407eae	vsprintf
+00407eba	__dllonexit
+00407ec8	_onexit
+00407ed0	MSVCRT.dll
+00407ede	_exit
+00407ee6	_XcptFilter
+00407ef4	exit
+00407efc	_acmdln
+00407f06	__getmainargs
+00407f16	_initterm
+00407f22	__setusermatherr
+00407f36	_adjust_fdiv
+00407f46	__p__commode
+00407f56	__p__fmode
+00407f64	__set_app_type
+00407f76	_except_handler3
+00407f8a	_controlfp
+00407f96	MFC42.DLL
+00407fa0	SHFOLDER.dll
+00407fb0	VerQueryValueA
+00407fc2	GetFileVersionInfoA
+00407fd8	GetFileVersionInfoSizeA
+00407ff0	VERSION.dll
+0040800a	lstrcpynA
+00408016	lstrlenA
+00408022	GetModuleFileNameA
+00408038	GetModuleHandleA
+0040804c	ResumeThread
+0040805c	GetLastError
+0040806c	CreateProcessA
+0040807e	GetShortPathNameA
+00408092	WriteFile
+0040809e	CreateFileA
+004080ac	GetFileSize
+004080ba	SetFileAttributesA
+004080d0	LockFile
+004080dc	RemoveDirectoryA
+004080f0	DeleteFileA
+004080fe	SetFileTime
+0040810c	GetFileTime
+0040811a	WriteProcessMemory
+00408130	VirtualProtectEx
+00408144	VirtualQueryEx
+00408156	ReadProcessMemory
+0040816a	GetCurrentProcessId
+00408180	lstrcatA
+0040818c	UnmapViewOfFile
+0040819e	MapViewOfFile
+004081ae	CreateFileMappingA
+004081c4	WideCharToMultiByte
+004081da	lstrlenW
+004081e6	MultiByteToWideChar
+004081fc	CreateDirectoryA
+00408210	GetTempFileNameA
+00408224	GetTempPathA
+00408234	CreateThread
+00408244	CreateNamedPipeA
+00408258	TerminateThread
+0040826a	DisconnectNamedPipe
+00408280	ConnectNamedPipe
+00408294	GetStartupInfoA
+004082a6	RegisterWindowMessageA
+004082c0	RegCloseKey
+004082ce	RegQueryValueExA
+004082e2	RegOpenKeyExA
+004082f2	RegSetValueExA
+00408304	RegCreateKeyExA
+00408316	GetUserNameA
+00408324	ADVAPI32.dll
+00408334	CoCreateInstance
+00408348	CoInitialize
+00408358	CoUninitialize
+0040836a	CoTaskMemFree
+0040837a	StringFromCLSID
+0040838a	ole32.dll
+00408394	OLEAUT32.dll
+00409020	[%d] = %X, %X
+00409030	c_nCount=%d
+00409044	SdWrap
+0040904c	UC_OpenningDialog2
+00409060	ucopgdlg.dll
+00409070	UC_Mode3Charge
+00409080	UC_ScidCharge
+00409090	UC_DmmDialog
+004090a0	SetForegroundWindow() failed.
+004090c0	SetForegroundWindow() succeeded.
+004090e4	DoOpgDlg2
+004090fc	debug
+00409128	OpenProcess failed.
+0040913c	CreateProcess=%d
+00409150	"%s" %s
+00409158	%s %s
+00409160	unpatch failed.
+00409170	Copy succeeded.
+00409180	WriteFile for output file.
+0040919c	Cannot open output file.
+004091b8	ReadFile for input.
+004091cc	SetFilePointer for input.
+004091f8	LockFile(%s)=%d, %d
+0040920c	RemoveDirectory(%s)=%d, %d
+00409228	DeleteFile(%s)=%d, %d
+00409240	Cannot open input file.
+00409258	UnPatchFile. cannnot allocate buffer.
+00409280	UnPatchFile. cannnot open the file.
+004092a4	WriteProcessMemory failed.
+004092c0	VirtualProtectEx failed.
+004092dc	ReadProcessMemory failed.(%d)
+004092fc	SdwPatchProcess. cannnot allocate buffer.
+00409328	/sd %x %x
+00409340	launch3.log
+0040934c	logging
+00409354	Software\Paltiosoft\Wrapping
+00409374	#title#
+0040937c	0123456789abcdef
+00409398	sdsdk.
+004093a0	%d:%d
+004093a8	UCR_UNKNOWN_VERSION
+004093bc	UCR_ERROR_ON_COM
+004093d0	UCR_SDKID_ERROR
+004093f3	kUChargeMessage
+00409404	UChargeChargeMessage
+0040941c	LocalServer32
+0040942c	CLSID
+00409434	Software\UCharge
+00409454	\\.\pipe\softdenchi_login
+00409470	_StartMonitor(3,%s)=%d
+00409488	_StartMonitor(2,%s)=%d
+004094a0	_StartMonitor(1)
+004094b4	RETRY_DELAY
+004094c0	Software\Paltiosoft\ucharge
+004094dc	RETRY_MAX
+004094e8	\\.\pipe\softdenchi.%s
+00409500	\\.\pipe\softdenchi.charge.%s
+0046b494	
+0046b496	
+0046b498	
+0046b49a	
+0046b49c	
+0046b49e	
+0046b4a0	
+0046b4a2	SdWrap
+0046b4b0	
+0046b4b2	
+0046b4b4	
+0046b4b6	
+0046b4b8	
+0046b4ba	SDWRAP
+0046b4c8	
+0046b4ca	
+ffdff1ac	
+ffdffc00	

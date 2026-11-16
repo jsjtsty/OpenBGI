@@ -224,7 +224,7 @@ Result<BmDecoder> BmDecoder::open(ByteView file) {
     if (d.version_ != 0x10000 && d.version_ != 0x10001) return fail(Errc::Unsupported, "BF_Movie version");
     if (!d.width_ || !d.height_ || d.width_ > 16384 || d.height_ > 16384)
         return fail(Errc::Range, "BF_Movie dimensions");
-    if (d.bits_ != 24 && d.bits_ != 32) return fail(Errc::Unsupported, "BF_Movie bit depth");
+    if (d.bits_ != 8 && d.bits_ != 24 && d.bits_ != 32) return fail(Errc::Unsupported, "BF_Movie bit depth");
     if (static_cast<std::uint64_t>(d.frame_count_) * 4 > file.size() - kFrameTable)
         return fail(Errc::Format, "BF_Movie frame table beyond file");
 
@@ -271,25 +271,31 @@ Result<void> BmDecoder::decode_frame(std::uint32_t index) {
         for (std::uint32_t b = 0; b < w8; ++b)
             if ((mask[b >> 3] >> (b & 7)) & 1) present.push_back(b);
         const std::size_t n = present.size();
-        if (cnt != n * 192) return fail(Errc::Format, "BF_Movie coefficient count mismatch");
+        if (cnt != n * (bits_ == 8 ? 64 : 192)) return fail(Errc::Format, "BF_Movie coefficient count mismatch");
         if (!decode_coeffs(fr, q, cnt, dct, act, co)) return fail(Errc::Format, "BF_Movie truncated coefficients");
 
         for (std::size_t j = 0; j < n; ++j) {
             float Y[64], Cb[64], Cr[64];
             idct_plane(&co[j * 64], quant_[0], Y);
-            idct_plane(&co[(n + j) * 64], quant_[1], Cb);
-            idct_plane(&co[(2 * n + j) * 64], quant_[1], Cr);
+            if (bits_ != 8) {
+                idct_plane(&co[(n + j) * 64], quant_[1], Cb);
+                idct_plane(&co[(2 * n + j) * 64], quant_[1], Cr);
+            }
             const std::uint32_t x0 = present[j] * 8, y0 = r * 8;
             const std::uint32_t bw = std::min<std::uint32_t>(8, width_ - x0), bh = std::min<std::uint32_t>(8, height_ - y0);
             for (std::uint32_t yy = 0; yy < bh; ++yy)
                 for (std::uint32_t xx = 0; xx < bw; ++xx) {
                     int i = static_cast<int>(yy * 8 + xx);
+                    std::uint8_t* px = &canvas_[((y0 + yy) * static_cast<std::size_t>(width_) + x0 + xx) * 4];
+                    if (bits_ == 8) {
+                        px[0] = px[1] = px[2] = clamp_byte(Y[i]);
+                        continue;
+                    }
                     float cb = Cb[i] - 128, cr = Cr[i] - 128;
                     float R = std::floor(Y[i] + static_cast<float>(1.402) * cr + static_cast<float>(0.5));
                     float G = std::floor(Y[i] - static_cast<float>(0.34414) * cb - static_cast<float>(0.71414) * cr +
                                          static_cast<float>(0.5));
                     float B = std::floor(Y[i] + static_cast<float>(1.772) * cb + static_cast<float>(0.5));
-                    std::uint8_t* px = &canvas_[((y0 + yy) * static_cast<std::size_t>(width_) + x0 + xx) * 4];
                     px[0] = clamp_byte(B);
                     px[1] = clamp_byte(G);
                     px[2] = clamp_byte(R);

@@ -4,6 +4,7 @@
 #include <cstring>
 
 #include "formats/keystream.hpp"
+#include "formats/bm.hpp"
 
 namespace obgi {
 
@@ -64,7 +65,8 @@ std::vector<std::uint8_t> CbgImage::to_rgba() const {
 Result<CbgImage> cbg_decode(ByteView in) {
     if (!is_cbg(in) || in.size() < kHeaderSize) return fail(Errc::Format, "not a CompressedBG stream");
     const std::uint8_t* h = in.data();
-    if (load_u16le(h + 0x2e) != 1) return fail(Errc::Unsupported, "CompressedBG version other than 1");
+    const auto version = load_u16le(h + 0x2e);
+    if (version != 1 && version != 2) return fail(Errc::Unsupported, "unsupported CompressedBG version");
 
     CbgImage img;
     img.width = load_u16le(h + 0x10);
@@ -91,6 +93,36 @@ Result<CbgImage> cbg_decode(ByteView in) {
         xr ^= b;
     }
     if (sum != h[0x2c] || xr != h[0x2d]) return fail(Errc::Format, "CompressedBG table checksum mismatch");
+
+    if (version == 2) {
+        // The original feeds these quantization tables and the remaining payload to its
+        // BF_Movie frame decoder, with dimensions rounded up to complete 8x8 blocks.
+        if (table.size() != 132)
+            return fail(Errc::Unsupported, "unsupported CompressedBG v2 tables or pixel format");
+        const auto padded_width = (img.width + 7u) & ~7u;
+        const auto padded_height = (img.height + 7u) & ~7u;
+        if (padded_width > 16384 || padded_height > 16384 ||
+            std::uint64_t(padded_width) * padded_height * 4 > 100000000)
+            return fail(Errc::Range, "CompressedBG padded image too large");
+        std::vector<std::uint8_t> movie(0xc4, 0);
+        std::memcpy(movie.data(), "BF_Movie_______", 16);
+        auto put32 = [&](std::size_t offset, std::uint32_t value) { std::memcpy(movie.data() + offset, &value, 4); };
+        put32(0x10, 0x10001); put32(0x14, padded_width); put32(0x18, padded_height);
+        put32(0x1c, img.bits_per_pixel); put32(0x20, load_u16le(h + 0x18));
+        put32(0x24, 1); put32(0x28, 1); put32(0xc0, 0xc4);
+        std::memcpy(movie.data() + 0x40, table.data(), 128);
+        movie.insert(movie.end(), in.begin() + kHeaderSize + table_size, in.end());
+        auto decoder = BmDecoder::open(movie);
+        if (!decoder) return std::unexpected(decoder.error());
+        if (auto decoded = decoder->decode_frame(0); !decoded) return std::unexpected(decoded.error());
+        const auto canvas = decoder->canvas();
+        img.pixels.resize(raw_size);
+        for (std::size_t y = 0; y < img.height; ++y)
+            for (std::size_t x = 0; x < img.width; ++x)
+                std::memcpy(img.pixels.data() + (y * img.width + x) * ch,
+                            canvas.data() + (y * padded_width + x) * 4, ch);
+        return img;
+    }
 
     std::vector<Node> nodes(256);
     std::size_t tpos = 0;

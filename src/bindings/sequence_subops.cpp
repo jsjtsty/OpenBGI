@@ -10,11 +10,12 @@ void register_sequence_subops(vm::SubopRegistry& r, SequenceService& sequences, 
         sequences.defer_next_decode = true;
         return 0;
     }});
-    r.add({0x90F4, "load sequence", 4, 1, [&sequences, &resources](Ctx& c) {
+    auto load_sequence = [&sequences, &resources](Ctx& c, bool has_mode) {
+        if (has_mode) c.pop(); // Both modes can use the same demand-paged archive view.
         const auto name = c.cstring(c.pop()), arc = c.cstring(c.pop());
         const Word info_address = c.pop(), id_address = c.pop();
         if (!c.ok()) return 0;
-        auto bytes = resources.read(arc, name);
+        auto bytes = resources.open_media(arc, name);
         if (!bytes) { c.push(1); return 0; }
         auto info = sequences.load(std::move(*bytes));
         if (!info) { c.push(2); return 0; }
@@ -23,7 +24,9 @@ void register_sequence_subops(vm::SubopRegistry& r, SequenceService& sequences, 
         for (Word i = 0; i < 5; ++i) c.write(info_address + 4 * i, words[i], 4);
         c.push(0);
         return 0;
-    }});
+    };
+    r.add({0x90F4, "load sequence", 4, 1, [load_sequence](Ctx& c) { return load_sequence(c, false); }});
+    r.add({0x92F1, "load sequence with mode", 5, 1, [load_sequence](Ctx& c) { return load_sequence(c, true); }});
     r.add({0x90F5, "free sequence", 1, 1, [&sequences](Ctx& c) {
         const Word id = c.pop();
         if (c.ok()) c.push(sequences.release(id) ? 0 : 3);

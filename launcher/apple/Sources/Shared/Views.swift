@@ -80,14 +80,29 @@ struct GameRowView: View {
 }
 
 struct InstallDetailView: View {
+    private enum ActiveSheet: Identifiable {
+        case log
+        case export(URL)
+        var id: String {
+            switch self {
+            case .log: return "log"
+            case .export(let url): return "export:\(url.absoluteString)"
+            }
+        }
+    }
+
+    private enum ActiveConfirm: Identifiable {
+        case clearSaves
+        case remove
+        var id: Self { self }
+    }
+
     @ObservedObject var store: LibraryStore
     let install: Install
-    @State private var showLog = false
-    @State private var showClearConfirm = false
-    @State private var showRemoveConfirm = false
+    @State private var activeSheet: ActiveSheet?
+    @State private var activeConfirm: ActiveConfirm?
     @State private var showRenameAlert = false
     @State private var renameText = ""
-    @State private var exportURL: URL?
 
     private var probe: ProbeInfo? { store.probes[install.id] }
     private var status: InstallStatus { store.status[install.id] ?? .missing }
@@ -185,19 +200,24 @@ struct InstallDetailView: View {
                 if install.playSeconds > 0 {
                     LabeledContent("Play Time", value: formatDuration(install.playSeconds))
                 }
-                HStack {
+                HStack(spacing: 10) {
                     Button("Export Saves...") {
-                        exportURL = store.exportData(install)
+                        if let url = store.exportData(install) {
+                            activeSheet = .export(url)
+                        }
                     }
+                    .buttonStyle(.bordered)
                     #if os(macOS)
                     Button("Open Save Folder") {
                         store.revealDataFolder(install)
                     }
+                    .buttonStyle(.bordered)
                     #endif
                     Spacer()
                     Button("Clear Saves", role: .destructive) {
-                        showClearConfirm = true
+                        activeConfirm = .clearSaves
                     }
+                    .buttonStyle(.bordered)
                     .disabled(isPlaying)
                 }
             }
@@ -214,21 +234,21 @@ struct InstallDetailView: View {
                     }
                 }
                 Button("View Last Run Log") {
-                    showLog = true
+                    activeSheet = .log
                 }
             }
 
             Section {
                 #if os(macOS)
                 Button(role: .destructive) {
-                    showRemoveConfirm = true
+                    activeConfirm = .remove
                 } label: {
                     Label("Remove from Library...", systemImage: "trash")
                 }
                 .disabled(isPlaying)
                 #else
                 Button(role: .destructive) {
-                    showRemoveConfirm = true
+                    activeConfirm = .remove
                 } label: {
                     Label(store.canDeleteFiles(install) ? "Delete Game..." : "Remove from Library", systemImage: "trash")
                 }
@@ -259,7 +279,7 @@ struct InstallDetailView: View {
                     Divider()
 
                     Button(role: .destructive) {
-                        showRemoveConfirm = true
+                        activeConfirm = .remove
                     } label: {
                         #if os(macOS)
                         Label("Remove from Library...", systemImage: "trash")
@@ -273,13 +293,15 @@ struct InstallDetailView: View {
                 }
             }
         }
-        .sheet(isPresented: $showLog) {
-            LogSheetView(title: install.name, text: store.logText(install)) {
-                store.clearLog(install)
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .log:
+                LogSheetView(title: install.name, text: store.logText(install)) {
+                    store.clearLog(install)
+                }
+            case .export(let url):
+                ShareSheet(url: url)
             }
-        }
-        .sheet(item: $exportURL) { url in
-            ShareSheet(url: url)
         }
         .alert("Rename Game", isPresented: $showRenameAlert) {
             TextField("Game Name", text: $renameText)
@@ -288,33 +310,51 @@ struct InstallDetailView: View {
             }
             Button("Cancel", role: .cancel) {}
         }
-        .confirmationDialog("Clear all saves and runtime data for \(install.name)?", isPresented: $showClearConfirm) {
-            Button("Clear Saves", role: .destructive) { store.clearData(install) }
-        }
-        .confirmationDialog(removeDialogTitle, isPresented: $showRemoveConfirm, titleVisibility: .visible) {
-            #if os(macOS)
-            Button("Remove from Library") {
-                store.remove(install.id, deleteSaves: false)
+        .confirmationDialog(
+            activeConfirm == .clearSaves
+                ? String(localized: "Clear all saves and runtime data for \(install.name)?")
+                : removeDialogTitle,
+            isPresented: Binding(
+                get: { activeConfirm != nil },
+                set: { if !$0 { activeConfirm = nil } }
+            ),
+            titleVisibility: .visible,
+            presenting: activeConfirm
+        ) { item in
+            switch item {
+            case .clearSaves:
+                Button("Clear Saves", role: .destructive) { store.clearData(install) }
+                Button("Cancel", role: .cancel) {}
+            case .remove:
+                #if os(macOS)
+                Button("Remove from Library") {
+                    store.remove(install.id, deleteSaves: false)
+                }
+                Button("Remove & Delete Saves", role: .destructive) {
+                    store.remove(install.id, deleteSaves: true)
+                }
+                #else
+                Button(store.canDeleteFiles(install) ? "Delete Game & Saves" : "Remove from Library", role: .destructive) {
+                    store.deleteGame(install)
+                }
+                #endif
+                Button("Cancel", role: .cancel) {}
             }
-            Button("Remove & Delete Saves", role: .destructive) {
-                store.remove(install.id, deleteSaves: true)
+        } message: { item in
+            switch item {
+            case .clearSaves:
+                EmptyView()
+            case .remove:
+                #if os(macOS)
+                Text("Game files in \"\(install.displayPath)\" will not be deleted from disk.")
+                #else
+                if store.canDeleteFiles(install) {
+                    Text("This will permanently delete the game folder and saves from Documents.")
+                } else {
+                    Text("Files directly in Documents will not be deleted.")
+                }
+                #endif
             }
-            #else
-            Button(store.canDeleteFiles(install) ? "Delete Game & Saves" : "Remove from Library", role: .destructive) {
-                store.deleteGame(install)
-            }
-            #endif
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            #if os(macOS)
-            Text("Game files in \"\(install.displayPath)\" will not be deleted from disk.")
-            #else
-            if store.canDeleteFiles(install) {
-                Text("This will permanently delete the game folder and saves from Documents.")
-            } else {
-                Text("Files directly in Documents will not be deleted.")
-            }
-            #endif
         }
     }
 
@@ -439,19 +479,33 @@ extension URL: @retroactive Identifiable {
 
 struct ShareSheet: View {
     let url: URL
+    @Environment(\.dismiss) private var dismiss
+
     var body: some View {
         #if os(iOS)
         ActivityView(url: url)
         #else
-        VStack(spacing: 12) {
+        VStack(spacing: 14) {
             Text("Exported archive ready:")
-            Text(url.path).font(.caption).textSelection(.enabled)
-            Button("Reveal in Finder") {
-                NSWorkspace.shared.activateFileViewerSelecting([url])
+                .font(.headline)
+            Text(url.path)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .textSelection(.enabled)
+                .multilineTextAlignment(.center)
+            HStack(spacing: 12) {
+                Button("Reveal in Finder") {
+                    NSWorkspace.shared.activateFileViewerSelecting([url])
+                }
+                Button("Done") {
+                    dismiss()
+                }
+                .keyboardShortcut(.cancelAction)
+                .buttonStyle(.borderedProminent)
             }
         }
-        .padding()
-        .frame(minWidth: 360, minHeight: 160)
+        .padding(20)
+        .frame(minWidth: 380, minHeight: 160)
         #endif
     }
 }

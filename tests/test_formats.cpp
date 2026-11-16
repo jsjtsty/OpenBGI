@@ -1,6 +1,7 @@
 #include <doctest/doctest.h>
 
 #include <map>
+#include <cstdlib>
 
 #include "formats/bm.hpp"
 #include "formats/bw.hpp"
@@ -53,6 +54,34 @@ TEST_CASE("cbg matches the Python reference (itself checked against the original
 TEST_CASE("cbg rejects garbage") {
     std::uint8_t junk[64] = {};
     CHECK_FALSE(obgi::cbg_decode(junk).has_value());
+}
+
+TEST_CASE("CompressedBG v2 decodes color, alpha and grayscale game samples" * doctest::test_suite("game")) {
+    const char* path = std::getenv("OPENBGI_CBG2_GAME_DIR");
+    if (!path) { MESSAGE("set OPENBGI_CBG2_GAME_DIR to run v2 game vectors"); return; }
+    struct Sample { const char* archive; const char* member; unsigned width, height, bits; };
+    const Sample samples[] = {
+        {"data02500.arc", "brandlogo", 1920, 1080, 24},
+        {"data02261.arc", "car01A_001", 882, 1643, 32},
+        {"data02700.arc", "ex_mask003a", 1958, 1102, 8},
+    };
+    for (const auto& sample : samples) {
+        auto arc = obgi::Arc::open(fs::path(path) / sample.archive); REQUIRE(arc);
+        auto entry = arc->find(sample.member); REQUIRE(entry);
+        auto image = obgi::cbg_decode(arc->data(*entry));
+        REQUIRE_MESSAGE(image, sample.member, ": ", image ? "" : image.error().message);
+        CHECK(image->width == sample.width); CHECK(image->height == sample.height);
+        CHECK(image->bits_per_pixel == sample.bits);
+        CHECK(image->pixels.size() == std::size_t(sample.width) * sample.height * (sample.bits / 8));
+        if (sample.bits == 32) {
+            bool transparent = false, opaque = false;
+            for (std::size_t i = 3; i < image->pixels.size(); i += 4) {
+                transparent |= image->pixels[i] == 0;
+                opaque |= image->pixels[i] == 255;
+            }
+            CHECK(transparent); CHECK(opaque);
+        }
+    }
 }
 
 TEST_CASE("bm frames match the Python reference (checked against the original decoder)" * doctest::test_suite("game")) {

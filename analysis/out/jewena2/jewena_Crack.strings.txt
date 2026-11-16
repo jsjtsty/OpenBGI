@@ -1,0 +1,1232 @@
+14014e4e8	Unknown exception
+14014e518	bad allocation
+14014ecc0	address family not supported
+14014ece0	address in use
+14014ecf0	address not available
+14014ed08	already connected
+14014ed20	argument list too long
+14014ed38	argument out of domain
+14014ed50	bad address
+14014ed60	bad file descriptor
+14014ed78	bad message
+14014ed88	broken pipe
+14014ed98	connection aborted
+14014edb0	connection already in progress
+14014edd0	connection refused
+14014ede8	connection reset
+14014ee00	cross device link
+14014ee18	destination address required
+14014ee38	device or resource busy
+14014ee50	directory not empty
+14014ee68	executable format error
+14014ee80	file exists
+14014ee90	file too large
+14014eea0	filename too long
+14014eeb8	function not supported
+14014eed0	host unreachable
+14014eee8	identifier removed
+14014ef00	illegal byte sequence
+14014ef18	inappropriate io control operation
+14014ef40	interrupted
+14014ef50	invalid argument
+14014ef68	invalid seek
+14014ef78	io error
+14014ef88	is a directory
+14014ef98	message size
+14014efa8	network down
+14014efb8	network reset
+14014efc8	network unreachable
+14014efe0	no buffer space
+14014eff0	no child process
+14014f008	no link
+14014f010	no lock available
+14014f028	no message available
+14014f040	no message
+14014f050	no protocol option
+14014f068	no space on device
+14014f080	no stream resources
+14014f098	no such device or address
+14014f0b8	no such device
+14014f0c8	no such file or directory
+14014f0e8	no such process
+14014f0f8	not a directory
+14014f108	not a socket
+14014f118	not a stream
+14014f128	not connected
+14014f138	not enough memory
+14014f150	not supported
+14014f160	operation canceled
+14014f178	operation in progress
+14014f190	operation not permitted
+14014f1a8	operation not supported
+14014f1c0	operation would block
+14014f1d8	owner dead
+14014f1e8	permission denied
+14014f200	protocol error
+14014f210	protocol not supported
+14014f228	read only file system
+14014f240	resource deadlock would occur
+14014f260	resource unavailable try again
+14014f280	result out of range
+14014f298	state not recoverable
+14014f2b0	stream timeout
+14014f2c0	text file busy
+14014f2d0	timed out
+14014f2e0	too many files open in system
+14014f300	too many files open
+14014f318	too many links
+14014f328	too many symbolic link levels
+14014f348	value too large
+14014f358	wrong protocol type
+14014f408	CreateSymbolicLinkW
+14014f420	kernel32.dll
+14014f440	GetFileInformationByHandleEx
+14014f460	SetFileInformationByHandle
+14014f480	FlsAlloc
+14014f490	FlsFree
+14014f498	FlsGetValue
+14014f4a8	FlsSetValue
+14014f4b8	InitializeCriticalSectionEx
+14014f4d8	InitOnceExecuteOnce
+14014f4f0	CreateEventExW
+14014f500	CreateSemaphoreW
+14014f518	CreateSemaphoreExW
+14014f530	CreateThreadpoolTimer
+14014f548	SetThreadpoolTimer
+14014f560	WaitForThreadpoolTimerCallbacks
+14014f580	CloseThreadpoolTimer
+14014f598	CreateThreadpoolWait
+14014f5b0	SetThreadpoolWait
+14014f5c8	CloseThreadpoolWait
+14014f5e0	FlushProcessWriteBuffers
+14014f600	FreeLibraryWhenCallbackReturns
+14014f620	GetCurrentProcessorNumber
+14014f640	GetCurrentPackageId
+14014f658	GetTickCount64
+14014f668	GetSystemTimePreciseAsFileTime
+14014f688	InitializeConditionVariable
+14014f6a8	WakeConditionVariable
+14014f6c0	WakeAllConditionVariable
+14014f6e0	SleepConditionVariableCS
+14014f700	InitializeSRWLock
+14014f718	AcquireSRWLockExclusive
+14014f730	TryAcquireSRWLockExclusive
+14014f750	ReleaseSRWLockExclusive
+14014f768	SleepConditionVariableSRW
+14014f788	CreateThreadpoolWork
+14014f7a0	SubmitThreadpoolWork
+14014f7b8	CloseThreadpoolWork
+14014f7d0	CompareStringEx
+14014f7e0	GetLocaleInfoEx
+14014f7f0	LCMapStringEx
+14014f828	bad array new length
+14014f860	ERROR : Unable to initialize critical section in CAtlBaseModule 
+14014fab0	bad exception
+14014fad8	api-ms-win-core-fibers-l1-1-1
+14014fb18	api-ms-win-core-synch-l1-2-0
+14014fb58	kernel32
+14014fb70	api-ms-
+14014fb80	ext-ms-
+14014fef8	__based(
+14014ff08	__cdecl
+14014ff10	__pascal
+14014ff20	__stdcall
+14014ff30	__thiscall
+14014ff40	__fastcall
+14014ff50	__vectorcall
+14014ff60	__clrcall
+14014ff6c	__eabi
+14014ff78	__swift_1
+14014ff88	__swift_2
+14014ff98	__ptr64
+14014ffa0	__restrict
+14014ffb0	__unaligned
+14014ffc0	restrict(
+14014ffd8	 delete
+14014fff8	operator
+140150070	`vftable'
+140150080	`vbtable'
+140150090	`vcall'
+140150098	`typeof'
+1401500a8	`local static guard'
+1401500c0	`string'
+1401500d0	`vbase destructor'
+1401500e8	`vector deleting destructor'
+140150108	`default constructor closure'
+140150128	`scalar deleting destructor'
+140150148	`vector constructor iterator'
+140150168	`vector destructor iterator'
+140150188	`vector vbase constructor iterator'
+1401501b0	`virtual displacement map'
+1401501d0	`eh vector constructor iterator'
+1401501f8	`eh vector destructor iterator'
+140150218	`eh vector vbase constructor iterator'
+140150240	`copy constructor closure'
+140150260	`udt returning'
+140150274	`RTTI
+140150280	`local vftable'
+140150290	`local vftable constructor closure'
+1401502b4	 new[]
+1401502c0	 delete[]
+1401502d0	`omni callsig'
+1401502e0	`placement delete closure'
+140150300	`placement delete[] closure'
+140150320	`managed vector constructor iterator'
+140150348	`managed vector destructor iterator'
+140150370	`eh vector copy constructor iterator'
+140150398	`eh vector vbase copy constructor iterator'
+1401503c8	`dynamic initializer for '
+1401503e8	`dynamic atexit destructor for '
+140150410	`vector copy constructor iterator'
+140150438	`vector vbase copy constructor iterator'
+140150468	`managed vector copy constructor iterator'
+140150498	`local static thread guard'
+1401504b8	operator "" 
+1401504c8	operator co_await
+1401504e0	 Type Descriptor'
+1401504f8	 Base Class Descriptor at (
+140150518	 Base Class Array'
+140150530	 Class Hierarchy Descriptor'
+140150550	 Complete Object Locator'
+140150770	(null)
+140150780	(null)
+140151160	minkernel\crts\ucrt\inc\corecrt_internal_strtox.h
+1401511d0	__crt_strtox::floating_point_value::as_double
+140151230	_is_double
+140151250	__crt_strtox::floating_point_value::as_float
+1401512b0	!_is_double
+1401512d8	INITY
+1401512e8	inity
+14015130a	NAN)
+14015131a	nan)
+140151468	mscoree.dll
+140151480	CorExitProcess
+1401517e0	NAN(SNAN)
+1401517f0	nan(snan)
+140151800	NAN(IND)
+140151810	nan(ind)
+14015181c	e+000
+140151b0c	Sunday
+140151b14	Monday
+140151b20	Tuesday
+140151b28	Wednesday
+140151b38	Thursday
+140151b44	Friday
+140151b50	Saturday
+140151b90	January
+140151b98	February
+140151ba4	March
+140151bac	April
+140151bc4	August
+140151bd0	September
+140151be0	October
+140151be8	November
+140151bf8	December
+140151c10	MM/dd/yy
+140151c20	dddd, MMMM dd, yyyy
+140151c38	HH:mm:ss
+140151c80	Sunday
+140151c90	Monday
+140151ca0	Tuesday
+140151cb0	Wednesday
+140151cc8	Thursday
+140151ce0	Friday
+140151cf0	Saturday
+140151d68	January
+140151d78	February
+140151d90	March
+140151da0	April
+140151db0	June
+140151dc0	July
+140151dd0	August
+140151de0	September
+140151df8	October
+140151e08	November
+140151e20	December
+140151e48	MM/dd/yy
+140151e60	dddd, MMMM dd, yyyy
+140151e88	HH:mm:ss
+140151ea0	en-US
+140151f60	api-ms-win-core-datetime-l1-1-1
+140151fa0	api-ms-win-core-file-l1-2-4
+140151fd8	api-ms-win-core-file-l1-2-2
+140152010	api-ms-win-core-localization-l1-2-1
+140152060	api-ms-win-core-localization-obsolete-l1-2-0
+1401520c0	api-ms-win-core-processthreads-l1-1-2
+140152110	api-ms-win-core-string-l1-1-0
+140152150	api-ms-win-core-sysinfo-l1-2-1
+140152190	api-ms-win-core-winrt-l1-1-0
+1401521d0	api-ms-win-core-xstate-l2-1-0
+140152210	api-ms-win-rtcore-ntuser-window-l1-1-0
+140152260	api-ms-win-security-systemfunctions-l1-1-0
+1401522c0	ext-ms-win-ntuser-dialogbox-l1-1-0
+140152310	ext-ms-win-ntuser-windowstation-l1-1-0
+140152360	advapi32
+140152378	kernelbase
+140152390	ntdll
+1401523a0	api-ms-win-appmodel-runtime-l1-1-2
+1401523e8	user32
+140152410	LocaleNameToLCID
+140152428	RoInitialize
+140152440	RoUninitialize
+140152458	AppPolicyGetProcessTerminationMethod
+140152488	AppPolicyGetThreadInitializationType
+1401524b8	SystemFunction036
+140152cf8	ja-JP
+140152d08	zh-CN
+140152d18	ko-KR
+140152d28	zh-TW
+140152d40	1#INF
+140152d48	1#QNAN
+140152d50	1#SNAN
+140152d58	1#IND
+140153e00	de-DE
+140153f80	sl-SI
+140154088	hi-IN
+140154120	bn-IN
+140154130	pa-IN
+140154150	ta-IN
+140154160	te-IN
+140154170	kn-IN
+1401541a0	sa-IN
+140154250	de-CH
+1401542d0	sr-SP-Latn
+140154310	se-SE
+140154378	de-AT
+1401543b8	sr-SP-Cyrl
+140154440	fr-CH
+140154490	de-LI
+1401544d0	bs-BA-Latn
+140154538	sr-BA-Latn
+140155750	bn-in
+140155760	bs-ba-latn
+1401557b8	de-at
+1401557c8	de-ch
+1401557d8	de-de
+1401557e8	de-li
+140155a98	fr-ch
+140155b08	hi-in
+140155bc8	kn-in
+140155cf8	pa-in
+140155d88	sa-in
+140155db8	se-se
+140155dd8	sl-si
+140155e70	sr-ba-latn
+140155e88	sr-sp-cyrl
+140155ea0	sr-sp-latn
+140155ef8	ta-in
+140155f08	te-in
+140157af4	log10
+140157b00	CONOUT$
+140157d4c	floor
+140157da0	_nextafter
+140157dc0	BHV_V2__
+140157dd0	BHV_____
+140157ddc	#%03d
+140157de8	CompressedBG___
+140157e00	BF_Movie_______
+140157e10	bwef    
+140157e20	PackFile    
+140157e30	BURIKO ARC20
+140157e98	%s%.2X 
+140157ea0	%.4X : %s
+14015d892	8ccccc/Bcccccccccccccccccccccccccccccccccccccc
+14015da20	OleAut32.dll
+140176768	MS Gothic
+140176788	MS Mincho
+1401767a8	Segoe UI
+140176830	BGI - Child window
+140176868	vector<T> too long
+1401768a8	Execute as a launcher.
+1401768c0	ipl._bp
+1401768c8	Do not use mutex.
+140176a28	map/set<T> too long
+140176ab8	%s\%s 
+140176af0	ruby
+140176b38	mxfs
+140176b48	0123456789abcdef
+140176c70	CProcDspMsgEx::AddKanaToInformationOfCharacters
+140176d68	list<T> too long
+140177920	invalid vector<T> subscript
+1401779c0	string too long
+1401779d0	HUNEXGGEFA10
+140177ad0	DCFS FORMAT 1.00
+140177c58	- Group [ %d ] -  
+140177c80	Position( % 4d, % 4d ) / Origin( % 4d, % 4d ) / 
+140177cf0		Unit [ % 3d ] / Validity : %s / Visibility : %s / 
+140177d58	FALSE
+140177d68	TRUE 
+140177d80	Bitmaps : %d / ChangeInterval : %d / BaseBitmaps( %d, %d, %d, %d ) / BitmapForVPD : %d 
+140177f08	DCMovieRenderer%02d%02d%02d%03d
+140177f28	TEXTURERENDERER_BURIKO
+140178348	BGI.hvl
+140179170	RainScrn
+140179180	Effector
+14017918c	Filter
+140179198	Virtual
+1401791a4	Sprite
+1401791ac	Window
+1401791b8	PrtclScrn
+1401791c8	$%08X - %s [ %d , %d - %d , %d ]  
+1401791ec	$%08X 
+140179210	%s - $%06X 
+14017921c	Group
+140179230	%s - $%08X( %d ) 
+140179260	Thread [ %d ]
+140179270	0x%%0%dX%%0%dX : %%d 
+140179290	Address [ $%08X ] : Size [ %d ] : Thread [ %d ] , Program [ %s ] , IP [ $%08X ] 
+140179314	Handle
+140179320	Object Type
+140179330	Display State
+140179340	Position Y
+140179350	Adjustment to X
+140179360	Adjustment to Y
+140179370	Difference of X
+140179380	Visibility
+140179390	Invisibility
+1401793a0	Priority
+1401793b0	Position X
+1401793c0	Logical Z
+1401793d0	Adjustment to logical X
+1401793e8	Adjustment to logical Y
+140179400	Adjustment to logical Z
+140179418	Difference of Y
+140179428	Bitmap Number
+140179438	Logical X
+140179448	Logical Y
+140179458	Effect Level
+140179468	Transparency
+140179478	Opacity
+140179480	Difference of logical X
+140179498	Difference of logical Y
+1401794b0	Difference of logical Z
+1401794c8	Effect Mode
+1401795b0	0x%08X
+1401795c0	TRUE
+140179630	DIRECT3DINITIALIZINGFAILED
+140179650	COULDNOTGETTHEDESKTOPRESOLUTION
+140179670	DIRECT3DINITIALIZINGFAILEDDOYOUWANTTOTRYAGAIN
+1401796a0	COULDNOTGETTHEINFORMATIONOFDISPLAYADAPTOR
+1401796d0	DISPLAYADAPTORDOESNOTSUPPORTREQUISITEFUNCTION
+140179700	DISPLAYADAPTORDOESNOTSUPPORTREQUISITEPIXELFORMAT
+140179740	DISPLAYADAPTORDOESNOTSUPPORTREQUISITESURFACEFORMAT
+140179774	SHADER
+140179a18	CallFunctionForEthornell
+140179a38	SetWindowHandleOfEthornell
+140179a58	DSC FORMAT 1.00
+140179a68	EDIT
+140179a88	Thread [ %d ] , IP [ $%.8X ] , Instruction [ $%X ]  %s
+140179ac0	( %s - $%.8X ) 
+140179ad8	BGIError.txt
+140179ae8	Interpreter Number [ %d ] 
+140179b08	Error!!
+140179b20	Thread [ %d ] , Program [ %s ] , SP [ $%.8X ] IP in program [ $%.8X ] , Instruction [ $%X ] %s Error Code [ $%08X ]  
+140179be0	system.arc
+140179c58	%c:\
+140179c68	\\.\%c%c
+140179c80	AREYOUSUREYOUWANTTOQUIT
+140179c98	%s%s
+140179ca4	%s %s
+140179cb0	%s\%s
+140179cbc	%s(%s)
+140179d08	%s%.4d%s
+140179d18	SeDebugPrivilege
+140179d30	ProgramFilesDir
+140179d58	%s%s%s%s
+140179d70	SOFTWARE\Microsoft\Windows\CurrentVersion
+140179df8	image/bmp
+140179e10	image/gif
+140179e28	image/jpeg
+140179e40	image/png
+140179e58	image/tiff
+140179ea0	GetTouchInputInfo
+140179eb8	UnregisterTouchWindow
+140179ed0	CloseTouchInputHandle
+140179ee8	user32.dll
+140179ef8	GetGestureInfo
+140179f08	RegisterTouchWindow
+140179f20	CloseGestureInfoHandle
+140179f60	BURIKO GDB 3.00
+140179f70	BGI.gdb
+140179fe8	BGI - Main window
+14017a068	GenuineIntel
+14017a078	CentaurHauls
+14017a088	AuthenticAMD
+14017a098	GenuineTMx86
+14017a0b0	FILEREADINGFAILED
+14017a0c8	%s%s%s
+14017a0e0	UNABLETOCREATEFILE
+14017a100	FILESAVINGFAILED
+14017a120	PLEASESELECTTHEFOLDER
+14017a138	inst.tmp
+14017a150	UninstallString
+14017a170	"%s"
+14017a1b0	DisplayIcon
+14017a1d0	Software\Microsoft\Windows\CurrentVersion\Uninstall
+14017a240	INSTALLATIONFILEISCORRUPTED
+14017a260	Publisher
+14017a278	DisplayName
+14017a2d0	Software\
+14017a2e8	Unable to output installation info.
+14017a310	uninst.lst
+14017a320	Uninstaller could not be installed.
+14017a350	%s %s @%s @%s 
+14017a360	"%s" %s
+14017a368	.exe 
+14017a370	open
+14017a388	Uninstaller for %s is executing.
+14017a3b0	InstalledFolder
+14017a3d0	advapi32.dll
+14017a3e0	CreateProcessWithTokenW
+14017a3f8	Command
+14017a408	Open
+14017a418	DefaultIcon
+14017a430	%s\DefaultIcon
+14017a440	Shell
+14017a450	%s\Shell
+14017a460	An illegal path was selected.
+14017a508	Non-stationary device was selected.
+14017a588	Please choose a stationary harddrive.
+14017a5b0	Installing "%s"...
+14017a6d8	Number : %d ( $%.8x )
+14017a7c8	<Null Pointer ( Address : $%08X )>
+14017a8b0	%s  %s
+14017a8b8	%s 0x%.4X : %s %s
+14017c358	%s%d , 
+14017cd58	W [ %d , %d ]
+14017ce9a	  Decoration [ %d ] , Frame [ %d ] , Back [ %d ]
+14017f510	FMO%.8xForBGI
+14017f520	%04x%04x
+14017f538	FileVersion
+14017f550	JewelrynightsArcadia
+14017f568	\VarFileInfo\Translation
+14017f5a0	This hardware does not support SSE2 instructions
+14017f5d8	Buriko General Interpreter for %s is executing.
+14017f608	This hardware does not support required function.
+14017f640	\StringFileInfo\%s\%s
+14017f670	Ethornell - BURIKO General Interpreter ( %s )
+14017f6b0	cdaudio
+14017f75a	 : %s - address : $%.8X , size : %dbytes  accessed address : $%.8X , accessed size : %dbytes
+14017f7b8	MouseTrails
+14017f7d0	Control Panel\Mouse
+14017f890	IsUserAnAdmin
+14017f8a0	shell32.dll
+14017f8b0	SDC FORMAT 1.00
+14017f998	%c%s%c
+14017fd10	languageid
+14017fd20	TEXT
+14017fe30	Mediation program
+14017fe88	TileWallpaper
+14017fea8	WallpaperStyle
+14017fed0	control panel\desktop
+14017ff00	UserInteractionMode
+14017ffe0	OnClockSetRate (rate=%f )
+140180018	OnClockPause 
+140180038	OnClockStop 
+140180058	OnClockRestart 
+140180078	OnClockStart (offset = %I64d) 
+1401800b8	ReleaseServicePointers 
+1401800e8	InitServicePointers 
+140180118	RenegotiateMediaType 
+140180570	Scheduler::Flush 
+140180598	Exit scheduler thread. 
+1401805c8	Terminate 
+1401805e0	Scheduler::Flush completed. 
+140180620	No scheduler thread! 
+140180670	invalid string position
+140180960	system
+140180968	unknown error
+140180978	generic
+140180c60	f:\program\wavemaster\wavelib\src\dsstreamspeaker.cpp
+140180e30	f:\program\wavemaster\wavelib\src\dsspeakermodel.cpp
+140180f08	result[0x%08X]
+140182088	ole32.dll
+140182098	CoInitializeEx
+1401820a8	AMUnblock
+1401820e0	control.tlb
+140182298	LoadRegTypeLib
+140182428	LoadTypeLib
+140182438	Output
+140182738	<< %s >> %s[%d] : 
+140182760	FATAL
+140182770	WARNNING
+140182788	INFORMATIVE
+1401827a0	DEBUG
+1401828ac	vorbis
+140192b5c	.rdata
+140192c0c	.edata
+140192c6c	.data
+140192c9c	.pdata
+1401be06c	BGI.exe
+1401be074	??4SThreadParam@@QEAAAEAU0@$$QEAU0@@Z
+1401be09a	??4SThreadParam@@QEAAAEAU0@AEBU0@@Z
+1401bef2a	Direct3DCreate9
+1401bef3c	Direct3DCreate9Ex
+1401bef4e	d3d9.dll
+1401bef5a	DirectInput8Create
+1401bef6e	DINPUT8.dll
+1401bef7c	mciSendCommandA
+1401bef8e	timeGetTime
+1401bef9c	PlaySoundW
+1401befaa	timeGetDevCaps
+1401befbc	timeEndPeriod
+1401befcc	timeBeginPeriod
+1401befdc	WINMM.dll
+1401befe8	ImmGetDefaultIMEWnd
+1401beffe	ImmAssociateContext
+1401bf012	IMM32.dll
+1401bf01e	GetFileVersionInfoSizeW
+1401bf038	VerQueryValueW
+1401bf04a	GetFileVersionInfoW
+1401bf05e	VERSION.dll
+1401bf06c	EnterCriticalSection
+1401bf084	LeaveCriticalSection
+1401bf09c	InitializeCriticalSection
+1401bf0b8	Sleep
+1401bf0c0	DeleteCriticalSection
+1401bf0d8	SetThreadPriority
+1401bf0ec	WaitForSingleObject
+1401bf102	SetEvent
+1401bf10e	CloseHandle
+1401bf11c	CreateEventA
+1401bf12c	WideCharToMultiByte
+1401bf142	GlobalAlloc
+1401bf150	GlobalLock
+1401bf15e	GlobalUnlock
+1401bf16e	InitializeCriticalSectionAndSpinCount
+1401bf196	InitializeCriticalSectionEx
+1401bf1b4	GetLastError
+1401bf1c4	RaiseException
+1401bf1d6	WaitForSingleObjectEx
+1401bf1ee	GetSystemInfo
+1401bf1fe	ResetEvent
+1401bf20c	TryEnterCriticalSection
+1401bf226	UnmapViewOfFile
+1401bf238	GetCurrentProcessId
+1401bf24e	MapViewOfFile
+1401bf25e	ReadFile
+1401bf26a	WriteFile
+1401bf276	SetFileTime
+1401bf284	SetFilePointer
+1401bf296	CreateFileW
+1401bf2a4	GetFileSize
+1401bf2b2	GetFileTime
+1401bf2c0	GetSystemTime
+1401bf2d0	SetWaitableTimer
+1401bf2e4	GetVersionExA
+1401bf2f4	CreateWaitableTimerA
+1401bf30c	SwitchToThread
+1401bf31e	DeleteFileW
+1401bf32c	GetCurrentThreadId
+1401bf342	SizeofResource
+1401bf354	FindResourceA
+1401bf364	LockResource
+1401bf374	LoadResource
+1401bf384	GetTickCount
+1401bf394	LoadLibraryA
+1401bf3a4	GetProcAddress
+1401bf3b6	FreeLibrary
+1401bf3c4	GetVolumeInformationW
+1401bf3dc	FindFirstFileW
+1401bf3ee	VirtualFree
+1401bf3fc	FindNextFileW
+1401bf40c	DeviceIoControl
+1401bf41e	VirtualAlloc
+1401bf42e	GetDriveTypeA
+1401bf43e	GetModuleFileNameW
+1401bf454	SetErrorMode
+1401bf464	FindClose
+1401bf470	GetVolumeInformationA
+1401bf488	GetFileAttributesW
+1401bf49e	GetLogicalDriveStringsW
+1401bf4b8	GetDiskFreeSpaceA
+1401bf4cc	GetDevicePowerState
+1401bf4e2	FileTimeToSystemTime
+1401bf4fa	GetDiskFreeSpaceExW
+1401bf510	GetLocalTime
+1401bf520	SetCurrentDirectoryW
+1401bf538	SystemTimeToFileTime
+1401bf550	GetTempFileNameW
+1401bf564	GetDriveTypeW
+1401bf574	GetModuleHandleA
+1401bf588	SetThreadAffinityMask
+1401bf5a0	GetLogicalProcessorInformation
+1401bf5c2	GetCurrentThread
+1401bf5d6	CreateDirectoryW
+1401bf5ea	RemoveDirectoryW
+1401bf5fe	ExitThread
+1401bf60c	SetFileAttributesW
+1401bf622	OpenMutexA
+1401bf630	CreateThread
+1401bf640	CreateProcessW
+1401bf652	MoveFileW
+1401bf65e	GetExitCodeProcess
+1401bf674	GetExitCodeThread
+1401bf688	CopyFileW
+1401bf694	GlobalMemoryStatus
+1401bf6aa	GlobalMemoryStatusEx
+1401bf6c2	GetComputerNameA
+1401bf6d6	CreateFileMappingA
+1401bf6ec	CreateMutexA
+1401bf6fc	ReleaseMutex
+1401bf70c	GetCurrentProcess
+1401bf720	OpenProcess
+1401bf72e	MultiByteToWideChar
+1401bf744	GetUserDefaultUILanguage
+1401bf760	FindResourceW
+1401bf770	QueryPerformanceFrequency
+1401bf78c	QueryPerformanceCounter
+1401bf7a6	SetFilePointerEx
+1401bf7ba	OutputDebugStringW
+1401bf7d0	MulDiv
+1401bf7da	WaitForMultipleObjects
+1401bf7f4	CreateEventW
+1401bf802	KERNEL32.dll
+1401bf812	ReleaseDC
+1401bf81e	GetDC
+1401bf826	EndPaint
+1401bf832	BeginPaint
+1401bf840	EnableScrollBar
+1401bf852	MoveWindow
+1401bf860	RedrawWindow
+1401bf870	GetAsyncKeyState
+1401bf884	ShowWindow
+1401bf892	GetScrollInfo
+1401bf8a2	SetWindowTextW
+1401bf8b4	GetSystemMetrics
+1401bf8c8	SendMessageW
+1401bf8d8	CreateWindowExW
+1401bf8ea	GetWindowRect
+1401bf8fa	PostMessageW
+1401bf90a	DefWindowProcW
+1401bf91c	SetScrollInfo
+1401bf92c	IsClipboardFormatAvailable
+1401bf94a	SetClipboardData
+1401bf95e	GetClipboardData
+1401bf972	EmptyClipboard
+1401bf984	CloseClipboard
+1401bf996	OpenClipboard
+1401bf9a6	MessageBoxA
+1401bf9b4	IsWindow
+1401bf9c0	GetWindowTextW
+1401bf9d2	InvalidateRect
+1401bf9e4	UpdateWindow
+1401bf9f4	DialogBoxParamW
+1401bfa06	SetWindowLongPtrA
+1401bfa1a	GetParent
+1401bfa26	GetWindowTextLengthA
+1401bfa3e	GetDlgItem
+1401bfa4c	SendMessageA
+1401bfa5c	SetDlgItemTextA
+1401bfa6e	SendDlgItemMessageA
+1401bfa84	SetFocus
+1401bfa90	DefWindowProcA
+1401bfaa2	SendDlgItemMessageW
+1401bfab8	SetWindowTextA
+1401bfaca	SetDlgItemTextW
+1401bfadc	CallWindowProcA
+1401bfaee	GetDlgCtrlID
+1401bfafe	GetDlgItemTextA
+1401bfb10	DialogBoxParamA
+1401bfb22	EndDialog
+1401bfb2e	ScreenToClient
+1401bfb40	SetWindowLongPtrW
+1401bfb54	MessageBoxW
+1401bfb62	DestroyWindow
+1401bfb72	CallWindowProcW
+1401bfb84	CreateDialogParamW
+1401bfb9a	SetRect
+1401bfba4	FillRect
+1401bfbb0	MonitorFromWindow
+1401bfbc4	GetClientRect
+1401bfbd4	GetMonitorInfoA
+1401bfbe6	SetWindowPos
+1401bfbf6	LoadCursorW
+1401bfc04	RegisterClassExW
+1401bfc18	LoadCursorA
+1401bfc26	AdjustWindowRectEx
+1401bfc3c	GetCursorPos
+1401bfc4c	EnumDisplayMonitors
+1401bfc62	WaitForInputIdle
+1401bfc76	PostMessageA
+1401bfc86	EnableWindow
+1401bfc96	IsDlgButtonChecked
+1401bfcac	GetDlgItemTextW
+1401bfcbe	CloseWindow
+1401bfccc	IsIconic
+1401bfcd8	GetKeyboardState
+1401bfcec	SetForegroundWindow
+1401bfd02	FindWindowW
+1401bfd10	BringWindowToTop
+1401bfd24	SetCursorPos
+1401bfd34	ShowCursor
+1401bfd42	SwapMouseButton
+1401bfd54	ClientToScreen
+1401bfd66	GetCursorInfo
+1401bfd76	GetUserObjectSecurity
+1401bfd8e	GetShellWindow
+1401bfda0	GetWindowThreadProcessId
+1401bfdbc	PostQuitMessage
+1401bfdce	SystemParametersInfoW
+1401bfde6	LoadImageW
+1401bfdf4	EnableMenuItem
+1401bfe06	SetCursor
+1401bfe12	LoadIconW
+1401bfe1e	TranslateMessage
+1401bfe32	GetForegroundWindow
+1401bfe48	RegisterHotKey
+1401bfe5a	PeekMessageW
+1401bfe6a	DispatchMessageW
+1401bfe7e	SetActiveWindow
+1401bfe90	UnregisterHotKey
+1401bfea4	GetSystemMenu
+1401bfeb4	EqualRect
+1401bfec0	GetDesktopWindow
+1401bfed4	SetRectEmpty
+1401bfee4	PeekMessageA
+1401bfef4	PostThreadMessageA
+1401bff0a	MsgWaitForMultipleObjects
+1401bff26	SetTimer
+1401bff32	KillTimer
+1401bff3c	USER32.dll
+1401bff4a	GetObjectA
+1401bff58	GetOutlineTextMetricsW
+1401bff72	GetTextMetricsA
+1401bff84	GetCharABCWidthsFloatW
+1401bff9e	DeleteObject
+1401bffae	GetGlyphOutlineW
+1401bffc2	GetTextExtentPoint32W
+1401bffda	TextOutW
+1401bffe6	DeleteDC
+1401bfff2	CreateFontW
+1401c0000	EnumFontFamiliesExW
+1401c0016	CreateCompatibleDC
+1401c002c	CreateDIBSection
+1401c0040	SelectObject
+1401c0050	CreatePalette
+1401c0060	SelectPalette
+1401c0070	SetBkMode
+1401c007c	SetTextColor
+1401c008c	CreateFontA
+1401c009a	GetStockObject
+1401c00ac	SetStretchBltMode
+1401c00c0	SelectClipRgn
+1401c00d0	CreateRectRgnIndirect
+1401c00e8	StretchDIBits
+1401c00f8	SetBrushOrgEx
+1401c0108	RemoveFontResourceExW
+1401c0120	RemoveFontMemResourceEx
+1401c013a	AddFontResourceExW
+1401c0150	AddFontMemResourceEx
+1401c0168	CreateSolidBrush
+1401c017a	GDI32.dll
+1401c0186	GetOpenFileNameA
+1401c019a	GetSaveFileNameA
+1401c01ac	COMDLG32.dll
+1401c01bc	RegQueryValueExW
+1401c01d0	RegOpenKeyExW
+1401c01e0	RegCloseKey
+1401c01ee	RevertToSelf
+1401c01fe	RegSetValueExW
+1401c0210	RegCreateKeyExW
+1401c0222	RegDeleteKeyW
+1401c0232	GetUserNameA
+1401c0242	LookupAccountSidW
+1401c0256	DuplicateTokenEx
+1401c026a	OpenProcessToken
+1401c027e	IsValidSid
+1401c028c	ImpersonateLoggedOnUser
+1401c02a6	GetSecurityDescriptorOwner
+1401c02c4	LookupPrivilegeValueA
+1401c02dc	AdjustTokenPrivileges
+1401c02f2	ADVAPI32.dll
+1401c0302	DragQueryFileW
+1401c0314	DragAcceptFiles
+1401c0326	DragFinish
+1401c0334	DragQueryFileA
+1401c0346	SHGetMalloc
+1401c0354	SHGetFolderPathW
+1401c0368	SHGetSpecialFolderLocation
+1401c0386	SHGetPathFromIDListW
+1401c039e	SHChangeNotify
+1401c03b0	ShellExecuteW
+1401c03c0	SHBrowseForFolderW
+1401c03d4	SHELL32.dll
+1401c03e2	CoCreateInstance
+1401c03f6	CoTaskMemFree
+1401c0406	CoInitialize
+1401c0416	CoUninitialize
+1401c0428	CoTaskMemAlloc
+1401c043a	PropVariantClear
+1401c044e	CoInitializeEx
+1401c045e	ole32.dll
+1401c046a	InternetCloseHandle
+1401c0480	InternetQueryDataAvailable
+1401c049e	InternetOpenUrlW
+1401c04b2	InternetOpenW
+1401c04c2	InternetSetFilePointer
+1401c04dc	InternetReadFile
+1401c04f0	InternetAttemptConnect
+1401c0508	WININET.dll
+1401c0516	GdipSaveImageToFile
+1401c052c	GdipCreateBitmapFromScan0
+1401c0548	GdipCreateBitmapFromFile
+1401c0564	GdipGetImageWidth
+1401c0578	GdipGetImageEncodersSize
+1401c0594	GdipBitmapLockBits
+1401c05aa	GdipFree
+1401c05b6	GdipGetImagePixelFormat
+1401c05d0	GdipDisposeImage
+1401c05e4	GdipAlloc
+1401c05f0	GdipBitmapUnlockBits
+1401c0608	GdipCloneImage
+1401c061a	GdipGetImageEncoders
+1401c0632	GdipGetImageHeight
+1401c0648	GdiplusShutdown
+1401c065a	GdiplusStartup
+1401c066a	gdiplus.dll
+1401c0678	MFCreateAudioRendererActivate
+1401c0698	MFCreateVideoRendererActivate
+1401c06b8	MFCreateVideoRenderer
+1401c06d0	MFCreateTopology
+1401c06e4	MFCreateMediaSession
+1401c06fc	MFCreateTopologyNode
+1401c0714	MFGetService
+1401c0722	MF.dll
+1401c072c	MFCreateMediaType
+1401c0740	MFShutdown
+1401c074e	MFCreateMFByteStreamOnStream
+1401c076e	MFCreateFile
+1401c077e	MFCreateSourceResolver
+1401c0798	MFStartup
+1401c07a4	MFFrameRateToAverageTimePerFrame
+1401c07c6	MFPlat.DLL
+1401c07d4	MFCreateVideoSampleFromSurface
+1401c07f4	EVR.dll
+1401c07fe	DXVA2CreateDirect3DDeviceManager9
+1401c0820	dxva2.dll
+1401c082a	DSOUND.dll
+1401c0838	timeKillEvent
+1401c0848	timeSetEvent
+1401c0858	FormatMessageW
+1401c086a	FindFirstFileExW
+1401c087e	GetFileAttributesExW
+1401c0896	GetFileInformationByHandle
+1401c08b4	SetLastError
+1401c08c4	GetModuleHandleW
+1401c08d8	TlsAlloc
+1401c08e4	TlsGetValue
+1401c08f2	TlsSetValue
+1401c0900	TlsFree
+1401c090a	GetSystemTimeAsFileTime
+1401c0924	RtlCaptureContext
+1401c0938	RtlLookupFunctionEntry
+1401c0952	RtlVirtualUnwind
+1401c0966	IsDebuggerPresent
+1401c097a	UnhandledExceptionFilter
+1401c0996	SetUnhandledExceptionFilter
+1401c09b4	GetStartupInfoW
+1401c09c6	IsProcessorFeaturePresent
+1401c09e2	InitializeSListHead
+1401c09f8	TerminateProcess
+1401c0a0c	ReleaseSemaphore
+1401c0a20	DuplicateHandle
+1401c0a32	CreateSemaphoreA
+1401c0a46	GetACP
+1401c0a50	GetThreadPriority
+1401c0a64	RtlUnwindEx
+1401c0a72	RtlPcToFileHeader
+1401c0a86	EncodePointer
+1401c0a96	LoadLibraryExW
+1401c0aa8	ResumeThread
+1401c0ab8	FreeLibraryAndExitThread
+1401c0ad4	GetModuleHandleExW
+1401c0aea	GetCPInfo
+1401c0af6	ExitProcess
+1401c0b04	GetStdHandle
+1401c0b14	HeapFree
+1401c0b20	HeapAlloc
+1401c0b2c	GetFileType
+1401c0b3a	FlsAlloc
+1401c0b46	FlsGetValue
+1401c0b54	FlsSetValue
+1401c0b62	FlsFree
+1401c0b6c	LCMapStringW
+1401c0b7c	HeapReAlloc
+1401c0b8a	HeapSize
+1401c0b96	GetConsoleMode
+1401c0ba8	GetStringTypeW
+1401c0bba	IsValidCodePage
+1401c0bcc	GetOEMCP
+1401c0bd8	GetCommandLineA
+1401c0bea	GetCommandLineW
+1401c0bfc	GetEnvironmentStringsW
+1401c0c16	FreeEnvironmentStringsW
+1401c0c30	GetProcessHeap
+1401c0c42	SetStdHandle
+1401c0c52	FlushFileBuffers
+1401c0c66	GetConsoleOutputCP
+1401c0c7c	WriteConsoleW
+1401c0c8c	GetQueueStatus
+1401c0c9e	RegisterWindowMessageA
+1401c0cb8	CoFreeUnusedLibraries
+1401c196a	abcdefghijklmnopqrstuvwxyz
+1401c198a	ABCDEFGHIJKLMNOPQRSTUVWXYZ
+1401c1b91	abcdefghijklmnopqrstuvwxyz
+1401c1bb1	ABCDEFGHIJKLMNOPQRSTUVWXYZ
+1401c1f60	system.arc
+1401c2270	ipl._bp
+1401c3180	Ethornell - BURIKO General Interpreter
+1401c5380	.?AVexception@std@@
+1401c53a8	.?AVlogic_error@std@@
+1401c53d0	.?AVlength_error@std@@
+1401c53f8	.?AVout_of_range@std@@
+1401c5420	.?AVtype_info@@
+1401c5440	.?AVbad_array_new_length@std@@
+1401c5470	.?AVbad_exception@std@@
+1401c5498	.?AVCArchive@@
+1401c54b8	.?AVCDspObj@@
+1401c54d8	.?AVCDspObjBack@@
+1401c5500	.?AVCDspObjBackB@@
+1401c5528	.?AVCDspObjBackD@@
+1401c5550	.?AVCDspObjBackDST@@
+1401c5578	.?AVCDspObjBackF@@
+1401c55a0	.?AVCDspObjBackGRD@@
+1401c55c8	.?AVCDspObjBackML@@
+1401c55f0	.?AVCDspObjBackMSC@@
+1401c5618	.?AVCDspObjBackN@@
+1401c5640	.?AVCDspObjBackRPL@@
+1401c5668	.?AVCDspObjBackRTT@@
+1401c5690	.?AVCDspObjBackS@@
+1401c56b8	.?AVCDspObjBackSTR@@
+1401c56e0	.?AVCDspObjEffector@@
+1401c5708	.?AVCDspObjFilter@@
+1401c5730	.?AVCDspObjGroup@@
+1401c5758	.?AVCDspObjKnob@@
+1401c5780	.?AVCDspObjLandscape@@
+1401c57a8	.?AVCDspObjMap@@
+1401c57d0	.?AVCDspObjPrtclScrn@@
+1401c57f8	.?AVCDspObjRainScrn@@
+1401c5820	.?AVCDspObjSprite@@
+1401c5848	.?AVCDspObjVirtual@@
+1401c5870	.?AVCDspObjWindow@@
+1401c5898	.?AVCFileDX@@
+1401c58b8	.?AVDCFile@@
+1401c58d8	.?AVCFontDx@@
+1401c58f8	.?AVCFontManager@@
+1401c5920	.?AVCMemoryDX@@
+1401c5940	.?AVCObjectManager@@
+1401c5968	.?AVCProcedure@@
+1401c5990	.?AVCProcCtrlDspObj@@
+1401c59b8	.?AVCProcCtrlDspObjBC@@
+1401c59e0	.?AVCProcCtrlDspObjSp@@
+1401c5a08	.H
+1401c5a20	.?AVCProcDspMsg@@
+1401c5a48	.?AVCProcDspMsgEx@@
+1401c5a70	.?AVCProcDspMsgExVE@@
+1401c5a98	.?AVCProcEncodeData@@
+1401c5ac0	.?AVCProcUsingThread@@
+1401c5ae8	.?AVCProcEncodeStruct@@
+1401c5b10	.?AVCProcLoad@@
+1401c5b30	.?AVDCProcImageSynth@@
+1401c5b58	.?AVCProcLoadBitmap@@
+1401c5b80	.?AVCProcLoadSound@@
+1401c5ba8	.?AVCProcSelectIcon@@
+1401c5bd0	.?AVCProcSelectIconEx@@
+1401c5bf8	.?AVCProcSelectItem@@
+1401c5c20	.?AVCProcSelectItemEx@@
+1401c5c48	.?AVCProcSelectItemExBlink@@
+1401c5c78	.?AVCProcShakeDspObj@@
+1401c5ca0	.?AVCProcShakeScreen@@
+1401c5cc8	.?AVCProcWaitTiming@@
+1401c5cf0	.?AVCProcWaitTimingEx@@
+1401c5d18	.?AVCProcWaitWndMsg@@
+1401c5d40	.?AVCSpline@@
+1401c5d60	.?AVCThread@@
+1401c5d80	.?AUIUnknown@@
+1401c5da0	.?AVDCAllocator@@
+1401c5dc8	.?AUIVMRSurfaceAllocator9@@
+1401c5df8	.?AUIVMRImagePresenter9@@
+1401c5e28	.?AVDCArchive@@
+1401c5e48	.?AVDCArchiveComplex@@
+1401c5e70	.?AVDCCache@@
+1401c5e90	.?AVDCDstrbtdPrcssng@@
+1401c5eb8	.?AVDCExclusionControl@@
+1401c5ee8	.?AVDCExternalMemory@@
+1401c5f10	.?AVDCFlag@@
+1401c5f30	.?AVDCIndProc@@
+1401c5f50	.?AVDCIPIcon@@
+1401c5f70	.?AVDCIPIconEx@@
+1401c5f98	.?AVDCIPIconEEx@@
+1401c5fc0	.?AVDCInnerDspObjMngr@@
+1401c5fe8	.?AVDCLock@@
+1401c6008	.?AVCBaseObject@@
+1401c6030	.?AUIBaseFilter@@
+1401c6058	.?AUINonDelegatingUnknown@@
+1401c6088	.?AUIMediaFilter@@
+1401c60b0	.?AVCAsyncReader@@
+1401c60d8	.?AVDCMovieRenderer@@
+1401c6100	.?AVCUnknown@@
+1401c6120	.?AUIPersist@@
+1401c6140	.?AUIAMovieSetup@@
+1401c6168	.?AVCMemReader@@
+1401c6190	.?AVCBaseFilter@@
+1401c61b8	.?AVDCParticle@@
+1401c61e0	.?AVDCParticleControl@@
+1401c6208	.?AVDCParticleEnv@@
+1401c6230	.?AVDCParticleEnvAir@@
+1401c6258	.?AVDCPFirefly@@
+1401c6280	.?AVDCPSnow@@
+1401c62a0	.?AVDCPrlddDtMngr@@
+1401c62c8	.?AVDCProcDecodeBMV@@
+1401c62f0	.?AVDCProcDecodeData@@
+1401c6318	.?AVDCProcExamineHealthOfFile@@
+1401c6348	.?AVDCProcInstallation@@
+1401c6378	.?AVDCProcLoadBMVHeader@@
+1401c63a8	.?AVDCProcLoadBurikoMV@@
+1401c63d8	.?AVDCProcPlayMovieByMF@@
+1401c6408	.?AVDCProcPreloadBmp@@
+1401c6430	.?AVDCProcReadBinary@@
+1401c6458	.?AVDCProcReadFileFromInternet@@
+1401c6490	.?AVDCProcRegisterBmp@@
+1401c64b8	.?AVDCProcRgstrSound@@
+1401c64e0	.?AVDCProcSetMusic@@
+1401c6508	.?AVDCSleep@@
+1401c6528	.?AVDCTChildThread@@
+1401c6550	.?AVDCTELgclFldMngr@@
+1401c6578	.?AVDCTELgclGrdFld@@
+1401c65a0	.?AVDCTELogicalField@@
+1401c65c8	.?AVDCTELgclGrdFldMngr@@
+1401c65f8	.?AVDCTELgclSpcMngr@@
+1401c6620	.?AVDCTESLGEvaluator@@
+1401c6648	.?AVCBaseVideoRenderer@@
+1401c6678	.?AUIQualProp@@
+1401c6698	.?AVDCTraditionalVR@@
+1401c66c0	.?AVDCVideoRenderer@@
+1401c66e8	.?AUIQualityControl@@
+1401c6710	.?AVCBaseRenderer@@
+1401c6738	.?AVDCVideoImageSender@@
+1401c6768	.?AVDCWorldMapMngr@@
+1401c6790	.?AVGdiplusBase@Gdiplus@@
+1401c67c0	.?AVImage@Gdiplus@@
+1401c67e8	.?AVBitmap@Gdiplus@@
+1401c6810	.?AVDCString@@
+1401c6830	.?AVNCPainter32@@
+1401c6858	.?AVNCPainter@@
+1401c6878	.?AVbad_alloc@std@@
+1401c68a0	.?AUIStream@@
+1401c68c0	.?AUISequentialStream@@
+1401c68e8	.J
+1401c6900	.?AVYCArchiveStream@@
+1401c6928	.?AVYCRefCountedObject@@
+1401c6958	.K
+1401c6970	.?AVYCBFMovie2@@
+1401c6998	.?AVYCCBGJPG@@
+1401c69b8	.?AUIMFTopologyServiceLookupClient@@
+1401c69f0	.?AVYCMFEVRPresenter@@
+1401c6a18	.?AUIMFVideoDeviceID@@
+1401c6a40	.?AUIMFGetService@@
+1401c6a68	.?AUIMFAsyncCallback@@
+1401c6a90	.?AUIMFRateSupport@@
+1401c6ab8	.?AUYSMFEVRPFrameStep@YCMFEVRPresenter@@
+1401c6af8	.?AV?$YCMFAsyncCallback@VYCMFEVRPresenter@@@@
+1401c6b38	.?AUIMFClockStateSink@@
+1401c6b60	.?AUIMFVideoDisplayControl@@
+1401c6b90	.?AUIMFVideoPresenter@@
+1401c6bb8	.?AVYCMFPlayer@@
+1401c6be0	.?AVYCMFPresentEngine@@
+1401c6c08	.?AVYCMFSchedulerCallback@@
+1401c6c38	.?AVYCMFSamplePool@@
+1401c6c60	.?AVYCMFScheduler@@
+1401c6c88	.?AVCStaticBurikoWaveBoxOGG@@
+1401c6cb8	.?AVCBurikoWaveBoxOGGModel@@
+1401c6ce8	.?AVCStaticBurikoWaveBoxADPCM4@@
+1401c6d20	.?AVCBurikoWaveBoxADPCM4Model@@
+1401c6d50	.?AVCStaticBurikoWaveBoxHFADPCM8@@
+1401c6d88	.?AVCBurikoWaveBoxHFADPCM8Model@@
+1401c6dc0	.?AVCWaveDevice@@
+1401c6de8	.?AVCWaveBoxModel@@
+1401c6e10	.?AVCBurikoWaveBoxModel@@
+1401c6e40	.?AVCStaticBurikoWaveBoxPCM16@@
+1401c6e70	.?AVCBurikoWaveBoxPCM16Model@@
+1401c6ea0	.?AV_System_error_category@std@@
+1401c6ed8	.?AVerror_category@std@@
+1401c6f08	.?AV_Generic_error_category@std@@
+1401c6f40	.?AVCExclusionCtrlLight@@
+1401c6f70	.?AVCInputStreamModel@@
+1401c6f98	.?AVCOutputStreamModel@@
+1401c6fc8	.?AVCFileStorage@@
+1401c6ff0	.?AVCStorageModel@@
+1401c7018	.?AVCArchiveFileStorage@@
+1401c7048	.?AVCMemoryStorage@@
+1401c7070	.?AVNCException@@
+1401c7098	.?AVNCString@@
+1401c70b8	.?AVCDSStreamSpeaker@@
+1401c70e0	.?AVCDSSpeakerModel@@
+1401c7108	.?AVCDSStaticSpeaker@@
+1401c7130	.?AVCStreamBurikoWaveBoxADPCM4@@
+1401c7168	.?AVCWaveStreamCtrlEventListener@@
+1401c71a0	.?AVCStreamBurikoWaveBoxPCM16@@
+1401c71d0	.?AVCStreamBurikoWaveBoxHFADPCM8@@
+1401c7208	.?AVCStreamBurikoWaveBoxOGG@@
+1401c7238	.?AVCStreamBurikoWaveBoxOGGFileExchange@@
+1401c7278	.?AVCWaveStreamCtrl@@
+1401c72a0	.?AVCEnumPins@@
+1401c72c0	.?AVCBaseAllocator@@
+1401c72e8	.?AUIMemAllocator@@
+1401c7310	.?AVCEnumMediaTypes@@
+1401c7338	.?AUIMemAllocatorCallbackTemp@@
+1401c7368	.?AVCMemAllocator@@
+1401c7390	.?AVCDynamicOutputPin@@
+1401c73b8	.?AVCCritSec@@
+1401c73d8	.?AUIEnumMediaTypes@@
+1401c7400	.?AUIPin@@
+1401c7420	.?AUIMediaSample@@
+1401c7448	.?AUIMediaSample2@@
+1401c7470	.?AVCBaseOutputPin@@
+1401c7498	.?AVCBasePin@@
+1401c74b8	.?AVCMediaSample@@
+1401c74e0	.?AUIEnumPins@@
+1401c7500	.?AUIPinFlowControl@@
+1401c7528	.?AUIMemInputPin@@
+1401c7550	.?AVCBaseInputPin@@
+1401c7578	.?AVCRendererInputPin@@
+1401c75a0	.?AVCMediaPosition@@
+1401c75c8	.?AUIDispatch@@
+1401c75e8	.?AVCDeferredCommand@@
+1401c7610	.?AVCRendererPosPassThru@@
+1401c7640	.?AUIDeferredCommand@@
+1401c7668	.?AUIMediaSeeking@@
+1401c7690	.?AVCPosPassThru@@
+1401c76b8	.?AUIMediaPosition@@
+1401c76e0	.?AVCThreadCtrl@@
+1401c7708	.?AVCMsgOut@@
+1401c7728	.?AVCDebugMsgOut@@
+1401c7750	.?AVCRotateBuffer@@
+1401c7778	.?AVCRotateBufferSecurity@@
+1402b8aca	StringFileInfo
+1402b8aee	041104b0
+1402b8b06	Comments
+1402b8b18	BURIKO General Interpreter uses the OggVorbis libraries. The OggVorbis libraries are Copyright (C) 1994-2002 by the Xiph.Org Foundation. < http://www.xiph.org/ >
+1402b8c62	CompanyName
+1402b8c7c	BURIKO Co.,Ltd.
+1402b8ca2	FileDescription
+1402b8cc4	Ethornell - BURIKO General Interpreter
+1402b8d1a	FileVersion
+1402b8d34	Version : 1.684 - Compatibility : 1.72
+1402b8d8a	InternalName
+1402b8da4	Ethornell
+1402b8dbe	LegalCopyright
+1402b8ddc	Copyright (C) 2007-2024 BURIKO Co.,Ltd.
+1402b8e32	LegalTrademarks
+1402b8e54	BURIKO General Interpreter
+1402b8e92	OriginalFilename
+1402b8eb4	BGI.exe
+1402b8eca	ProductVersion
+1402b8ee8	1.0.0.0
+1402b8efe	VarFileInfo
+1402b8f1e	Translation
+1402ba258	���<?xml version="1.0" encoding="UTF-8" standalone="yes"?>  <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0" xmlns:asmv3="urn:schemas-microsoft-com:asm.v3"><trustInfo xmlns="urn:schemas-microsoft-com:asm.v3"><security><requestedPrivileges><requestedExecutionLevel level="asInvoker" uiAccess="false"></requestedExecutionLevel></requestedPrivileges></security></trustInfo><asmv3:application><asmv3:windowsSettings xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings"><dpiAware>True/PM</dpiAware></asmv3:windowsSettings></asmv3:application><ms_compatibility:compatibility xmlns:ms_compatibility="urn:schemas-microsoft-com:compatibility.v1" xmlns="urn:schemas-microsoft-com:compatibility.v1"><ms_compatibility:application xmlns:ms_compatibility="urn:schemas-microsoft-com:compatibility.v1"><ms_compatibility:supportedOS xmlns:ms_compatibility="urn:schemas-microsoft-com:compatibility.v1" Id="{e2011457-1546-43c5-a5fe-008deee3d3f0}"></ms_compatibility:supportedOS><ms_compatibility:supportedOS xmlns:ms_compatibility="urn:schemas-microsoft-com:compatibility.v1" Id="{35138b9a-5d96-4fbd-8e2d-a2440225f93a}"></ms_compatibility:supportedOS><ms_compatibility:supportedOS xmlns:ms_compatibility="urn:schemas-microsoft-com:compatibility.v1" Id="{4a2f28e3-53b9-4441-ba9c-d69d4a4a6e38}"></ms_compatibility:supportedOS><ms_compatibility:supportedOS xmlns:ms_compatibility="urn:schemas-microsoft-com:compatibility.v1" Id="{1f676c76-80e1-4239-95bb-83d0f6d0da78}"></ms_compatibility:supportedOS><ms_compatibility:supportedOS xmlns:ms_compatibility="urn:schemas-microsoft-com:compatibility.v1" Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}"></ms_compatibility:supportedOS></ms_compatibility:application></ms_compatibility:compatibility></assembly>
+ff000002d0	
+ff000002ee	
+ff00001268	

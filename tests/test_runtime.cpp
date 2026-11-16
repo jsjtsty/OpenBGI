@@ -401,6 +401,69 @@ TEST_CASE("deferred sequences reject freed targets and survive owner cancellatio
     CHECK(*completed == 5);
 }
 
+TEST_CASE("92:F1 loads sequence modes and reports failures" * doctest::test_suite("game")) {
+    RendererOptions options; options.headless = true;
+    auto renderer = Renderer::create(options); REQUIRE(renderer);
+    auto display = Display::create(**renderer); REQUIRE(display);
+    ArcResourceFinder resources(obgi_test::game_dir());
+    SequenceService service(**display, true);
+    const auto rows = obgi_test::read_tsv("bm_manifest.tsv"); REQUIRE_FALSE(rows.empty());
+    for (unsigned mode : {0u, 1u}) {
+        Rig rig;
+        register_sequence_subops(rig.registry, service, resources);
+        auto& thread = rig.spawn({0x92, 0xF1, 0x80, 0x5F, 0x17});
+        vm::Ctx c(rig.machine, thread);
+        const auto id = vm::make_addr(vm::Tag::Stack, 0);
+        const auto info = vm::make_addr(vm::Tag::Stack, 4);
+        const auto arc = vm::make_addr(vm::Tag::Stack, 32);
+        const auto name = vm::make_addr(vm::Tag::Stack, 80);
+        c.write_cstring(arc, rows[0][0]);
+        c.write_cstring(name, rows[0][1]);
+        for (auto value : {id, info, arc, name, mode}) c.push(value);
+        REQUIRE(c.ok());
+        REQUIRE(rig.machine.run_frame(0));
+        REQUIRE(thread.depth == 1);
+        CHECK(thread.expr[0] == 0);
+        const auto sequence = static_cast<vm::Word>(c.read(id, 4, false));
+        const auto width = static_cast<vm::Word>(c.read(info, 4, false));
+        const auto height = static_cast<vm::Word>(c.read(info + 4, 4, false));
+        const auto format = static_cast<vm::Word>(c.read(info + 8, 4, false));
+        CHECK(width == 1320); CHECK(height == 760);
+        CHECK(c.read(info + 12, 4, false) == 12);
+        CHECK(c.read(info + 16, 4, false) == 4);
+        REQUIRE((*display)->create_slot(1, width, height, format == 2 ? SlotFormat::Bgra : SlotFormat::Bgrx));
+        CHECK(service.decode(1, sequence, 0, false).status == 0);
+        CHECK(service.release(sequence));
+    }
+    Rig rig;
+    register_sequence_subops(rig.registry, service, resources);
+    auto& thread = rig.spawn({0x92, 0xF1, 0x80, 0x5F, 0x17});
+    vm::Ctx c(rig.machine, thread);
+    const auto id = vm::make_addr(vm::Tag::Stack, 0);
+    const auto info = vm::make_addr(vm::Tag::Stack, 4);
+    const auto arc = vm::make_addr(vm::Tag::Stack, 32);
+    const auto name = vm::make_addr(vm::Tag::Stack, 80);
+    c.write(id, 0x12345678, 4);
+    c.write_cstring(arc, rows[0][0]);
+    c.write_cstring(name, "missing-sequence.bm");
+    for (auto value : {id, info, arc, name, 1u}) c.push(value);
+    REQUIRE(rig.machine.run_frame(0));
+    REQUIRE(thread.depth == 1);
+    CHECK(thread.expr[0] == 1);
+    CHECK(c.read(id, 4, false) == 0x12345678);
+
+    Rig invalid;
+    register_sequence_subops(invalid.registry, service, resources);
+    auto& bad_thread = invalid.spawn({0x92, 0xF1, 0x80, 0x5F, 0x17});
+    vm::Ctx bad(invalid.machine, bad_thread);
+    bad.write_cstring(arc, rows[0][0]);
+    bad.write_cstring(name, "ac2_op.mpg");
+    for (auto value : {id, info, arc, name, 0u}) bad.push(value);
+    REQUIRE(invalid.machine.run_frame(0));
+    REQUIRE(bad_thread.depth == 1);
+    CHECK(bad_thread.expr[0] == 2);
+}
+
 TEST_CASE("movie playback advances through session ticks on the configured canvas" * doctest::test_suite("game")) {
     RendererOptions options; options.headless = true; options.logical_width = 1280; options.logical_height = 720;
     auto renderer = Renderer::create(options); REQUIRE(renderer);

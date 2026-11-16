@@ -1,0 +1,171 @@
+2026-11-14 21:05:28 INFO  (LoggingInitialization) Using log config file: jar:file:/opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Framework/Generic/lib/Generic.jar!/generic.log4j.xml  
+2026-11-14 21:05:28 INFO  (LoggingInitialization) Using log file: /Volumes/T7S-Projects/Projects/CLion/OpenBGI/analysis/out/jewena2/ghidra.log  
+2026-11-14 21:05:28 DEBUG (GhidraObjectInputFilter) Including serial input filter: FileSystem/data/client.rmi.serial.filter  
+2026-11-14 21:05:28 INFO  (Preferences) Loading user preferences: /Users/nullsty/Library/ghidra/ghidra_12.2_PUBLIC/preferences  
+2026-11-14 21:05:28 INFO  (Preferences) Loading previous preferences: /Users/nullsty/Library/ghidra/ghidra_12.1.4_PUBLIC/preferences  
+2026-11-14 21:05:28 INFO  (ClassSearcher) Searching for classes...  
+2026-11-14 21:05:28 INFO  (ClassSearcher) Class search complete (579 ms)  
+2026-11-14 21:05:28 INFO  (DefaultSSLContextInitializer) Initializing SSL Context  
+2026-11-14 21:05:29 INFO  (SecureRandomFactory) Initializing Random Number Generator...  
+2026-11-14 21:05:29 INFO  (SecureRandomFactory) Random Number Generator initialization complete: NativePRNGNonBlocking  
+2026-11-14 21:05:29 INFO  (DefaultTrustManagerFactory) Loaded 10 trusted CA certificates from the OS trust store.  
+2026-11-14 21:05:29 INFO  (DefaultTrustManagerFactory) Loaded 106 trusted CA certificates from the Java default trust store.  
+2026-11-14 21:05:29 INFO  (FileCacheMaintenanceDaemon) Starting cache cleanup: /var/tmp/nullsty-ghidra/fscache2  
+2026-11-14 21:05:29 INFO  (FileCacheMaintenanceDaemon) Finished cache cleanup, estimated storage used: 0  
+2026-11-14 21:05:29 INFO  (AnalyzeHeadless) Headless startup complete (1508 ms)  
+2026-11-14 21:05:29 INFO  (ClassSearcher) Class searcher loaded 60 extension points (19 false positives)  
+2026-11-14 21:05:29 INFO  (HeadlessAnalyzer) HEADLESS Script Paths:
+    /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Features/WildcardAssembler/ghidra_scripts
+    /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Features/Decompiler/ghidra_scripts
+    /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Features/SystemEmulation/ghidra_scripts
+    /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Features/FunctionID/ghidra_scripts
+    /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Features/FileFormats/ghidra_scripts
+    /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Processors/8051/ghidra_scripts
+    /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Features/VersionTracking/ghidra_scripts
+    /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Debug/Debugger-rmi-trace/ghidra_scripts
+    /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Features/BSim/ghidra_scripts
+    /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Features/DecompilerDependent/ghidra_scripts
+    /Volumes/T7S-Projects/Projects/CLion/OpenBGI/analysis/scripts
+    /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Processors/Atmel/ghidra_scripts
+    /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Features/Swift/ghidra_scripts
+    /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Processors/DATA/ghidra_scripts
+    /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Debug/Debugger/ghidra_scripts
+    /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Processors/JVM/ghidra_scripts
+    /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Processors/PIC/ghidra_scripts
+    /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Features/GnuDemangler/ghidra_scripts
+    /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Features/PDB/ghidra_scripts
+    /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Features/BytePatterns/ghidra_scripts
+    /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Features/PyGhidra/ghidra_scripts
+    /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Features/Base/ghidra_scripts
+    /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Features/MicrosoftCodeAnalyzer/ghidra_scripts  
+2026-11-14 21:05:29 INFO  (HeadlessAnalyzer) HEADLESS: execution starts  
+2026-11-14 21:05:29 INFO  (HeadlessAnalyzer) Creating project: /Volumes/T7S-Projects/Projects/CLion/OpenBGI/analysis/ghidra_project/Jewena2/Jewena2  
+2026-11-14 21:05:29 INFO  (DefaultProject) Creating project: /Volumes/T7S-Projects/Projects/CLion/OpenBGI/analysis/ghidra_project/Jewena2/Jewena2  
+2026-11-14 21:05:29 INFO  (HeadlessAnalyzer) REPORT: Processing input files:   
+2026-11-14 21:05:29 INFO  (HeadlessAnalyzer)      project: /Volumes/T7S-Projects/Projects/CLion/OpenBGI/analysis/ghidra_project/Jewena2/Jewena2  
+2026-11-14 21:05:29 INFO  (HeadlessAnalyzer) IMPORTING: file:///Volumes/T7S-Personal/Games/%E5%AE%9D%E7%9F%B3%E5%BF%83%E5%AD%A6%E9%99%A22/jewena.exe  
+2026-11-14 21:05:30 DEBUG (SleighLanguage) Took 178ms (78ms inside lock) to initialize language /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Processors/x86/data/languages/x86.slaspec -> /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Processors/x86/data/languages/x86.sla  
+2026-11-14 21:05:30 INFO  (ProgramLoader) Using Loader: Portable Executable (PE)  
+2026-11-14 21:05:30 INFO  (ProgramLoader) Using Language/Compiler: x86:LE:32:default:windows  
+2026-11-14 21:05:30 INFO  (ProgramLoader) Using Library Search Path: [., /System/Library/dyld/dyld_shared_cache_arm64e, /System/Library/dyld/dyld_shared_cache_x86_64, /System/Library/dyld/dyld_shared_cache_x86_64h, /System/Cryptexes/OS/System/Library/dyld/dyld_shared_cache_arm64e, /System/Cryptexes/OS/System/Library/dyld/dyld_shared_cache_x86_64, /System/Cryptexes/OS/System/Library/dyld/dyld_shared_cache_x86_64h, /Users/nullsty/Library/Java/Extensions, /Library/Java/Extensions, /Network/Library/Java/Extensions, /System/Library/Java/Extensions, /usr/lib/java]  
+2026-11-14 21:05:31 INFO  (FileSystemInstanceManager) Removing 1 unused filesystems from cache  
+2026-11-14 21:05:31 DEBUG (FileSystemInstanceManager) Closing unused filesystem [file:///System/Cryptexes/OS/System/Library/dyld/dyld_shared_cache_arm64e?MD5=97eab63997ff83d0a341720cb3894e69]  
+2026-11-14 21:05:31 INFO  (ProgramLoader) Additional info:
+Loading file:///Volumes/T7S-Personal/Games/%E5%AE%9D%E7%9F%B3%E5%BF%83%E5%AD%A6%E9%99%A22/jewena.exe?MD5=dfbf8b5b951d60acc01a7cfd9959da7a...
+------------------------------------------------
+
+Searching 3 paths for library ADVAPI32.DLL...
+Library not found.
+------------------------------------------------
+
+Searching 3 paths for library KERNEL32.DLL...
+Library not found.
+------------------------------------------------
+
+Searching 3 paths for library MFC42.DLL...
+Library not found.
+------------------------------------------------
+
+Searching 3 paths for library MSVCRT.DLL...
+Library not found.
+------------------------------------------------
+
+Searching 3 paths for library OLE32.DLL...
+Library not found.
+------------------------------------------------
+
+Searching 3 paths for library OLEAUT32.DLL...
+Library not found.
+------------------------------------------------
+
+Searching 3 paths for library SHELL32.DLL...
+Library not found.
+------------------------------------------------
+
+Searching 3 paths for library USER32.DLL...
+Library not found.
+------------------------------------------------
+
+Searching 3 paths for library VERSION.DLL...
+Library not found.
+------------------------------------------------
+
+Applying /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Features/Base/data/symbols/win32/mfc42.exports
+Linking the External Programs of 'jewena.exe' to imported libraries...
+  [KERNEL32.DLL] -> not found in project
+  [USER32.DLL] -> not found in project
+  [SHELL32.DLL] -> not found in project
+  [MSVCRT.DLL] -> not found in project
+  [MFC42.DLL] -> not found in project
+  [VERSION.DLL] -> not found in project
+  [ADVAPI32.DLL] -> not found in project
+  [OLE32.DLL] -> not found in project
+  [OLEAUT32.DLL] -> not found in project
+------------------------------------------------
+
+  
+2026-11-14 21:05:31 INFO  (HeadlessAnalyzer) IMPORTING: Loaded 0 additional files  
+2026-11-14 21:05:31 INFO  (HeadlessAnalyzer) ANALYZING all memory and code: file:///Volumes/T7S-Personal/Games/%E5%AE%9D%E7%9F%B3%E5%BF%83%E5%AD%A6%E9%99%A22/jewena.exe  
+2026-11-14 21:05:31 WARN  (NoReturnFunctionAnalyzer) Ignoring leading '_' chars on no-return name '___raise_securityfailure' specified in file: /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Features/Base/data/PEFunctionsThatDoNotReturn  
+2026-11-14 21:05:31 WARN  (NoReturnFunctionAnalyzer) Ignoring leading '_' chars on no-return name '___report_rangecheckfailure' specified in file: /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Features/Base/data/PEFunctionsThatDoNotReturn  
+2026-11-14 21:05:31 INFO  (DWARFAnalyzer) Unable to find DWARF information, skipping DWARF analysis  
+2026-11-14 21:05:31 INFO  (PdbUniversalAnalyzer) Skipping PDB processing: missing PDB information in program metadata  
+2026-11-14 21:05:32 INFO  (PackedDatabaseCache) Packed database cache: /var/tmp/nullsty-ghidra/packed-db-cache  
+2026-11-14 21:05:32 DEBUG (PackedDatabaseCache) Caching packed database: /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Features/Base/data/typeinfo/win32/windows_vs12_32.gdt  
+2026-11-14 21:05:32 DEBUG (PackedDatabase) Unpacking database /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Features/Base/data/typeinfo/win32/windows_vs12_32.gdt -> /var/tmp/nullsty-ghidra/packed-db-cache/pdb97731678/db.1.gbf  
+2026-11-14 21:05:32 DEBUG (PackedDatabaseCache) Cache update completed: /opt/homebrew/Cellar/ghidra/12.2/libexec/Ghidra/Features/Base/data/typeinfo/win32/windows_vs12_32.gdt  
+2026-11-14 21:05:34 INFO  (ApplyDataArchiveAnalyzer) Applied data type archive: windows_vs12_32  
+2026-11-14 21:05:34 INFO  (ApplyDataArchiveAnalyzer) Applied data type archive: windows_vs12_32  
+2026-11-14 21:05:37 INFO  (FormatStringAnalyzer) No functions detected that make variadic function calls with format strings containing format specifiers  
+2026-11-14 21:05:37 INFO  (AutoAnalysisManager) -----------------------------------------------------
+    ASCII Strings                              0.126 secs
+    Apply Data Archives                        0.070 secs
+    Call Convention ID                         0.001 secs
+    Call-Fixup Installer                       0.007 secs
+    Create Address Tables                      0.008 secs
+    Create Address Tables - One Time           0.016 secs
+    Create Function                            0.032 secs
+    DWARF                                      0.001 secs
+    Data Reference                             0.007 secs
+    Decompiler Parameter ID                    2.582 secs
+    Decompiler Switch Analysis                 0.822 secs
+    Demangler Microsoft                        0.011 secs
+    Disassemble                                0.009 secs
+    Disassemble Entry Points                   0.064 secs
+    Embedded Media                             0.006 secs
+    External Entry References                  0.000 secs
+    Function ID                                0.139 secs
+    Function Start Pre Search                  0.004 secs
+    Function Start Search                      0.008 secs
+    Function Start Search After Code           0.001 secs
+    Function Start Search After Data           0.002 secs
+    Non-Returning Functions - Discovered       0.010 secs
+    Non-Returning Functions - Known            0.003 secs
+    PDB Universal                              0.000 secs
+    Reference                                  0.020 secs
+    Scalar Operand References                  0.028 secs
+    Shared Return Calls                        0.012 secs
+    Source Language Support                    0.001 secs
+    Stack                                      0.086 secs
+    Subroutine References                      0.044 secs
+    Subroutine References - One Time           0.002 secs
+    Variadic Function Signature Override       0.012 secs
+    Windows x86 PE Exception Handling          0.778 secs
+    Windows x86 PE RTTI Analyzer               0.000 secs
+    Windows x86 Thread Environment Block (TEB) Analyzer     0.008 secs
+    WindowsResourceReference                   0.380 secs
+    X86 Function Callee Purge                  0.007 secs
+    x86 Constant Reference Analyzer            0.117 secs
+-----------------------------------------------------
+     Total Time   5 secs
+-----------------------------------------------------
+  
+2026-11-14 21:05:37 INFO  (HeadlessAnalyzer) REPORT: Analysis succeeded for file: file:///Volumes/T7S-Personal/Games/%E5%AE%9D%E7%9F%B3%E5%BF%83%E5%AD%A6%E9%99%A22/jewena.exe  
+2026-11-14 21:05:37 INFO  (HeadlessAnalyzer) REPORT: Execute script: ExportAll.java '/Volumes/T7S-Projects/Projects/CLion/OpenBGI/analysis/out/jewena2'   
+2026-11-14 21:05:37 INFO  (HeadlessAnalyzer) SCRIPT: /Volumes/T7S-Projects/Projects/CLion/OpenBGI/analysis/scripts/ExportAll.java  
+2026-11-14 21:05:38 INFO  (GhidraScript) ExportAll.java> done: 163 functions  
+2026-11-14 21:05:38 INFO  (HeadlessAnalyzer) ANALYZING changes made by post scripts: file:///Volumes/T7S-Personal/Games/%E5%AE%9D%E7%9F%B3%E5%BF%83%E5%AD%A6%E9%99%A22/jewena.exe  
+2026-11-14 21:05:38 INFO  (HeadlessAnalyzer) REPORT: Post-analysis succeeded for file: file:///Volumes/T7S-Personal/Games/%E5%AE%9D%E7%9F%B3%E5%BF%83%E5%AD%A6%E9%99%A22/jewena.exe  
+2026-11-14 21:05:38 INFO  (LocalFileSystem) /jewena.exe: file created (nullsty)  
+2026-11-14 21:05:38 INFO  (HeadlessAnalyzer) REPORT: Save succeeded for: /jewena.exe (Jewena2:/jewena.exe)  
+2026-11-14 21:05:38 INFO  (HeadlessAnalyzer) REPORT: Import succeeded  

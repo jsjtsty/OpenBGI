@@ -6,8 +6,7 @@
 
 namespace obgi {
 
-// "CompressedBG___" version 1: keystream-masked frequency table, Huffman, zero-run RLE, then
-// left/above averaging prediction. See analysis/CBG格式.md.
+// "CompressedBG___" versions 1 and 2. Version 2 uses BF_Movie frame compression.
 struct CbgImage {
     std::uint32_t width = 0;
     std::uint32_t height = 0;
