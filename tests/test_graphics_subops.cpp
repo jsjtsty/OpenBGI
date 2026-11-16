@@ -1,4 +1,5 @@
 #include <doctest/doctest.h>
+#include <SDL3/SDL.h>
 
 #include <algorithm>
 #include <array>
@@ -1088,8 +1089,8 @@ TEST_CASE("91:9D draws text with a registered default font" * doctest::test_suit
     text.display = display->get(); text.fonts = fonts->get(); text.font_ids = &font_host.table.ids;
     SubopRegistry registry; register_text_subops(registry, text);
     MemProvider provider;
-    provider.set(Asm().i32(0x300).i32(1).i32(0).i32(0).i32(0x100).i32(0xffffff).i32(0).i32(0)
-        .i32(24).i32(100).i32(0).i32(0).i32(0).i32(0).i32(0).i32(0)
+    provider.set(Asm().i32(0x300).i32(1).i32(0).i32(0).i32(0x100).i32(0).i32(0).i32(0)
+        .i32(24).i32(100).i32(0).i32(0).i32(0).i32(0).i32(0xffffff).i32(0)
         .sub(0x91, 0x9D).raw({0x09, 0x02}).ret());
     Vm vm(provider, registry); put_string(vm, 0x100, "Save");
     ThreadConfig cfg; cfg.stack_size = 1024;
@@ -1098,5 +1099,45 @@ TEST_CASE("91:9D draws text with a registered default font" * doctest::test_suit
     std::uint8_t lines[4]; REQUIRE(vm.global.read(0x300, 4, lines));
     CHECK(load_u32le(lines) == 1);
     auto pixels = (*display)->read_slot(1); REQUIRE(pixels);
-    CHECK(std::any_of(pixels->begin(), pixels->end(), [](auto pixel) { return pixel != 0; }));
+    CHECK(std::any_of(pixels->begin(), pixels->end(), [](auto pixel) { return (pixel & 0x00ffffffu) != 0; }));
+}
+
+TEST_CASE("save comment edit starts selected and preserves GBK text" * doctest::test_suite("gpu")) {
+    RendererOptions options; options.headless = true;
+    auto renderer = Renderer::create(options); REQUIRE(renderer);
+    auto display = Display::create(**renderer, 1280, 720); REQUIRE(display);
+    SystemState state; state.code_page = 936;
+    SubopRegistry registry; register_core_subops(registry); register_plane_subops(registry, state, display->get());
+    MemProvider provider;
+    provider.set(Asm().i32(0x100).sub(0xB0, 0x26).i32(0xffffff).sub(0xB0, 0x25)
+        .i32(1).sub(0xB0, 0x28).i32(0).sub(0xB0, 0x29)
+        .i32(700).i32(511).i32(448).i32(48).i32(0).i32(16).i32(198).i32(1).sub(0xB0, 0x20)
+        .i32(0x300).i32(0x200).sub(0xB0, 0x27).raw({0x09, 0x02}).ret());
+    Vm vm(provider, registry); put_string(vm, 0x100, "\xb2\xe2\xca\xd4"); // 测试, GBK
+    ThreadConfig cfg; cfg.stack_size = 1024;
+    REQUIRE(vm.spawn(cfg, "test", "save comment"));
+    auto result = vm.run_frame(0); REQUIRE_MESSAGE(result.has_value(), (result ? "" : result.error().message));
+    CHECK(state.edit_box.active); CHECK(state.edit_box.focused); CHECK(state.edit_box.select_all);
+    CHECK(state.edit_box.text == U"测试"); CHECK(state.edit_box.text_color == 0xffffff);
+    std::uint8_t out[5]{}; REQUIRE(vm.global.read(0x200, sizeof(out), out));
+    CHECK(std::string(reinterpret_cast<const char*>(out)) == "\xb2\xe2\xca\xd4");
+}
+
+TEST_CASE("typing in an edit box does not send game shortcuts" * doctest::test_suite("gpu")) {
+    RendererOptions options; options.headless = true;
+    auto renderer = Renderer::create(options); REQUIRE(renderer);
+    REQUIRE((*renderer)->poll_events());
+    (void)(*renderer)->take_presses();
+    (*renderer)->set_text_input(true);
+    SDL_Event key{}; key.type = SDL_EVENT_KEY_DOWN; key.key.key = SDLK_A; key.key.scancode = SDL_SCANCODE_A;
+    REQUIRE(SDL_PushEvent(&key));
+    REQUIRE((*renderer)->poll_events());
+    CHECK((*renderer)->take_presses().empty());
+    CHECK((*renderer)->take_key() == 0);
+    key.key.key = SDLK_RETURN; key.key.scancode = SDL_SCANCODE_RETURN;
+    REQUIRE(SDL_PushEvent(&key));
+    REQUIRE((*renderer)->poll_events());
+    auto edits = (*renderer)->take_edit_keys();
+    REQUIRE(edits.size() == 1); CHECK(edits[0] == SDLK_RETURN);
+    CHECK((*renderer)->take_presses().empty());
 }

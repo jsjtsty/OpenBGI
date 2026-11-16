@@ -216,6 +216,7 @@ struct SystemState : InputState {
         std::uint32_t max_chars = 256;
         std::uint32_t align = 0;              // B0:2A: 0 left, 1 center, 2 right
         std::uint32_t text_color = 0x000000;  // B0:25: 0xRRGGBB
+        bool select_all = false;              // initial native selection
         std::u32string text;
         std::string editing;
         std::string pending_raw_text;         // B0:26

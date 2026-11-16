@@ -90,7 +90,12 @@ void render_edit_box(SystemState& system, Display& display, FontHost& font_host,
 
     const std::uint32_t w = static_cast<std::uint32_t>(eb.w);
     const std::uint32_t h = static_cast<std::uint32_t>(eb.h);
-    std::vector<std::uint32_t> px(std::size_t{w} * h, 0xFFFFFFFFu);
+    // Scripts may request white text (e.g. Eustia's save comment).
+    // Use a dark field for light text so both text and caret remain visible.
+    const std::uint32_t rgb = eb.text_color;
+    const unsigned luminance = 299 * ((rgb >> 16) & 255) + 587 * ((rgb >> 8) & 255) + 114 * (rgb & 255);
+    const std::uint32_t background = luminance >= 128000 ? 0xFF202020u : 0xFFFFFFFFu;
+    std::vector<std::uint32_t> px(std::size_t{w} * h, background);
     const std::uint32_t border = eb.focused ? 0xFF4A90E2u : 0xFF888888u;
     for (std::uint32_t x = 0; x < w; ++x) {
         px[x] = border;
@@ -134,9 +139,15 @@ void render_edit_box(SystemState& system, Display& display, FontHost& font_host,
         pen_x = kPad + avail - total_adv;
     }
 
-    const std::uint32_t fg_r = (eb.text_color >> 16) & 0xFFu;
-    const std::uint32_t fg_g = (eb.text_color >> 8) & 0xFFu;
-    const std::uint32_t fg_b = eb.text_color & 0xFFu;
+    if (eb.focused && eb.select_all && committed_adv > 0) {
+        for (int sy = 2; sy < eb.h - 2; ++sy)
+            for (int sx = std::max(1, pen_x); sx < std::min(eb.w - 1, pen_x + committed_adv); ++sx)
+                px[std::size_t(sy) * w + sx] = 0xFF315B99u;
+    }
+    const std::uint32_t color = eb.focused && eb.select_all ? 0xFFFFFFu : eb.text_color;
+    const std::uint32_t fg_r = (color >> 16) & 0xFFu;
+    const std::uint32_t fg_g = (color >> 8) & 0xFFu;
+    const std::uint32_t fg_b = color & 0xFFu;
 
     if (face) {
         const int baseline = (eb.h + face->ascent() - face->descent()) / 2;
@@ -172,7 +183,7 @@ void render_edit_box(SystemState& system, Display& display, FontHost& font_host,
         }
     }
 
-    if (eb.focused && caret_phase == 0) {
+    if (eb.focused && !eb.select_all && caret_phase == 0) {
         const int caret_x = std::clamp(pen_x + committed_adv, 2, eb.w - 3);
         const int cy0 = std::max(3, (eb.h - static_cast<int>(eb.font_size)) / 2);
         const int cy1 = std::min(eb.h - 3, cy0 + static_cast<int>(eb.font_size));
@@ -408,11 +419,15 @@ bool EngineSession::pump_events() {
         auto& eb = m.system.edit_box;
         m.renderer->set_text_input(true, eb.x, eb.y, eb.w, eb.h);
         for (const std::string& chunk : m.renderer->take_text_inputs()) {
+            if (std::getenv("OBGI_TRACE_EDIT")) std::fprintf(stderr, "EDIT input bytes=%zu\n", chunk.size());
             for (char32_t cp : utf8_to_utf32(chunk)) {
                 if (cp < 0x20 || cp == 0x7F) continue;
                 if (eb.no_ascii && cp >= 0x20 && cp <= 0x7E) continue;
                 const std::size_t add_u = (cp < 0x80 || (cp >= 0xFF61 && cp <= 0xFF9F)) ? 1 : 2;
-                if (edit_box_units(eb.text) + add_u <= eb.max_chars) {
+                const std::size_t used = eb.select_all ? 0 : edit_box_units(eb.text);
+                if (used + add_u <= eb.max_chars) {
+                    if (eb.select_all) eb.text.clear();
+                    eb.select_all = false;
                     eb.text.push_back(cp);
                     eb.dirty = true;
                 }
@@ -424,12 +439,16 @@ bool EngineSession::pump_events() {
             eb.dirty = true;
         }
         for (std::uint32_t k : m.renderer->take_edit_keys()) {
+            if (std::getenv("OBGI_TRACE_EDIT")) std::fprintf(stderr, "EDIT key=%u composing=%d chars=%zu\n", k, !eb.editing.empty(), eb.text.size());
             if (k == SDLK_BACKSPACE) {
                 if (eb.editing.empty() && !eb.text.empty()) {
-                    eb.text.pop_back();
+                    if (eb.select_all) eb.text.clear();
+                    else eb.text.pop_back();
+                    eb.select_all = false;
                     eb.dirty = true;
                 }
             } else if (k == SDLK_RETURN || k == SDLK_KP_ENTER) {
+                if (!eb.editing.empty()) continue; // IME is still composing
                 eb.focused = false;
                 if (eb.hide_on_enter) eb.visible = false;
                 eb.dirty = true;

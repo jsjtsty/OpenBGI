@@ -354,6 +354,8 @@ void register_object_settings(vm::SubopRegistry& r, SystemState& state, Display*
         eb.max_chars = max_chars;
         eb.editing.clear();
         eb.text = script_to_utf32(eb.pending_raw_text, s->code_page);
+        eb.select_all = !eb.text.empty(); // native EDIT selects the initial text
+        if (std::getenv("OBGI_TRACE_EDIT")) std::fprintf(stderr, "EDIT create x=%d y=%d size=%dx%d max=%u focus=%d color=%06X initial_chars=%zu\n", x, y, w, h, max_chars, eb.focused, eb.text_color, eb.text.size());
         eb.dirty = true;
         (void)display;
         return 0;
@@ -418,6 +420,7 @@ void register_object_settings(vm::SubopRegistry& r, SystemState& state, Display*
             return 0;
         }
         const std::string out = utf32_to_script(s->edit_box.text, s->code_page);
+        if (std::getenv("OBGI_TRACE_EDIT")) std::fprintf(stderr, "EDIT get chars=%zu bytes=%zu codepage=%u\n", s->edit_box.text.size(), out.size(), s->code_page);
         if (dst) c.write_cstring(dst, out);
         c.push(static_cast<Word>(out.size()));
         return 0;

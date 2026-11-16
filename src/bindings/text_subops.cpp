@@ -59,7 +59,8 @@ void register_text_subops(vm::SubopRegistry& r, TextHost& host) {
                c.pop(); // legacy effect flag, or 92:9C reserved argument
                if (!legacy) for (int i = 0; i < 5; ++i) c.pop(); // effects are not rendered yet
                Word ruby_enabled = 0;
-               if (legacy) ruby_enabled = c.pop();
+               Word color = 0;
+               if (legacy) color = c.pop(); // 91:9D puts text color at the top
                auto line_gap = static_cast<std::int32_t>(c.pop());
                Word hang = c.pop(), prop = c.pop();
                (void)hang; (void)prop;
@@ -74,12 +75,13 @@ void register_text_subops(vm::SubopRegistry& r, TextHost& host) {
                    }
                    if (c.ok()) font_name = (*host.font_ids)[id];
                    c.pop(); // ruby dictionary
+                   ruby_enabled = c.pop();
                } else {
                    font_name = c.cstring(c.pop());
                    c.pop(); c.pop(); // ruby parameters and dictionary
                    ruby_enabled = c.pop();
+                   color = c.pop();
                }
-               Word color = c.pop();
                std::string text = c.cstring(c.pop());
                auto y = static_cast<std::int32_t>(c.pop());
                auto x = static_cast<std::int32_t>(c.pop());

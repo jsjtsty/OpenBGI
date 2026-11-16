@@ -439,10 +439,11 @@ bool Renderer::poll_events() {
             }
         }
         if (e.type == SDL_EVENT_KEY_DOWN) {
-            if (impl_->text_input_active &&
-                (e.key.key == SDLK_BACKSPACE || e.key.key == SDLK_RETURN ||
-                 e.key.key == SDLK_KP_ENTER || e.key.key == SDLK_ESCAPE)) {
-                impl_->edit_keys.push_back(e.key.key);
+            if (impl_->text_input_active) {
+                if (e.key.key == SDLK_BACKSPACE || e.key.key == SDLK_RETURN ||
+                    e.key.key == SDLK_KP_ENTER || e.key.key == SDLK_ESCAPE)
+                    impl_->edit_keys.push_back(e.key.key);
+                // Text keys belong to the edit control, not game shortcuts.
                 continue;
             }
             if (!e.key.repeat) impl_->key = e.key.key;
