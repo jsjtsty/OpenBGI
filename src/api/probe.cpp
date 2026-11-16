@@ -61,7 +61,7 @@ std::optional<std::string> game_name_from_system_ipl(obgi::vm::ProgramProvider& 
     const auto end = code.find('\0', begin);
     if (end == std::string_view::npos || end == begin || end - begin > 128) return std::nullopt;
     const std::string_view name = code.substr(begin, end - begin);
-    if (!std::all_of(name.begin(), name.end(), [](unsigned char ch) { return std::isalnum(ch) != 0; }))
+    if (!std::all_of(name.begin(), name.end(), [](unsigned char ch) { return std::isalnum(ch) != 0 || ch == '_'; }))
         return std::nullopt;
     return std::string(name);
 }
@@ -153,9 +153,12 @@ int obgi_probe(const char* game_dir, obgi_probe_result* result) {
     std::vector<std::string> problems;
     bool boot_ok = true;
 
+    // Newer games start from autoload; older games keep the entry in system.
+    const bool has_autoload = arcs.contains("autoload.arc");
     for (const char* req : {"autoload.arc", "system.arc"}) {
         auto it = arcs.find(req);
         if (it == arcs.end()) {
+            if (std::string_view(req) == "autoload.arc" && arcs.contains("system.arc")) continue;
             boot_ok = false;
             problems.emplace_back(req);
             continue;
@@ -164,9 +167,10 @@ int obgi_probe(const char* game_dir, obgi_probe_result* result) {
         if (!opened) {
             boot_ok = false;
             problems.emplace_back(req);
-        } else if (std::string_view(req) == "autoload.arc" && !opened->find("ipl._bp")) {
+        } else if ((std::string_view(req) == "autoload.arc" ||
+                    (!has_autoload && std::string_view(req) == "system.arc")) && !opened->find("ipl._bp")) {
             boot_ok = false;
-            problems.emplace_back("autoload.arc(ipl._bp)");
+            problems.emplace_back(std::string(req) + "(ipl._bp)");
         }
     }
 

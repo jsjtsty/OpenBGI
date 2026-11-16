@@ -5,7 +5,7 @@
     <string name="rescan">重新扫描</string>
     <string name="about">关于</string>
     <string name="no_games_title">未找到 BGI 游戏</string>
-    <string name="no_games_desc">请将包含 autoload.arc 与 system.arc 的游戏文件夹复制到 /sdcard/OpenBGI/ 或应用专属目录。</string>
+    <string name="no_games_desc">请将包含 system.arc 的游戏文件夹复制到 /sdcard/OpenBGI/ 或应用专属目录。</string>
     <string name="grant_storage">授予存储访问权限</string>
     <string name="storage_needed">需要存储权限以扫描 /sdcard/OpenBGI/ 中的游戏目录。</string>
     <string name="ready">就绪</string>

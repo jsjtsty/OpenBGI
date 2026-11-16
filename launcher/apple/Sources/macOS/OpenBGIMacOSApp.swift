@@ -73,7 +73,7 @@ struct OpenBGIMacOSApp: App {
                     ContentUnavailableView {
                         Label("No BGI Games Found", systemImage: "folder")
                     } description: {
-                        Text("Click Add Folder or drop a game folder here (must contain autoload.arc and system.arc).")
+                        Text("Click Add Folder or drop a game folder here (must contain system.arc).")
                     } actions: {
                         Button("Add Folder...") { pickFolder() }
                             .buttonStyle(.borderedProminent)

@@ -5,7 +5,7 @@
     <string name="rescan">Rescan</string>
     <string name="about">About</string>
     <string name="no_games_title">No BGI Games Found</string>
-    <string name="no_games_desc">Copy a game folder containing autoload.arc and system.arc into /sdcard/OpenBGI/ or the app folder.</string>
+    <string name="no_games_desc">Copy a game folder containing system.arc into /sdcard/OpenBGI/ or the app folder.</string>
     <string name="grant_storage">Grant Storage Access</string>
     <string name="storage_needed">Storage access lets OpenBGI discover game folders in /sdcard/OpenBGI/.</string>
     <string name="ready">Ready</string>

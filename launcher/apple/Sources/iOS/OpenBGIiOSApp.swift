@@ -200,7 +200,7 @@ struct OpenBGIiOSApp: App {
                     Text("No BGI Games Found")
                         .font(.title2.weight(.bold))
 
-                    Text("Add a game folder containing autoload.arc and system.arc to start playing.")
+                    Text("Add a game folder containing system.arc to start playing.")
                         .font(.subheadline)
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
@@ -218,7 +218,7 @@ struct OpenBGIiOSApp: App {
                     stepRow(
                         number: "2",
                         title: "Copy Your Game Folder",
-                        detail: "Place the folder with autoload.arc and system.arc inside OpenBGI."
+                        detail: "Place the folder containing system.arc inside OpenBGI."
                     )
                     Divider()
                     stepRow(

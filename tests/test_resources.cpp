@@ -102,3 +102,27 @@ TEST_CASE("directory negative index refreshes and supports explicit invalidation
     CHECK(index.is_regular_file(dir.path / "later.sud", 2));
     CHECK(index.is_regular_file(file, 3) == false);
 }
+
+TEST_CASE("PackFile archives read members and reject malformed directories") {
+    Directory dir;
+    std::string bytes(16 + 2 * 32, '\0');
+    std::memcpy(bytes.data(), "PackFile    ", 12);
+    bytes[12] = 2;
+    std::memcpy(bytes.data() + 16, "First", 5);
+    bytes[16 + 20] = 3;
+    std::memcpy(bytes.data() + 48, "second", 6);
+    bytes[48 + 16] = 3;
+    bytes[48 + 20] = 4;
+    write(dir.path / "old.arc", bytes + "abcdefg");
+    auto arc = Arc::open(dir.path / "old.arc"); REQUIRE(arc);
+    auto first = arc->find("FIRST"); REQUIRE(first);
+    auto second = arc->find("Second"); REQUIRE(second);
+    auto data = arc->data(*second);
+    CHECK(std::string(data.begin(), data.end()) == "defg");
+    bytes[48 + 20] = 9;
+    write(dir.path / "bad.arc", bytes + "abcdefg");
+    CHECK_FALSE(Arc::open(dir.path / "bad.arc"));
+    bytes[12] = static_cast<char>(0xff);
+    write(dir.path / "short.arc", bytes);
+    CHECK_FALSE(Arc::open(dir.path / "short.arc"));
+}

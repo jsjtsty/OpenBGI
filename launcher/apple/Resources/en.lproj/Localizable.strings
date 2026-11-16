@@ -59,11 +59,11 @@
 "Import Folder..." = "Import Folder...";
 "Importing game folder..." = "Importing game folder...";
 "Import Failed" = "Import Failed";
-"Add a game folder containing autoload.arc and system.arc to start playing." = "Add a game folder containing autoload.arc and system.arc to start playing.";
+"Add a game folder containing system.arc to start playing." = "Add a game folder containing system.arc to start playing.";
 "Open the Files App" = "Open the Files App";
 "Navigate to On My iPhone -> OpenBGI." = "Navigate to On My iPhone -> OpenBGI.";
 "Copy Your Game Folder" = "Copy Your Game Folder";
-"Place the folder with autoload.arc and system.arc inside OpenBGI." = "Place the folder with autoload.arc and system.arc inside OpenBGI.";
+"Place the folder containing system.arc inside OpenBGI." = "Place the folder containing system.arc inside OpenBGI.";
 "Return & Play" = "Return & Play";
 "OpenBGI detects new games automatically, or tap Rescan." = "OpenBGI detects new games automatically, or tap Rescan.";
 "Put game folders in Files -> On My iPhone -> OpenBGI, or tap the folder button above to import." = "Put game folders in Files -> On My iPhone -> OpenBGI, or tap the folder button above to import.";

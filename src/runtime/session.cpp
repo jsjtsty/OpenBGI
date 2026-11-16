@@ -58,7 +58,7 @@ std::optional<std::string> game_name_from_system_ipl(vm::ProgramProvider& progra
     const auto end = code.find('\0', begin);
     if (end == std::string_view::npos || end == begin || end - begin > 128) return std::nullopt;
     const std::string_view name = code.substr(begin, end - begin);
-    if (!std::all_of(name.begin(), name.end(), [](unsigned char ch) { return std::isalnum(ch) != 0; }))
+    if (!std::all_of(name.begin(), name.end(), [](unsigned char ch) { return std::isalnum(ch) != 0 || ch == '_'; }))
         return std::nullopt;
     return std::string(name);
 }
@@ -220,6 +220,20 @@ Result<std::unique_ptr<EngineSession>> EngineSession::create(SessionOptions opti
 
 Result<void> EngineSession::boot(std::string_view arc, std::string_view name) {
     if (!impl_->vm->threads().empty()) return fail(Errc::Range, "session is already running");
+    // Launchers pass the historical default explicitly; choose the legacy entry only
+    // when that archive is absent, leaving explicit alternative entries untouched.
+    if (ascii_lower(arc) == "autoload.arc" && ascii_lower(name) == "ipl._bp") {
+        bool has_autoload = false;
+        std::error_code ec;
+        for (const auto& entry : std::filesystem::directory_iterator(
+                 impl_->options.game_dir, std::filesystem::directory_options::skip_permission_denied, ec)) {
+            if (ascii_lower(entry.path().filename().string()) == "autoload.arc" && entry.is_regular_file(ec)) {
+                has_autoload = true;
+                break;
+            }
+        }
+        if (!has_autoload && !ec) arc = "system.arc";
+    }
     auto spawned = impl_->vm->spawn(vm::ThreadConfig{}, arc, name);
     if (!spawned) return std::unexpected(spawned.error());
     return {};

@@ -144,7 +144,7 @@ final class LibraryStore: ObservableObject {
             let note = """
             OpenBGI Games Folder
             --------------------
-            Copy your BGI game folders (containing autoload.arc and system.arc) into this OpenBGI folder.
+            Copy your BGI game folders (containing system.arc) into this OpenBGI folder.
             Then return to OpenBGI and pull down or tap Refresh.
             """
             try? note.write(to: readme, atomically: true, encoding: .utf8)

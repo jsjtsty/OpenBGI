@@ -59,11 +59,11 @@
 "Import Folder..." = "导入文件夹…";
 "Importing game folder..." = "正在导入游戏文件夹…";
 "Import Failed" = "导入失败";
-"Add a game folder containing autoload.arc and system.arc to start playing." = "添加包含 autoload.arc 和 system.arc 的游戏文件夹即可开始游玩。";
+"Add a game folder containing system.arc to start playing." = "添加包含 system.arc 的游戏文件夹即可开始游玩。";
 "Open the Files App" = "打开“文件”App";
 "Navigate to On My iPhone -> OpenBGI." = "前往“我的 iPhone” -> “OpenBGI”。";
 "Copy Your Game Folder" = "复制游戏文件夹";
-"Place the folder with autoload.arc and system.arc inside OpenBGI." = "将包含 autoload.arc 和 system.arc 的文件夹放入 OpenBGI 中。";
+"Place the folder containing system.arc inside OpenBGI." = "将包含 system.arc 的文件夹放入 OpenBGI 中。";
 "Return & Play" = "返回并开始游玩";
 "OpenBGI detects new games automatically, or tap Rescan." = "OpenBGI 会自动检测新游戏，也可以点击“重新扫描”。";
 "Put game folders in Files -> On My iPhone -> OpenBGI, or tap the folder button above to import." = "将游戏文件夹放入“文件 -> 我的 iPhone -> OpenBGI”，或点击上方文件夹按钮导入。";

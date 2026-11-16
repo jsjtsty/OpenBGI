@@ -14,6 +14,7 @@ struct ArcEntry {
     std::uint32_t size = 0;
 };
 
+// "PackFile" uses 0x20-byte entries with 0x10-byte names.
 // "BURIKO ARC20" archive: 16-byte header (magic[12], count u32), count * 0x80 directory
 // entries (name[0x60], offset u32, size u32, padding), then the member data.
 class Arc {

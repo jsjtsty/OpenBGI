@@ -3,7 +3,9 @@
 #include "openbgi/openbgi.h"
 
 #include <cstring>
+#include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <string>
 #include <vector>
 
@@ -100,4 +102,39 @@ TEST_CASE("C API probe and 3x in-process re-entrancy on configured game") {
     }
 }
 #endif
+}
+
+TEST_CASE("probe accepts legacy system entry and identifiers with underscores") {
+    TempDir dir("openbgi_test_api_packfile");
+    std::string code("debug.inf\0AiyokunoEustia_Product\0", 34);
+    std::string block(8, '\0');
+    block[0] = 8;
+    block[4] = static_cast<char>(code.size());
+    block += code;
+    std::string archive(48, '\0');
+    std::memcpy(archive.data(), "PackFile    ", 12);
+    archive[12] = 1;
+    std::memcpy(archive.data() + 16, "ipl._bp", 7);
+    archive[36] = static_cast<char>(block.size());
+    { std::ofstream f(dir.path / "system.arc", std::ios::binary); f << archive << block; }
+    obgi_probe_result probe{};
+    REQUIRE(obgi_probe(dir.path.string().c_str(), &probe) == 1);
+    CHECK(probe.complete == 1);
+    CHECK(std::string(probe.game_name) == "AiyokunoEustia_Product");
+    CHECK(std::string(probe.game_id) == "aiyokunoeustia_product");
+    obgi_game_info info{};
+    REQUIRE(obgi_detect(dir.path.string().c_str(), &info) == 1);
+    CHECK(std::string(info.name) == "AiyokunoEustia_Product");
+    { std::ofstream f(dir.path / "autoload.arc", std::ios::binary); f << "invalid"; }
+    CHECK(obgi_probe(dir.path.string().c_str(), &probe) == 0);
+    CHECK(std::string(probe.missing).find("autoload.arc") != std::string::npos);
+}
+
+TEST_CASE("probe checks a legacy game directory when configured") {
+    const char* path = std::getenv("OPENBGI_LEGACY_GAME_DIR");
+    if (!path) return;
+    obgi_probe_result probe{};
+    REQUIRE_MESSAGE(obgi_probe(path, &probe) == 1, probe.message);
+    CHECK_MESSAGE(probe.complete == 1, probe.missing);
+    CHECK(std::string(probe.game_name) == "AiyokunoEustia_Product");
 }
